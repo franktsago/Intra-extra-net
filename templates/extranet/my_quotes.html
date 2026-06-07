@@ -1,0 +1,26 @@
+{% extends user.is_external|yesno:"base_extranet.html,base.html" %}
+{% load humanize %}
+{% block title %}Mes devis{% endblock %}
+{% block page_title %}Mes devis{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-slate-900 mb-1">Mes devis</h1>
+<p class="text-slate-500 mb-6">Consultez, téléchargez et acceptez vos propositions.</p>
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card divide-y divide-slate-100">
+  {% for q in quotes %}
+  <div class="flex items-center justify-between px-5 py-4 hover:bg-slate-50">
+    <a href="{% url 'extranet:client_quote' q.pk %}" class="min-w-0 flex-1">
+      <div class="font-semibold text-slate-800">{{ q.title }}
+        {% if q.status == 'SENT' %}<span class="ml-1 text-[10px] bg-amber-100 text-amber-700 rounded-full px-1.5 py-0.5 font-semibold">À valider</span>{% endif %}</div>
+      <div class="text-xs text-slate-400">{{ q.number }} · {{ q.issue_date|date:"d/m/Y" }}</div>
+    </a>
+    <div class="flex items-center gap-4 flex-shrink-0">
+      <div class="text-right">
+        <div class="font-bold text-slate-900">{{ q.total|intcomma }} F</div>
+        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-{{ q.status_color }}-50 text-{{ q.status_color }}-600">{{ q.get_status_display }}</span>
+      </div>
+      <a href="{% url 'extranet:client_quote_pdf' q.pk %}" class="text-slate-400 hover:text-lpm" title="Télécharger le PDF"><i class="fa-solid fa-download"></i></a>
+    </div>
+  </div>
+  {% empty %}<div class="px-5 py-12 text-center text-slate-400"><i class="fa-regular fa-file-lines text-4xl"></i><p class="mt-3">Aucun devis pour le moment.</p></div>{% endfor %}
+</div>
+{% endblock %}

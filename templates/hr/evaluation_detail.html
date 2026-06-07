@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Évaluation{% endblock %}
+{% block page_title %}Évaluation{% endblock %}
+{% block content %}
+<a href="{% url 'hr:evaluations' %}" class="text-sm text-lpm hover:underline">← Évaluations</a>
+<div class="max-w-3xl bg-white rounded-2xl border border-slate-200 shadow-card p-6 mt-3">
+  <div class="flex items-center justify-between">
+    <div><h2 class="text-lg font-bold text-slate-800">{{ ev.employee.full_name }}</h2>
+      <p class="text-sm text-slate-500">{{ ev.period }} · évalué par {{ ev.evaluator.get_full_name|default:"—" }}</p></div>
+    <div class="text-center">
+      <div class="text-3xl font-extrabold text-{{ ev.score_color }}-600">{{ ev.score }}%</div>
+      <div class="text-xs text-slate-400">Score global</div>
+    </div>
+  </div>
+  <table class="w-full text-sm mt-5">
+    <thead class="bg-slate-50 text-slate-500 text-left"><tr><th class="px-3 py-2">Objectif</th><th class="px-3 py-2">KPI</th><th class="px-3 py-2 text-right">Poids</th><th class="px-3 py-2 text-right">Atteinte</th></tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for o in ev.objectives.all %}
+      <tr><td class="px-3 py-2 font-medium text-slate-800">{{ o.label }}<div class="text-xs text-slate-400">{{ o.comment }}</div></td>
+        <td class="px-3 py-2 text-slate-500">{{ o.kpi }}</td><td class="px-3 py-2 text-right">{{ o.weight }}%</td>
+        <td class="px-3 py-2 text-right"><span class="font-semibold {% if o.rating >= 75 %}text-emerald-600{% elif o.rating >= 50 %}text-amber-600{% else %}text-red-600{% endif %}">{{ o.rating }}%</span></td></tr>
+      {% empty %}<tr><td colspan="4" class="px-3 py-4 text-center text-slate-400">Aucun objectif.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  {% if ev.comment %}<div class="mt-4 text-sm"><div class="text-slate-400">Appréciation générale</div><p class="text-slate-700">{{ ev.comment }}</p></div>{% endif %}
+  <div class="mt-6 pt-5 border-t flex flex-wrap gap-2">
+    <a href="{% url 'hr:evaluation_edit' ev.pk %}" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm">Modifier</a>
+    {% if ev.status == 'DRAFT' %}<a href="{% url 'hr:evaluation_status' ev.pk 'SUBMITTED' %}" class="px-4 py-2 rounded-lg bg-amber-500 text-white text-sm">Soumettre</a>{% endif %}
+    {% if ev.status == 'SUBMITTED' %}<a href="{% url 'hr:evaluation_status' ev.pk 'VALIDATED' %}" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm">Valider</a>{% endif %}
+    <span class="px-3 py-2 text-sm text-slate-400">Statut : {{ ev.get_status_display }}</span>
+  </div>
+</div>
+{% endblock %}

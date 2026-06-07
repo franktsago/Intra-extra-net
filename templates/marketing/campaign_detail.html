@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}{{ campaign.name }}{% endblock %}
+{% block page_title %}{{ campaign.name }}{% endblock %}
+{% block content %}
+<a href="{% url 'marketing:campaign_list' %}" class="text-sm text-lpm hover:underline">← Campagnes</a>
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 mt-3 mb-6">
+  <div class="flex items-start justify-between flex-wrap gap-3">
+    <div>
+      <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-lpm/10 text-lpm"><i class="fa-solid {{ campaign.channel_icon }}"></i> {{ campaign.get_channel_display }}</span>
+      <h1 class="text-xl font-bold text-slate-900 mt-2">{{ campaign.name }}</h1>
+      <p class="text-sm text-slate-500">{% if campaign.brand %}{{ campaign.brand.name }} · {% endif %}{% if campaign.project %}<a href="{% url 'projects:detail' campaign.project.pk %}" class="text-lpm hover:underline">{{ campaign.project.name }}</a>{% endif %}</p>
+    </div>
+    <div class="text-right">
+      <span class="px-3 py-1 rounded-full text-xs font-medium bg-{{ campaign.status_color }}-100 text-{{ campaign.status_color }}-700">{{ campaign.get_status_display }}</span>
+      {% if can_edit %}<a href="{% url 'marketing:campaign_edit' campaign.pk %}" class="block mt-2 text-sm text-lpm hover:underline"><i class="fa-solid fa-pen"></i> Modifier</a>{% endif %}
+    </div>
+  </div>
+  {% if campaign.objectives %}<div class="mt-3 text-sm"><div class="text-slate-400">Objectifs</div><p class="text-slate-700 whitespace-pre-line">{{ campaign.objectives }}</p></div>{% endif %}
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-5 text-sm">
+    <div><div class="text-slate-400">Budget</div><div class="font-semibold text-slate-800">{{ campaign.budget|intcomma }} F</div></div>
+    <div><div class="text-slate-400">Portée</div><div class="font-semibold text-slate-800">{{ campaign.actual_reach|default:0|intcomma }} / {{ campaign.target_reach|default:0|intcomma }}</div></div>
+    <div><div class="text-slate-400">Leads</div><div class="font-semibold text-slate-800">{{ campaign.leads|default:0 }}</div></div>
+    <div><div class="text-slate-400">Période</div><div class="font-medium text-slate-700">{{ campaign.start_date|date:"d/m/y"|default:"—" }} → {{ campaign.end_date|date:"d/m/y"|default:"—" }}</div></div>
+  </div>
+</div>
+
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+  <div class="flex items-center justify-between mb-4"><h3 class="font-bold text-slate-900">Publications de la campagne</h3>
+    <a href="{% url 'marketing:post_create' %}" class="text-sm text-lpm hover:underline">+ Publication</a></div>
+  <div class="space-y-2">
+    {% for p in campaign.posts.all %}
+    <div class="flex items-center justify-between p-3 rounded-lg border border-slate-100">
+      <div class="flex items-center gap-3"><i class="fa-brands {{ p.platform_icon }} text-slate-400"></i>
+        <div><div class="text-sm font-medium text-slate-800">{{ p.title }}</div><div class="text-xs text-slate-400">{{ p.scheduled_at|date:"d/m/Y H:i" }}</div></div></div>
+      <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-{{ p.status_color }}-50 text-{{ p.status_color }}-600">{{ p.get_status_display }}</span>
+    </div>
+    {% empty %}<p class="text-sm text-slate-400">Aucune publication.</p>{% endfor %}
+  </div>
+</div>
+{% endblock %}

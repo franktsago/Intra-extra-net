@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord{% endblock %}
+
+{% block content_top %}
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-slate-900">Bonjour {{ user.get_full_name|default:user.username }} !</h1>
+  <p class="text-slate-500 mt-0.5">Voici un aperçu de votre activité.</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Cartes statistiques -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 flex items-center gap-4">
+    <span class="h-12 w-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center"><i class="fa-solid fa-newspaper text-xl"></i></span>
+    <div><div class="text-2xl font-bold text-slate-900 leading-none">{{ count_news }}</div><div class="text-sm text-slate-500 mt-1">Actualités</div></div>
+  </div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 flex items-center gap-4">
+    <span class="h-12 w-12 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center"><i class="fa-solid fa-list-check text-xl"></i></span>
+    <div><div class="text-2xl font-bold text-slate-900 leading-none">{{ count_tasks }}</div><div class="text-sm text-slate-500 mt-1">Tâches à réaliser</div></div>
+  </div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 flex items-center gap-4">
+    <span class="h-12 w-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fa-solid fa-folder-open text-xl"></i></span>
+    <div><div class="text-2xl font-bold text-slate-900 leading-none">{{ count_docs }}</div><div class="text-sm text-slate-500 mt-1">Documents</div></div>
+  </div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 flex items-center gap-4">
+    <span class="h-12 w-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center"><i class="fa-solid fa-bell text-xl"></i></span>
+    <div><div class="text-2xl font-bold text-slate-900 leading-none">{{ count_notifs }}</div><div class="text-sm text-slate-500 mt-1">Notifications</div></div>
+  </div>
+</div>
+
+{% if pinned %}
+<a href="{% url 'communication:detail' pinned.slug %}" class="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6 hover:bg-blue-100 transition">
+  <i class="fa-solid fa-thumbtack text-blue-600 mt-1 flex-shrink-0"></i>
+  <div><div class="font-semibold text-blue-900">{{ pinned.title }}</div>
+  <div class="text-sm text-blue-800/80">{{ pinned.summary|default:pinned.content|truncatewords:20 }}</div></div>
+</a>
+{% endif %}
+
+<div class="grid lg:grid-cols-2 gap-6">
+  <!-- Actualités -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <h3 class="font-bold text-slate-900 mb-4">Actualités</h3>
+    <div class="divide-y divide-slate-100">
+      {% for a in news %}
+      <a href="{% url 'communication:detail' a.slug %}" class="block py-3 first:pt-0 group">
+        <div class="font-medium text-slate-800 group-hover:text-lpm">{{ a.title }}</div>
+        <div class="text-sm text-slate-500 line-clamp-1">{{ a.summary|default:a.content|truncatewords:14 }}</div>
+        <div class="text-xs text-slate-400 mt-1">{{ a.created_at|date:"d M Y" }}</div>
+      </a>
+      {% empty %}<p class="text-sm text-slate-400 py-3">Aucune actualité.</p>{% endfor %}
+    </div>
+    <a href="{% url 'communication:list' %}" class="inline-flex items-center gap-1 text-sm font-medium text-lpm hover:underline mt-4">Voir toutes les actualités →</a>
+  </div>
+
+  <!-- Mes tâches -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <h3 class="font-bold text-slate-900 mb-4">Mes tâches</h3>
+    <div class="space-y-3">
+      {% for t in my_tasks %}
+      <a href="{% url 'tasks:detail' t.pk %}" class="flex items-center gap-3 group">
+        <span class="h-5 w-5 rounded-md border-2 border-slate-300 flex-shrink-0 group-hover:border-lpm"></span>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium text-slate-800 truncate">{{ t.title }}</div>
+          {% if t.due_date %}<div class="text-xs text-slate-400">Échéance : {{ t.due_date|date:"d M Y" }}</div>{% endif %}
+        </div>
+        <span class="px-2 py-0.5 rounded-full text-xs font-medium
+          {% if t.priority == 'URGENT' or t.priority == 'HIGH' %}bg-red-50 text-red-600
+          {% elif t.priority == 'NORMAL' %}bg-amber-50 text-amber-600
+          {% else %}bg-emerald-50 text-emerald-600{% endif %}">{{ t.get_priority_display }}</span>
+      </a>
+      {% empty %}<p class="text-sm text-slate-400">Aucune tâche en cours.</p>{% endfor %}
+    </div>
+    <a href="{% url 'tasks:board' %}" class="inline-flex items-center gap-1 text-sm font-medium text-lpm hover:underline mt-4">Voir toutes les tâches →</a>
+  </div>
+</div>
+
+<!-- File de validation congés (responsables / RH) -->
+{% if leave_queue %}
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 mt-6">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="font-bold text-slate-900">Congés à traiter</h3>
+    <a href="{% url 'conges:queue' %}" class="text-sm font-medium text-lpm hover:underline">Voir tout →</a>
+  </div>
+  <div class="space-y-2">
+    {% for l in leave_queue %}
+    <a href="{% url 'conges:detail' l.pk %}" class="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50">
+      <div><span class="font-medium text-slate-800">{{ l.employee.full_name }}</span>
+      <span class="text-sm text-slate-500"> · {{ l.leave_type.name }}</span></div>
+      <span class="text-xs text-slate-400">{{ l.start_date|date:"d/m" }} → {{ l.end_date|date:"d/m" }} ({{ l.days_count }} j)</span>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if user.is_manager %}
+{# Anniversaires (responsables → équipe ; RH/CEO/admin → tout le personnel) #}
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 mt-6">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="font-bold text-slate-900"><i class="fa-solid fa-cake-candles text-pink-500 mr-1"></i> Anniversaires imminents</h3>
+    {% if user.is_rh %}<a href="{% url 'hr:birthdays' %}" class="text-sm font-medium text-lpm hover:underline">Tous les anniversaires →</a>{% endif %}
+  </div>
+  <div class="space-y-2">
+    {% for b in birthdays %}
+    <div class="flex items-center justify-between p-3 rounded-xl border {% if b.days == 0 %}border-pink-200 bg-pink-50{% else %}border-slate-100{% endif %}">
+      <div class="flex items-center gap-3">
+        <span class="h-9 w-9 rounded-full lpm-gradient text-white text-xs font-bold flex items-center justify-center">{{ b.employee.user.display_initials }}</span>
+        <div>
+          <div class="font-medium text-slate-800">{{ b.employee.full_name }}</div>
+          <div class="text-xs text-slate-400">{{ b.date|date:"d F" }}</div>
+        </div>
+      </div>
+      {% if b.days == 0 %}<span class="text-sm font-semibold text-pink-600">🎉 Aujourd'hui !</span>
+      {% elif b.days == 1 %}<span class="text-xs text-slate-500">Demain</span>
+      {% else %}<span class="text-xs text-slate-400">dans {{ b.days }} j</span>{% endif %}
+    </div>
+    {% empty %}<p class="text-sm text-slate-400">Aucun anniversaire dans les 3 prochains jours.</p>{% endfor %}
+  </div>
+</div>
+
+{# Relation client (responsables / RH / CEO / admin) #}
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 mt-6">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="font-bold text-slate-900">Relation client</h3>
+    <a href="{% url 'extranet:home' %}" class="text-sm font-medium text-lpm hover:underline">Espace extranet →</a>
+  </div>
+  <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+    <a href="{% url 'extranet:tickets' %}" class="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50">
+      <span class="h-10 w-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center"><i class="fa-solid fa-headset"></i></span>
+      <div><div class="text-lg font-bold text-slate-900 leading-none">{{ open_tickets_count }}</div><div class="text-xs text-slate-500 mt-1">Réclamations ouvertes</div></div>
+    </a>
+    <a href="{% url 'extranet:requests' %}" class="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50">
+      <span class="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center"><i class="fa-solid fa-lightbulb"></i></span>
+      <div><div class="text-lg font-bold text-slate-900 leading-none">{{ pending_requests }}</div><div class="text-xs text-slate-500 mt-1">Demandes à traiter</div></div>
+    </a>
+    <a href="{% url 'extranet:creatives' %}" class="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50">
+      <span class="h-10 w-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center"><i class="fa-solid fa-palette"></i></span>
+      <div><div class="text-sm font-semibold text-slate-800 leading-tight mt-1">Créations<br>graphiques</div></div>
+    </a>
+  </div>
+</div>
+{% endif %}
+
+<!-- Accès rapides -->
+<h3 class="font-bold text-slate-900 mt-8 mb-4">Accès rapides</h3>
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+  {% include "dashboard/_quick.html" with url='documents:list' label='Documents' color='blue' icon='fa-folder-open' %}
+  {% if user.is_manager %}{% include "dashboard/_quick.html" with url='extranet:home' label='Extranet' color='violet' icon='fa-handshake' %}{% endif %}
+  {% include "dashboard/_quick.html" with url='communication:calendar' label='Calendrier' color='emerald' icon='fa-calendar-days' %}
+  {% include "dashboard/_quick.html" with url='employees:list' label='Annuaire' color='sky' icon='fa-users' %}
+  {% include "dashboard/_quick.html" with url='conges:create' label='Demande de congé' color='amber' icon='fa-umbrella-beach' %}
+  {% include "dashboard/_quick.html" with url='messaging:inbox' label='Messagerie' color='rose' icon='fa-comments' %}
+</div>
+{% endblock %}

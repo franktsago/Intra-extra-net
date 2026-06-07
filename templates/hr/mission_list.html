@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Missions{% endblock %}
+{% block page_title %}Missions{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-5">
+  <p class="text-slate-500 text-sm">Déplacements professionnels. Les jours de mission sont comptés « En mission » (sans pointage ni retenue).</p>
+  <a href="{% url 'hr:mission_create' %}" class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium shadow">+ Nouvelle mission</a>
+</div>
+<div class="bg-white rounded-xl shadow-card overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-50 text-slate-500 text-left"><tr>
+      <th class="px-4 py-3">Personne</th><th class="px-4 py-3">Du</th><th class="px-4 py-3">Au</th>
+      <th class="px-4 py-3">Jours</th><th class="px-4 py-3">Destination</th>
+      <th class="px-4 py-3">Statut</th><th class="px-4 py-3">Enregistrée par</th><th class="px-4 py-3"></th></tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for m in missions %}
+      <tr class="hover:bg-slate-50">
+        <td class="px-4 py-3 font-medium text-slate-800">{{ m.employee.full_name }}</td>
+        <td class="px-4 py-3">{{ m.start_date|date:"d/m/Y" }}</td>
+        <td class="px-4 py-3">{{ m.end_date|date:"d/m/Y" }}</td>
+        <td class="px-4 py-3">{{ m.days }}</td>
+        <td class="px-4 py-3">{{ m.destination|default:"—" }}</td>
+        <td class="px-4 py-3">
+          {% if m.start_date > today %}<span class="px-2 py-0.5 rounded-full text-xs bg-sky-50 text-sky-600">À venir</span>
+          {% elif m.end_date < today %}<span class="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-500">Terminée</span>
+          {% else %}<span class="px-2 py-0.5 rounded-full text-xs bg-violet-50 text-violet-600">En cours</span>{% endif %}
+        </td>
+        <td class="px-4 py-3 text-slate-500">{{ m.created_by.get_full_name|default:m.created_by.username|default:"—" }}</td>
+        <td class="px-4 py-3 text-right">
+          <div class="flex items-center justify-end gap-3">
+            <a href="{% url 'hr:mission_pdf' m.pk %}" class="text-lpm hover:text-lpm-dark" title="Télécharger l'ordre de mission (PDF)"><i class="fa-solid fa-file-arrow-down"></i></a>
+            <form method="post" action="{% url 'hr:mission_delete' m.pk %}" onsubmit="return confirm('Supprimer cette mission ?');">{% csrf_token %}
+              <button class="text-red-500 hover:text-red-700" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% empty %}<tr><td colspan="8" class="px-4 py-8 text-center text-slate-400">Aucune mission enregistrée.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

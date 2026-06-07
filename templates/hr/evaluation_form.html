@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Évaluation{% endblock %}
+{% block page_title %}{% if ev %}Modifier l'évaluation{% else %}Nouvelle évaluation{% endif %}{% endblock %}
+{% block content %}
+<form method="post" class="space-y-6 max-w-4xl">{% csrf_token %}
+  <div class="bg-white rounded-xl shadow-card p-6">{% include "includes/form.html" %}</div>
+  <div class="bg-white rounded-xl shadow-card p-6">
+    <h3 class="font-bold text-slate-800 mb-1">Objectifs & KPI</h3>
+    <p class="text-sm text-slate-500 mb-3">Le score global est la moyenne des taux d'atteinte pondérée par le poids (%).</p>
+    {{ formset.management_form }}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm" id="obj-table">
+        <thead class="bg-slate-50 text-slate-500 text-left"><tr>
+          <th class="px-2 py-2">Objectif</th><th class="px-2 py-2">KPI</th><th class="px-2 py-2 w-20">Poids %</th>
+          <th class="px-2 py-2 w-24">Atteinte %</th><th class="px-2 py-2">Commentaire</th><th class="w-8"></th></tr></thead>
+        <tbody id="obj-body">
+          {% for f in formset %}
+          <tr class="border-t border-slate-100">{{ f.id }}
+            <td class="px-1 py-1">{{ f.label }}</td><td class="px-1 py-1">{{ f.kpi }}</td>
+            <td class="px-1 py-1">{{ f.weight }}</td><td class="px-1 py-1">{{ f.rating }}</td>
+            <td class="px-1 py-1">{{ f.comment }}</td>
+            <td class="px-1 py-1 text-center">{% if f.instance.pk %}{{ f.DELETE }}{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <button type="button" onclick="addObj()" class="mt-2 text-sm text-lpm hover:underline"><i class="fa-solid fa-plus"></i> Ajouter un objectif</button>
+    <template id="empty-obj"><tr class="border-t border-slate-100">{{ formset.empty_form.id }}
+      <td class="px-1 py-1">{{ formset.empty_form.label }}</td><td class="px-1 py-1">{{ formset.empty_form.kpi }}</td>
+      <td class="px-1 py-1">{{ formset.empty_form.weight }}</td><td class="px-1 py-1">{{ formset.empty_form.rating }}</td>
+      <td class="px-1 py-1">{{ formset.empty_form.comment }}</td><td></td></tr></template>
+  </div>
+  <div class="flex gap-3">
+    <button class="lpm-gradient text-white font-semibold px-5 py-2.5 rounded-lg shadow">Enregistrer</button>
+    <a href="{% url 'hr:evaluations' %}" class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600">Annuler</a>
+  </div>
+</form>
+<script>
+  function addObj(){var t=document.getElementById('id_{{ formset.prefix }}-TOTAL_FORMS');var i=parseInt(t.value);
+    var h=document.getElementById('empty-obj').innerHTML.replace(/__prefix__/g,i);
+    var tr=document.createElement('tr');tr.className='border-t border-slate-100';tr.innerHTML=h;
+    document.getElementById('obj-body').appendChild(tr);t.value=i+1;styleObj();}
+  function styleObj(){document.querySelectorAll('#obj-table input, #obj-table textarea').forEach(function(x){
+    if(x.type!=='checkbox'&&x.type!=='hidden'&&!x.className.includes('rounded'))x.className='w-full rounded-lg border border-slate-300 px-2 py-1.5';});}
+  styleObj();
+</script>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Dossier disciplinaire{% endblock %}
+{% block page_title %}{% if record %}Modifier le dossier{% else %}Nouveau dossier disciplinaire{% endif %}{% endblock %}
+{% block content %}
+<div class="max-w-3xl">
+  <div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 mb-5 text-sm">
+    <i class="fa-solid fa-scale-balanced"></i> <strong>Rappel légal :</strong> toute sanction supérieure à l'avertissement nécessite un entretien préalable (droits de la défense). La mise à pied disciplinaire est limitée à 8 jours.
+  </div>
+  <div class="bg-white rounded-xl shadow-card p-6">
+    <form method="post">{% csrf_token %}
+      {% include "includes/form.html" %}
+      <div class="mt-6 flex gap-3">
+        <button class="lpm-gradient text-white font-semibold px-5 py-2.5 rounded-lg shadow">Enregistrer</button>
+        <a href="{% url 'disciplinary:list' %}" class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600">Annuler</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

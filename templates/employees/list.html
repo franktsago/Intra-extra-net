@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Employés{% endblock %}
+{% block page_title %}Annuaire des employés{% endblock %}
+{% block content %}
+<div class="flex flex-col lg:flex-row lg:items-center gap-3 mb-5">
+  <form class="flex flex-1 flex-col sm:flex-row gap-2 w-full">
+    <input name="q" value="{{ q }}" placeholder="Nom, matricule, poste…" class="flex-1 min-w-0 rounded-lg border border-slate-300 px-3 py-2">
+    <select name="dept" class="rounded-lg border border-slate-300 px-3 py-2 sm:w-52">
+      <option value="">Tous les départements</option>
+      {% for d in departments %}<option value="{{ d.id }}" {% if dept == d.id|stringformat:'s' %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
+    </select>
+    <button class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium whitespace-nowrap">Rechercher</button>
+  </form>
+  <div class="flex gap-2 flex-shrink-0">
+    <a href="{% url 'employees:org_chart' %}" class="flex-1 lg:flex-none text-center px-4 py-2 rounded-lg border border-slate-300 text-slate-600 font-medium whitespace-nowrap"><i class="fa-solid fa-sitemap"></i> Organigramme</a>
+    {% if user.is_rh %}
+    <a href="{% url 'employees:departments' %}" class="flex-1 lg:flex-none text-center px-4 py-2 rounded-lg border border-slate-300 text-slate-600 font-medium whitespace-nowrap"><i class="fa-solid fa-building"></i> Départements</a>
+    <a href="{% url 'employees:create' %}" class="flex-1 lg:flex-none text-center lpm-gradient text-white px-4 py-2 rounded-lg font-medium shadow whitespace-nowrap">+ Employé</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  {% for e in page_obj %}
+  <a href="{% url 'employees:detail' e.pk %}" class="bg-white rounded-xl shadow-card p-5 hover:shadow-lg transition flex items-center gap-4">
+    {% if e.user.avatar %}<img src="{{ e.user.avatar.url }}" class="h-14 w-14 rounded-full object-cover">
+    {% else %}<span class="h-14 w-14 rounded-full lpm-gradient text-white font-bold flex items-center justify-center">{{ e.user.display_initials }}</span>{% endif %}
+    <div class="min-w-0">
+      <div class="font-semibold text-slate-800 truncate">{{ e.full_name }}</div>
+      <div class="text-sm text-slate-500 truncate">{{ e.position_titles|default:"—" }}</div>
+      <div class="text-xs text-slate-400 truncate">{{ e.department_names }}</div>
+    </div>
+  </a>
+  {% empty %}<p class="text-slate-400 col-span-full text-center py-10">Aucun employé trouvé.</p>{% endfor %}
+</div>
+{% include "includes/pagination.html" %}
+{% endblock %}

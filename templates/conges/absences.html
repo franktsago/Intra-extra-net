@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Absences & missions{% endblock %}
+{% block page_title %}Qui est absent ?{% endblock %}
+{% block content %}
+<p class="text-slate-500 text-sm mb-5">Personnel en congé ou en mission — {{ today|date:"l d F Y" }}.</p>
+
+<div class="grid lg:grid-cols-2 gap-6">
+  <!-- En congé -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <h3 class="font-bold text-slate-900 mb-4"><i class="fa-solid fa-umbrella-beach text-sky-500 mr-1"></i> En congé aujourd'hui</h3>
+    <div class="space-y-3">
+      {% for l in on_leave %}
+      <div class="flex items-center justify-between group">
+        <div class="flex items-center gap-3">
+          <span class="h-9 w-9 rounded-full bg-sky-100 text-sky-700 text-xs font-bold flex items-center justify-center">{{ l.employee.user.display_initials }}</span>
+          <div><div class="text-sm font-medium text-slate-800">{{ l.employee.full_name }}</div>
+          <div class="text-xs text-slate-400">{{ l.leave_type.name }}</div></div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-500">jusqu'au {{ l.end_date|date:"d/m" }}</span>
+          {% if user.is_rh %}<form method="post" action="{% url 'conges:leave_delete' l.pk %}" onsubmit="return confirm('Supprimer ce congé ?');">{% csrf_token %}<button class="text-slate-300 hover:text-red-600 opacity-0 group-hover:opacity-100" title="Supprimer"><i class="fa-solid fa-trash text-xs"></i></button></form>{% endif %}
+        </div>
+      </div>
+      {% empty %}<p class="text-sm text-slate-400">Personne en congé aujourd'hui.</p>{% endfor %}
+    </div>
+  </div>
+
+  <!-- En mission -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <h3 class="font-bold text-slate-900 mb-4"><i class="fa-solid fa-plane-departure text-violet-500 mr-1"></i> En mission aujourd'hui</h3>
+    <div class="space-y-3">
+      {% for m in on_mission %}
+      <div class="flex items-center justify-between group">
+        <div class="flex items-center gap-3">
+          <span class="h-9 w-9 rounded-full bg-violet-100 text-violet-700 text-xs font-bold flex items-center justify-center">{{ m.employee.user.display_initials }}</span>
+          <div><div class="text-sm font-medium text-slate-800">{{ m.employee.full_name }}</div>
+          <div class="text-xs text-slate-400">{{ m.destination|default:"Mission" }}</div></div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-500">jusqu'au {{ m.end_date|date:"d/m" }}</span>
+          {% if user.is_rh %}<form method="post" action="{% url 'hr:mission_delete' m.pk %}" onsubmit="return confirm('Supprimer cette mission ?');">{% csrf_token %}<input type="hidden" name="next" value="{% url 'conges:absences' %}"><button class="text-slate-300 hover:text-red-600 opacity-0 group-hover:opacity-100" title="Supprimer"><i class="fa-solid fa-trash text-xs"></i></button></form>{% endif %}
+        </div>
+      </div>
+      {% empty %}<p class="text-sm text-slate-400">Personne en mission aujourd'hui.</p>{% endfor %}
+    </div>
+  </div>
+</div>
+
+{% if upcoming_leave or upcoming_mission %}
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 mt-6">
+  <h3 class="font-bold text-slate-900 mb-4"><i class="fa-solid fa-calendar-days text-slate-400 mr-1"></i> À venir (14 prochains jours)</h3>
+  <div class="space-y-2">
+    {% for l in upcoming_leave %}
+    <div class="flex items-center justify-between text-sm group">
+      <span class="text-slate-700"><i class="fa-solid fa-umbrella-beach text-sky-400 mr-1.5"></i>{{ l.employee.full_name }} — {{ l.leave_type.name }}</span>
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400">{{ l.start_date|date:"d/m" }} → {{ l.end_date|date:"d/m" }}</span>
+        {% if user.is_rh %}<form method="post" action="{% url 'conges:leave_delete' l.pk %}" onsubmit="return confirm('Supprimer ce congé ?');">{% csrf_token %}<button class="text-slate-300 hover:text-red-600 opacity-0 group-hover:opacity-100" title="Supprimer"><i class="fa-solid fa-trash text-xs"></i></button></form>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+    {% for m in upcoming_mission %}
+    <div class="flex items-center justify-between text-sm group">
+      <span class="text-slate-700"><i class="fa-solid fa-plane-departure text-violet-400 mr-1.5"></i>{{ m.employee.full_name }} — {{ m.destination|default:"Mission" }}</span>
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400">{{ m.start_date|date:"d/m" }} → {{ m.end_date|date:"d/m" }}</span>
+        {% if user.is_rh %}<form method="post" action="{% url 'hr:mission_delete' m.pk %}" onsubmit="return confirm('Supprimer cette mission ?');">{% csrf_token %}<input type="hidden" name="next" value="{% url 'conges:absences' %}"><button class="text-slate-300 hover:text-red-600 opacity-0 group-hover:opacity-100" title="Supprimer"><i class="fa-solid fa-trash text-xs"></i></button></form>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

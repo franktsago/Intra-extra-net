@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Projet{% endblock %}
+{% block page_title %}{% if project %}Modifier le projet{% else %}Nouveau projet{% endif %}{% endblock %}
+{% block content %}
+<div class="max-w-3xl bg-white rounded-xl shadow-card p-6">
+  <form method="post">{% csrf_token %}
+    {% include "includes/form.html" %}
+    <div class="mt-6 flex gap-3">
+      <button class="lpm-gradient text-white font-semibold px-5 py-2.5 rounded-lg shadow">Enregistrer</button>
+      <a href="{% url 'extranet:home' %}" class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600">Annuler</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

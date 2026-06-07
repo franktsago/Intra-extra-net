@@ -1,0 +1,33 @@
+{% extends user.is_external|yesno:"base_extranet.html,base.html" %}
+{% block title %}Téléchargements{% endblock %}
+{% block page_title %}Centre de téléchargement{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-slate-900 mb-1">Centre de téléchargement</h1>
+<p class="text-slate-500 mb-5">Tous vos fichiers : logos, visuels, vidéos, rapports, devis, contrats et factures.</p>
+
+<form class="flex flex-wrap gap-2 mb-5">
+  <input name="q" value="{{ q }}" placeholder="Rechercher un fichier…" class="flex-1 min-w-56 rounded-lg border border-slate-300 px-3 py-2">
+  <select name="cat" class="rounded-lg border border-slate-300 px-3 py-2">
+    <option value="">Toutes les catégories</option>
+    {% for c in categories %}<option value="{{ c }}" {% if cat == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+  </select>
+  <button class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium">Rechercher</button>
+</form>
+
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card divide-y divide-slate-100">
+  {% for it in items %}
+  <div class="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50">
+    <div class="flex items-center gap-3 min-w-0">
+      <span class="h-9 w-9 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center flex-shrink-0"><i class="fa-solid {{ it.icon }}"></i></span>
+      <div class="min-w-0">
+        <div class="font-medium text-slate-800 truncate">{{ it.title }}</div>
+        <div class="text-xs text-slate-400">{{ it.category }}{% if it.project %} · {{ it.project }}{% endif %} · {{ it.date|date:"d/m/Y" }}</div>
+      </div>
+    </div>
+    <a href="{{ it.url }}" download class="text-sm font-medium text-lpm hover:underline flex-shrink-0"><i class="fa-solid fa-download mr-1"></i> Télécharger</a>
+  </div>
+  {% empty %}
+  <div class="px-5 py-12 text-center text-slate-400"><i class="fa-solid fa-folder-open text-4xl"></i><p class="mt-3">Aucun fichier{% if q or cat %} pour ce filtre{% endif %}.</p></div>
+  {% endfor %}
+</div>
+{% endblock %}

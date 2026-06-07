@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}{{ client.name }}{% endblock %}
+{% block page_title %}{{ client.name }}{% endblock %}
+{% block content %}
+<a href="{% url 'business:client_list' %}" class="text-sm text-lpm hover:underline">← Clients</a>
+<div class="grid lg:grid-cols-3 gap-6 mt-3">
+  <div class="bg-white rounded-xl shadow-card p-6">
+    <span class="px-2 py-0.5 rounded-full text-xs font-medium {% if client.kind == 'CLIENT' %}bg-emerald-50 text-emerald-600{% else %}bg-amber-50 text-amber-600{% endif %}">{{ client.get_kind_display }}</span>
+    {% if not client.is_validated %}<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-600 ml-1"><i class="fa-solid fa-hourglass-half"></i> À valider</span>{% endif %}
+    <h2 class="text-lg font-bold text-slate-800 mt-2">{{ client.name }}</h2>
+    {% if not client.is_validated and can_validate %}
+    <form method="post" action="{% url 'business:client_validate' client.pk %}" class="mt-3">{% csrf_token %}
+      <button class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 rounded-lg text-sm"><i class="fa-solid fa-check mr-1"></i> Valider cette fiche (Direction)</button>
+    </form>
+    {% endif %}
+    <div class="mt-4 space-y-2 text-sm">
+      <div><i class="fa-solid fa-user fa-fw text-slate-400"></i> {{ client.contact_name|default:"—" }}</div>
+      <div><i class="fa-solid fa-envelope fa-fw text-slate-400"></i> {{ client.email|default:"—" }}</div>
+      <div><i class="fa-solid fa-phone fa-fw text-slate-400"></i> {{ client.phone|default:"—" }}</div>
+      <div><i class="fa-solid fa-briefcase fa-fw text-slate-400"></i> {{ client.sector|default:"—" }}</div>
+      <div><i class="fa-solid fa-location-dot fa-fw text-slate-400"></i> {{ client.city }}</div>
+    </div>
+    <a href="{% url 'business:client_edit' client.pk %}" class="block mt-4 lpm-gradient text-white text-center font-medium py-2 rounded-lg">Modifier</a>
+  </div>
+  <div class="lg:col-span-2 space-y-6">
+    <div class="bg-white rounded-xl shadow-card p-6">
+      <div class="flex items-center justify-between mb-3"><h3 class="font-bold text-slate-800">Devis</h3>
+        <a href="{% url 'business:quote_create' %}" class="text-sm text-lpm hover:underline">+ Devis</a></div>
+      <div class="divide-y divide-slate-100">
+        {% for q in quotes %}
+        <a href="{% url 'business:quote_detail' q.pk %}" class="flex justify-between py-2 text-sm"><span>{{ q.number }} · {{ q.title }}</span><span class="font-medium">{{ q.total|intcomma }} F</span></a>
+        {% empty %}<p class="text-sm text-slate-400">Aucun devis.</p>{% endfor %}
+      </div>
+    </div>
+    <div class="bg-white rounded-xl shadow-card p-6">
+      <h3 class="font-bold text-slate-800 mb-3">Factures</h3>
+      <div class="divide-y divide-slate-100">
+        {% for i in invoices %}
+        <a href="{% url 'business:invoice_detail' i.pk %}" class="flex justify-between py-2 text-sm"><span>{{ i.number }}</span><span class="font-medium">{{ i.total|intcomma }} F</span></a>
+        {% empty %}<p class="text-sm text-slate-400">Aucune facture.</p>{% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

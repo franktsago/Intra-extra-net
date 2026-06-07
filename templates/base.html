@@ -1,0 +1,207 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Intranet{% endblock %} · LPM Consulting Group</title>
+  <link rel="icon" href="{% static 'img/favicon.png' %}">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#0073DE">
+  <link rel="apple-touch-icon" href="{% static 'img/logo.png' %}">
+  <script src="{% static 'vendor/tailwind.min.js' %}"></script>
+  <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+        colors: { lpm: { light: '#0196F2', DEFAULT: '#0073DE', dark: '#0057CA' } },
+        boxShadow: { card: '0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06)' },
+      } }
+    }
+  </script>
+  <style>
+    body { background:#f6f8fb; }
+    .lpm-gradient { background: linear-gradient(135deg,#0196F2 0%,#0073DE 55%,#0057CA 100%); }
+    .nav-link { color:#475569; }
+    .nav-link:hover { background:#f1f5f9; color:#0f172a; }
+    .nav-link.active { background:#0073DE; color:#fff; box-shadow:0 6px 14px rgba(0,115,222,.25); }
+    .nav-link.active i { color:#fff !important; }
+    ::-webkit-scrollbar{width:7px;height:7px}::-webkit-scrollbar-thumb{background:#dbe2ea;border-radius:8px}
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body class="h-full font-sans text-slate-700 antialiased">
+<div class="min-h-full lg:flex">
+
+  <!-- Overlay mobile -->
+  <div id="overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/40 z-30 hidden lg:hidden"></div>
+
+  <!-- Sidebar -->
+  <aside id="sidebar" class="bg-white border-r border-slate-200 w-64 flex-shrink-0 fixed inset-y-0 left-0 z-40 -translate-x-full lg:translate-x-0 transition-transform duration-200 flex flex-col">
+    <div class="px-5 h-16 flex items-center gap-2.5 border-b border-slate-100">
+      <img src="{% static 'img/logo.png' %}" alt="LPM" class="h-9 w-9 rounded-full">
+      <div class="leading-none">
+        <div class="font-extrabold text-slate-900 text-[17px] tracking-tight leading-tight">LPM</div>
+        <div class="text-[11px] font-medium text-slate-400 mt-0.5">Consulting</div>
+      </div>
+    </div>
+
+    <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-0.5 text-[14px] font-medium">
+      {% url 'dashboard:home' as u_dash %}
+      <a href="{{ u_dash }}" class="nav-link {% if request.path == u_dash %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-house fa-fw text-slate-400"></i> Tableau de bord</a>
+      <a href="{% url 'communication:list' %}" class="nav-link {% if '/actualites' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-newspaper fa-fw text-slate-400"></i> Actualités</a>
+      {% if user.is_rh %}<a href="{% url 'notifications:broadcast' %}" class="nav-link {% if '/notifications/diffuser' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-bullhorn fa-fw text-slate-400"></i> Diffuser une annonce</a>{% endif %}
+      <a href="{% url 'messaging:inbox' %}" class="nav-link {% if '/messagerie' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-comments fa-fw text-slate-400"></i> Messagerie{% with total=unread_messages|add:unread_chat %}{% if total %}<span class="ml-auto bg-lpm text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{{ total }}</span>{% endif %}{% endwith %}</a>
+      <a href="{% url 'documents:list' %}" class="nav-link {% if '/documents' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-folder-open fa-fw text-slate-400"></i> Documents</a>
+      <a href="{% url 'tasks:board' %}" class="nav-link {% if '/taches' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-list-check fa-fw text-slate-400"></i> Tâches</a>
+      <a href="{% url 'communication:calendar' %}" class="nav-link {% if '/calendrier' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-calendar-days fa-fw text-slate-400"></i> Calendrier</a>
+      <a href="{% url 'conges:my' %}" class="nav-link {% if '/conges' in request.path and '/validation' not in request.path and '/jours-feries' not in request.path and '/absences' not in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-umbrella-beach fa-fw text-slate-400"></i> Mes congés</a>
+      <a href="{% url 'conges:absences' %}" class="nav-link {% if '/conges/absences' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-user-clock fa-fw text-slate-400"></i> Absences & missions</a>
+      {% if user.must_clock %}<a href="{% url 'hr:pointage' %}" class="nav-link {% if '/rh/pointage' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-fingerprint fa-fw text-slate-400"></i> Pointage</a>{% endif %}
+      <a href="{% url 'employees:list' %}" class="nav-link {% if '/employes' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-users fa-fw text-slate-400"></i> Annuaire</a>
+
+      <p class="px-3 pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Projets</p>
+      <a href="{% url 'projects:list' %}" class="nav-link {% if request.path == '/projets/' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-diagram-project fa-fw text-slate-400"></i> Projets</a>
+      <a href="{% url 'projects:list' %}?kind=EVENT" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-calendar-star fa-fw text-slate-400"></i> Événements</a>
+      <a href="{% url 'marketing:campaign_list' %}" class="nav-link {% if '/marketing' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-bullhorn fa-fw text-slate-400"></i> Marketing</a>
+      {% if user.is_manager %}
+      <a href="{% url 'extranet:home' %}" class="nav-link {% if request.path == '/extranet/' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-handshake fa-fw text-slate-400"></i> Extranet</a>
+      <a href="{% url 'extranet:creatives' %}" class="nav-link {% if '/extranet/creations' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-palette fa-fw text-slate-400"></i> Créations graphiques</a>
+      <a href="{% url 'extranet:requests' %}" class="nav-link {% if '/extranet/demandes' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-lightbulb fa-fw text-slate-400"></i> Demandes clients{% if pending_requests %}<span class="ml-auto bg-amber-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{{ pending_requests }}</span>{% endif %}</a>
+      <a href="{% url 'extranet:tickets' %}" class="nav-link {% if '/extranet/reclamations' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-headset fa-fw text-slate-400"></i> Réclamations{% if open_tickets_count %}<span class="ml-auto bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{{ open_tickets_count }}</span>{% endif %}</a>
+      {% endif %}
+
+      {% if user.is_manager %}
+      <p class="px-3 pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Ressources Humaines</p>
+      <a href="{% url 'hr:hub' %}" class="nav-link {% if request.path == '/rh/' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-people-roof fa-fw text-slate-400"></i> Espace RH</a>
+      {% if user.can_validate_leave %}
+      <a href="{% url 'conges:queue' %}" class="nav-link {% if '/conges/validation' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-clipboard-check fa-fw text-slate-400"></i> Validation congés</a>
+      {% endif %}
+      <a href="{% url 'hr:attendance' %}" class="nav-link {% if '/rh/presences' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-clock fa-fw text-slate-400"></i> Présences {% if not user.is_rh %}<span class="text-[10px] text-slate-400">(équipe)</span>{% endif %}</a>
+      {% if user.is_rh %}
+      <a href="{% url 'hr:missions' %}" class="nav-link {% if '/rh/missions' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-plane-departure fa-fw text-slate-400"></i> Missions</a>
+      <a href="{% url 'hr:contracts' %}" class="nav-link {% if '/rh/contrats' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-file-contract fa-fw text-slate-400"></i> Contrats</a>
+      {% endif %}
+      <a href="{% url 'hr:openings' %}" class="nav-link {% if '/rh/recrutement' in request.path or '/rh/candidat' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-user-plus fa-fw text-slate-400"></i> Recrutement</a>
+      <a href="{% url 'hr:evaluations' %}" class="nav-link {% if '/rh/evaluations' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-chart-simple fa-fw text-slate-400"></i> Évaluations</a>
+      {% if user.is_rh %}
+      <a href="{% url 'disciplinary:list' %}" class="nav-link {% if '/discipline' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-scale-balanced fa-fw text-slate-400"></i> Discipline</a>
+      <a href="{% url 'conges:holidays' %}" class="nav-link {% if '/jours-feries' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-flag fa-fw text-slate-400"></i> Jours fériés</a>
+      <a href="{% url 'hr:birthdays' %}" class="nav-link {% if '/rh/anniversaires' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-cake-candles fa-fw text-slate-400"></i> Anniversaires</a>
+      {% endif %}
+      {% endif %}
+
+      {% if user.is_manager %}
+      <p class="px-3 pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Commercial & Finance</p>
+      {% if user.is_ceo %}
+      <a href="{% url 'business:executive' %}" class="nav-link {% if '/commercial/direction' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-chart-line fa-fw text-slate-400"></i> Direction Générale</a>
+      {% endif %}
+      <a href="{% url 'business:client_list' %}" class="nav-link {% if '/commercial/clients' in request.path or '/commercial/pipeline' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-user-tie fa-fw text-slate-400"></i> Clients / CRM</a>
+      <a href="{% url 'business:quote_list' %}" class="nav-link {% if '/commercial/devis' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-file-signature fa-fw text-slate-400"></i> Devis</a>
+      <a href="{% url 'business:invoice_list' %}" class="nav-link {% if '/commercial/factures' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-file-invoice-dollar fa-fw text-slate-400"></i> Factures</a>
+      {% endif %}
+
+      {% if user.is_rh %}
+      <p class="px-3 pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Administration</p>
+      <a href="{% url 'accounts:user_list' %}" class="nav-link {% if '/utilisateurs' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-users-gear fa-fw text-slate-400"></i> Utilisateurs</a>
+      {% if user.is_admin_lpm %}
+      <a href="{% url 'accounts:activity_log' %}" class="nav-link {% if '/journal' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-clock-rotate-left fa-fw text-slate-400"></i> Journal d'activité</a>
+      <a href="/admin/" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-gear fa-fw text-slate-400"></i> Paramètres</a>
+      {% endif %}
+      {% endif %}
+    </nav>
+
+    <div class="p-3 border-t border-slate-100">
+      <a href="{% url 'accounts:profile' %}" class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50">
+        {% if user.avatar %}<img src="{{ user.avatar.url }}" class="h-9 w-9 rounded-full object-cover">
+        {% else %}<span class="h-9 w-9 rounded-full lpm-gradient text-white text-xs font-bold flex items-center justify-center">{{ user.display_initials }}</span>{% endif %}
+        <div class="min-w-0"><div class="text-sm font-semibold text-slate-800 truncate">{{ user.get_full_name|default:user.username }}</div>
+        <div class="text-xs text-slate-400 truncate">{{ user.effective_role_display }}{% if user.has_multiple_roles %} <i class="fa-solid fa-arrows-rotate text-[9px]"></i>{% endif %}</div></div>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Contenu -->
+  <div class="flex-1 lg:ml-64 flex flex-col min-h-screen">
+    <header class="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-slate-200">
+      <div class="h-16 px-4 sm:px-6 flex items-center gap-3">
+        <button onclick="toggleSidebar()" class="lg:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-600"><i class="fa-solid fa-bars text-lg"></i></button>
+        <form action="{% url 'employees:list' %}" class="hidden sm:flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2 w-72 max-w-full">
+          <i class="fa-solid fa-magnifying-glass text-slate-400 text-sm"></i>
+          <input name="q" placeholder="Rechercher…" class="bg-transparent text-sm w-full focus:outline-none placeholder-slate-400">
+        </form>
+        <div class="ml-auto flex items-center gap-1">
+          <a href="{% url 'notifications:list' %}" class="relative p-2.5 rounded-xl hover:bg-slate-100 text-slate-500">
+            <i class="fa-solid fa-bell"></i>
+            {% if unread_count %}<span class="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">{{ unread_count }}</span>{% endif %}
+          </a>
+          <a href="{% url 'messaging:inbox' %}" class="relative p-2.5 rounded-xl hover:bg-slate-100 text-slate-500"><i class="fa-solid fa-comments"></i>
+            {% with total=unread_messages|add:unread_chat %}{% if total %}<span class="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-lpm text-white text-[10px] font-bold flex items-center justify-center">{{ total }}</span>{% endif %}{% endwith %}</a>
+          <div class="w-px h-6 bg-slate-200 mx-1 hidden sm:block"></div>
+          <div class="relative">
+            <button onclick="document.getElementById('user-menu').classList.toggle('hidden')" class="flex items-center gap-2.5 p-1 pr-2 rounded-xl hover:bg-slate-100">
+              {% if user.avatar %}<img src="{{ user.avatar.url }}" class="h-9 w-9 rounded-full object-cover">
+              {% else %}<span class="h-9 w-9 rounded-full lpm-gradient text-white text-xs font-bold flex items-center justify-center">{{ user.display_initials }}</span>{% endif %}
+              <div class="hidden sm:block text-left leading-tight"><div class="text-sm font-semibold text-slate-800">{{ user.get_full_name|default:user.username }}</div>
+              <div class="text-[11px] text-slate-400">{{ user.effective_role_display }}</div></div>
+              <i class="fa-solid fa-chevron-down text-xs text-slate-400 hidden sm:block"></i>
+            </button>
+            <div id="user-menu" class="hidden absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden">
+              {% if user.has_multiple_roles %}
+              <div class="px-4 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Changer de rôle</div>
+              {% for code, label in user.available_roles_display %}
+              <a href="{% url 'accounts:switch_role' code %}" class="flex items-center justify-between px-4 py-2 text-sm hover:bg-slate-50 {% if code == user.effective_role %}text-lpm font-medium{% else %}text-slate-700{% endif %}">
+                <span><i class="fa-solid fa-user-shield fa-fw text-slate-300 mr-2"></i>{{ label }}</span>
+                {% if code == user.effective_role %}<i class="fa-solid fa-check text-lpm"></i>{% endif %}
+              </a>
+              {% endfor %}
+              <div class="border-t my-1"></div>
+              {% endif %}
+              <a href="{% url 'accounts:profile' %}" class="block px-4 py-2.5 text-sm hover:bg-slate-50"><i class="fa-solid fa-user fa-fw text-slate-400 mr-2"></i>Mon profil</a>
+              <a href="{% url 'accounts:password_change' %}" class="block px-4 py-2.5 text-sm hover:bg-slate-50"><i class="fa-solid fa-key fa-fw text-slate-400 mr-2"></i>Mot de passe</a>
+              <form method="post" action="{% url 'accounts:logout' %}" class="border-t">{% csrf_token %}
+                <button class="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"><i class="fa-solid fa-right-from-bracket fa-fw mr-2"></i>Se déconnecter</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+      {% if messages %}
+      <div class="space-y-2 mb-5">
+        {% for m in messages %}
+        <div class="px-4 py-3 rounded-xl text-sm border flex items-center gap-2
+          {% if m.tags == 'success' %}bg-emerald-50 border-emerald-200 text-emerald-800
+          {% elif m.tags == 'error' %}bg-red-50 border-red-200 text-red-800
+          {% elif m.tags == 'warning' %}bg-amber-50 border-amber-200 text-amber-800
+          {% else %}bg-sky-50 border-sky-200 text-sky-800{% endif %}">
+          <i class="fa-solid {% if m.tags == 'success' %}fa-circle-check{% elif m.tags == 'error' %}fa-circle-xmark{% elif m.tags == 'warning' %}fa-triangle-exclamation{% else %}fa-circle-info{% endif %}"></i>
+          <span>{{ m }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% block content_top %}
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold text-slate-900">{% block page_title %}{% endblock %}</h1>
+      </div>
+      {% endblock %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+<script>
+  function toggleSidebar(){
+    document.getElementById('sidebar').classList.toggle('-translate-x-full');
+    document.getElementById('overlay').classList.toggle('hidden');
+  }
+  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(function(){}); }
+</script>
+{% block scripts %}{% endblock %}
+<script src="{% static 'js/calls.js' %}?v=2"></script>
+</body>
+</html>

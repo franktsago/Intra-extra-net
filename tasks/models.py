@@ -1,0 +1,64 @@
+"""Gestion des tâches : création, attribution, suivi, statut, échéances."""
+
+from django.conf import settings
+from django.db import models
+from django.utils import timezone
+
+
+class Task(models.Model):
+    class Status(models.TextChoices):
+        TODO = "TODO", "À faire"
+        IN_PROGRESS = "IN_PROGRESS", "En cours"
+        DONE = "DONE", "Terminée"
+        CANCELLED = "CANCELLED", "Annulée"
+
+    class Priority(models.TextChoices):
+        LOW = "LOW", "Basse"
+        NORMAL = "NORMAL", "Normale"
+        HIGH = "HIGH", "Haute"
+        URGENT = "URGENT", "Urgente"
+
+    title = models.CharField("Titre", max_length=200)
+    description = models.TextField("Description", blank=True)
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="taches_assignees", verbose_name="Assignée à",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL,
+        related_name="taches_creees", verbose_name="Créée par",
+    )
+    project = models.ForeignKey(
+        "projects.Project", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="tasks", verbose_name="Projet",
+    )
+    status = models.CharField("Statut", max_length=12, choices=Status.choices, default=Status.TODO)
+    priority = models.CharField("Priorité", max_length=8, choices=Priority.choices, default=Priority.NORMAL)
+    due_date = models.DateField("Échéance", null=True, blank=True)
+    # Validation : une tâche créée par un employé doit être approuvée par son responsable.
+    is_approved = models.BooleanField("Validée", default=True)
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="taches_validees", verbose_name="Validée par",
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Tâche"
+        verbose_name_plural = "Tâches"
+        ordering = ["status", "due_date", "-priority"]
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def is_overdue(self):
+        return (
+            self.due_date and self.status not in {self.Status.DONE, self.Status.CANCELLED}
+            and self.due_date < timezone.localdate()
+        )
+
+    @property
+    def priority_color(self):
+        return {"LOW": "slate", "NORMAL": "sky", "HIGH": "amber", "URGENT": "red"}[self.priority]

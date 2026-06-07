@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Décision congé{% endblock %}
+{% block page_title %}Traiter la demande{% endblock %}
+{% block content %}
+<div class="max-w-xl mx-auto bg-white rounded-xl shadow-card p-6">
+  <div class="border-b pb-4 mb-4">
+    <h2 class="font-bold text-slate-800">{{ leave.employee.full_name }}</h2>
+    <p class="text-sm text-slate-500">{{ leave.leave_type.name }} · {{ leave.start_date|date:"d/m/Y" }} → {{ leave.end_date|date:"d/m/Y" }} · <strong>{{ leave.days_count }} j</strong></p>
+    {% if leave.reason %}<p class="text-sm text-slate-600 mt-2">Motif : {{ leave.reason }}</p>{% endif %}
+  </div>
+  <form method="post" class="space-y-4">{% csrf_token %}
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-2">Décision</label>
+      <div class="flex gap-3">
+        {% for radio in form.decision %}
+        <label class="flex-1 cursor-pointer border-2 rounded-lg p-3 text-center hover:border-lpm has-[:checked]:border-lpm has-[:checked]:bg-lpm/5">
+          {{ radio.tag }} <span class="font-medium">{{ radio.choice_label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    <div><label class="block text-sm font-medium text-slate-700 mb-1">Commentaire</label>{{ form.comment }}</div>
+    <div class="flex gap-3">
+      <button class="lpm-gradient text-white font-semibold px-5 py-2.5 rounded-lg shadow">Confirmer</button>
+      <a href="{% url 'conges:queue' %}" class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600">Retour</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

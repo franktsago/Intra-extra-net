@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ doc.title }}{% endblock %}
+{% block page_title %}Lecture du document{% endblock %}
+{% block head %}
+{% if doc.is_powerpoint %}<link rel="stylesheet" href="{% static 'vendor/pptxjs.css' %}">{% endif %}
+<style>
+  .docx-content{background:#fff;max-width:820px;margin:0 auto;padding:32px 40px;line-height:1.6;color:#1f2937}
+  .docx-content h1,.docx-content h2,.docx-content h3{font-weight:700;margin:.8em 0 .3em}
+  .docx-content p{margin:.5em 0}.docx-content img{max-width:100%}
+  .docx-content table{border-collapse:collapse}.docx-content td,.docx-content th{border:1px solid #cbd5e1;padding:4px 8px}
+  .xls-table table{border-collapse:collapse;width:100%;font-size:13px;background:#fff}
+  .xls-table td,.xls-table th{border:1px solid #e2e8f0;padding:4px 8px;white-space:nowrap}
+  .xls-table tr:first-child td{background:#f8fafc;font-weight:600}
+</style>
+{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <div>
+    <h1 class="text-xl font-bold text-slate-900">{{ doc.title }}
+      {% if doc.is_confidential %}<span class="ml-2 align-middle px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-600"><i class="fa-solid fa-lock"></i> Confidentiel</span>{% endif %}
+    </h1>
+    <p class="text-sm text-slate-400">{{ doc.category.name|default:"Sans catégorie" }} · {{ doc.created_at|date:"d/m/Y" }} · {{ doc.extension|upper }}</p>
+  </div>
+  <div class="flex gap-2">
+    <a href="{% url 'documents:list' %}" class="text-sm text-lpm hover:underline self-center">← Documents</a>
+    {% if not doc.is_confidential %}
+    <a href="{% url 'documents:download' doc.pk %}" class="bg-lpm hover:bg-lpm-dark text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-download mr-1"></i> Télécharger</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if doc.is_confidential %}
+<div class="mb-3 flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-2">
+  <i class="fa-solid fa-triangle-exclamation"></i>
+  Document confidentiel — lecture en ligne uniquement. Téléchargement, impression et copie désactivés. Toute reproduction est tracée (filigrane à votre nom).
+</div>
+{% endif %}
+
+<div id="docviewer" class="relative bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden" style="height:80vh">
+  {% if doc.is_pdf %}
+    <iframe src="{% url 'documents:raw' doc.pk %}#toolbar=0&navpanes=0" class="w-full h-full" title="{{ doc.title }}"></iframe>
+  {% elif doc.is_image %}
+    <div class="absolute inset-0 overflow-auto flex items-center justify-center p-4">
+      <img src="{% url 'documents:raw' doc.pk %}" class="max-w-full select-none" draggable="false" alt="{{ doc.title }}">
+    </div>
+  {% elif doc.is_office %}
+    <div id="docbody" class="absolute inset-0 overflow-auto bg-white p-4">
+      <div class="h-full flex items-center justify-center text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl mr-2"></i> Chargement du document…</div>
+    </div>
+  {% else %}
+    <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 gap-3">
+      <i class="fa-solid fa-file-lines text-5xl"></i>
+      <p>Aperçu en ligne non disponible pour ce type de fichier ({{ doc.extension|upper }}).</p>
+      {% if not doc.is_confidential %}<a href="{% url 'documents:download' doc.pk %}" class="text-lpm font-medium hover:underline">Télécharger pour ouvrir</a>{% endif %}
+    </div>
+  {% endif %}
+
+  {% if doc.is_confidential %}<div id="wm" class="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.18] z-10"></div>{% endif %}
+</div>
+
+{% if doc.is_word %}<script src="{% static 'vendor/mammoth.browser.min.js' %}"></script>{% endif %}
+{% if doc.is_excel %}<script src="{% static 'vendor/xlsx.full.min.js' %}"></script>{% endif %}
+{% if doc.is_powerpoint %}
+<script src="{% static 'vendor/jquery.min.js' %}"></script>
+<script src="{% static 'vendor/jszip.min.js' %}"></script>
+<script src="{% static 'vendor/pptxjs.min.js' %}"></script>
+<script src="{% static 'vendor/divs2slides.min.js' %}"></script>
+{% endif %}
+
+<script>
+(function(){
+  var kind = "{{ doc.viewer_kind }}";
+  var rawUrl = "{% url 'documents:raw' doc.pk %}";
+  var body = document.getElementById('docbody');
+  function fail(msg){
+    if(body){ body.innerHTML = '<div class="h-full flex flex-col items-center justify-center text-slate-400 gap-2 p-6 text-center">'
+      + '<i class="fa-solid fa-triangle-exclamation text-3xl"></i><p>'+msg+'</p></div>'; }
+  }
+  if(kind === 'word' && window.mammoth){
+    fetch(rawUrl).then(function(r){return r.arrayBuffer();}).then(function(buf){
+      mammoth.convertToHtml({arrayBuffer:buf})
+        .then(function(res){ body.innerHTML = '<div class="docx-content">'+(res.value||'<p>(Document vide)</p>')+'</div>'; })
+        .catch(function(){ fail("Impossible d'afficher ce document Word (format .doc ancien ? Convertissez en .docx)."); });
+    }).catch(function(){ fail("Chargement impossible."); });
+  }
+  else if(kind === 'excel' && window.XLSX){
+    fetch(rawUrl).then(function(r){return r.arrayBuffer();}).then(function(buf){
+      var wb = XLSX.read(new Uint8Array(buf), {type:'array'});
+      var html = '';
+      wb.SheetNames.forEach(function(name){
+        html += '<h4 class="font-semibold text-slate-700 mt-4 mb-1">'+name+'</h4>'
+              + '<div class="xls-table overflow-auto">'+XLSX.utils.sheet_to_html(wb.Sheets[name])+'</div>';
+      });
+      body.innerHTML = html || '<p class="p-6 text-slate-400">Classeur vide.</p>';
+    }).catch(function(){ fail("Impossible d'afficher ce classeur Excel."); });
+  }
+  else if(kind === 'pptx'){
+    if(window.jQuery && jQuery.fn.pptxToHtml){
+      try {
+        body.innerHTML = '';
+        jQuery(body).pptxToHtml({ pptxFileUrl: rawUrl, slideMode:false, keyBoardShortCut:false });
+      } catch(e){ fail("Impossible d'afficher cette présentation."); }
+    } else { fail("Lecteur PowerPoint indisponible (connexion requise pour le rendu)."); }
+  }
+
+  {% if doc.is_confidential %}
+  var who = "{{ user.get_full_name|default:user.username|escapejs }}";
+  var stamp = new Date().toLocaleString('fr-FR');
+  var wm = document.getElementById('wm');
+  if(wm){
+    var cell = '<div style="transform:rotate(-30deg);color:#b91c1c;font-weight:700;font-size:13px;'
+             + 'white-space:nowrap;padding:38px 26px;">' + who + ' · ' + stamp + '</div>';
+    wm.innerHTML = '<div style="display:flex;flex-wrap:wrap;width:200%;height:200%;">'+Array(120).join(cell)+'</div>';
+  }
+  var v = document.getElementById('docviewer');
+  ['contextmenu','dragstart','copy','cut'].forEach(function(ev){
+    v.addEventListener(ev, function(e){ e.preventDefault(); return false; });
+  });
+  v.style.userSelect = 'none';
+  var stl = document.createElement('style'); stl.media='print'; stl.innerHTML='body{display:none !important;}';
+  document.head.appendChild(stl);
+  document.addEventListener('keydown', function(e){
+    if((e.ctrlKey||e.metaKey) && ['p','s'].indexOf(e.key.toLowerCase())>=0){ e.preventDefault(); }
+  });
+  {% endif %}
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}{{ quote.number }}{% endblock %}
+{% block page_title %}Devis {{ quote.number }}{% endblock %}
+{% block content %}
+<a href="{% url 'business:quote_list' %}" class="text-sm text-lpm hover:underline">← Devis</a>
+<div class="max-w-3xl bg-white rounded-xl shadow-card p-6 mt-3">
+  <div class="flex items-center justify-between">
+    <div><h2 class="text-lg font-bold text-slate-800">{{ quote.title }}</h2>
+      <p class="text-sm text-slate-500">{{ quote.client.name }} · émis le {{ quote.issue_date|date:"d/m/Y" }}</p></div>
+    <span class="px-3 py-1 rounded-full text-xs font-medium bg-{{ quote.status_color }}-100 text-{{ quote.status_color }}-700">{{ quote.get_status_display }}</span>
+  </div>
+
+  <table class="w-full text-sm mt-5">
+    <thead class="bg-slate-50 text-slate-500 text-left"><tr><th class="px-3 py-2">Désignation</th><th class="px-3 py-2 text-right">Qté</th><th class="px-3 py-2 text-right">P.U.</th><th class="px-3 py-2 text-right">Total</th></tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for l in quote.lines.all %}
+      <tr><td class="px-3 py-2">{{ l.designation }}</td><td class="px-3 py-2 text-right">{{ l.quantity|floatformat:"-2" }}</td><td class="px-3 py-2 text-right">{{ l.unit_price|intcomma }}</td><td class="px-3 py-2 text-right font-medium">{{ l.total|intcomma }}</td></tr>
+      {% empty %}<tr><td colspan="4" class="px-3 py-4 text-center text-slate-400">Aucune ligne.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  <div class="mt-4 ml-auto w-64 text-sm space-y-1">
+    <div class="flex justify-between"><span class="text-slate-500">Sous-total HT</span><span>{{ quote.subtotal|intcomma }} F</span></div>
+    <div class="flex justify-between"><span class="text-slate-500">TVA ({{ quote.tax_rate|floatformat:"-2" }}%)</span><span>{{ quote.tax_amount|intcomma }} F</span></div>
+    <div class="flex justify-between font-bold text-slate-900 text-base border-t pt-1"><span>TOTAL TTC</span><span>{{ quote.total|intcomma }} F</span></div>
+  </div>
+
+  <div class="mt-6 pt-5 border-t flex flex-wrap gap-2">
+    <a href="{% url 'business:quote_pdf' quote.pk %}" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-download mr-1"></i> PDF</a>
+    <a href="{% url 'business:quote_edit' quote.pk %}" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm">Modifier</a>
+    {% if quote.status == 'DRAFT' %}<a href="{% url 'business:quote_status' quote.pk 'internal' %}" class="px-4 py-2 rounded-lg bg-amber-500 text-white text-sm">Soumettre à validation interne</a>{% endif %}
+    {% if quote.status == 'INTERNAL' %}<a href="{% url 'business:quote_status' quote.pk 'send' %}" class="px-4 py-2 rounded-lg bg-sky-600 text-white text-sm">Valider & envoyer au client</a>{% endif %}
+    {% if quote.status == 'SENT' %}
+      <a href="{% url 'business:quote_status' quote.pk 'sign' %}" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm">Marquer signé</a>
+      <a href="{% url 'business:quote_status' quote.pk 'refuse' %}" class="px-4 py-2 rounded-lg border border-red-300 text-red-600 text-sm">Refusé</a>
+    {% endif %}
+    {% if quote.status == 'SIGNED' %}<a href="{% url 'business:quote_to_invoice' quote.pk %}" class="px-4 py-2 rounded-lg lpm-gradient text-white text-sm font-medium"><i class="fa-solid fa-file-invoice-dollar mr-1"></i> Convertir en facture</a>{% endif %}
+  </div>
+</div>
+{% endblock %}

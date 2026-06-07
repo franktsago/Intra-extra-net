@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Présences{% endblock %}
+{% block page_title %}Présences du personnel{% endblock %}
+{% block content %}
+<div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+  <form class="flex gap-2"><input type="date" name="date" value="{{ day }}" class="rounded-lg border border-slate-300 px-3 py-2">
+    <button class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium">Voir</button></form>
+  <div class="flex flex-wrap gap-2">
+    <a href="{% url 'hr:attendance_export' %}?date={{ day }}" class="border border-slate-300 text-slate-600 px-3 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-file-csv mr-1"></i> Fiche du jour</a>
+    <a href="{% url 'hr:attendance_export' %}?month={{ day|slice:':7' }}" class="border border-slate-300 text-slate-600 px-3 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-file-csv mr-1"></i> Fiche du mois</a>
+    {% if can_payroll %}<a href="{% url 'hr:payroll_impacts' %}?month={{ day|slice:':7' }}" class="bg-amber-500 text-white px-3 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-money-bill-wave mr-1"></i> Incidences salariales</a>{% endif %}
+    <a href="{% url 'hr:hub' %}" class="text-sm text-lpm hover:underline self-center">← Espace RH</a>
+  </div>
+</div>
+
+{% if can_set_office %}
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 mb-5">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <div class="font-bold text-slate-800"><i class="fa-solid fa-location-dot text-lpm"></i> Lieu de pointage</div>
+      <div class="text-sm text-slate-500">
+        {% if office %}{{ office.lat|floatformat:5 }}, {{ office.lng|floatformat:5 }} · rayon {{ office.radius_m }} m{% else %}<span class="text-amber-600">Non calibré (config par défaut utilisée).</span>{% endif %}
+      </div>
+    </div>
+    <form method="post" action="{% url 'hr:set_office' %}" id="setoffice" class="flex items-end gap-2">{% csrf_token %}
+      <input type="hidden" name="lat" id="o_lat"><input type="hidden" name="lng" id="o_lng">
+      <div><label class="text-xs text-slate-500">Rayon (m)</label>
+        <input type="number" name="radius" value="{{ office.radius_m|default:150 }}" class="w-24 rounded-lg border border-slate-300 px-2 py-1.5"></div>
+      <button type="button" onclick="calibrer()" id="cal-btn" class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap"><i class="fa-solid fa-location-crosshairs mr-1"></i> Définir depuis ma position</button>
+    </form>
+  </div>
+  <p class="text-xs text-slate-400 mt-2">À faire <strong>depuis le bureau</strong> : capture votre position actuelle comme référence du pointage.</p>
+</div>
+<script>
+  function calibrer(){
+    var b=document.getElementById('cal-btn');
+    if(!navigator.geolocation){alert("Géolocalisation indisponible.");return;}
+    b.disabled=true; b.innerHTML='<i class="fa-solid fa-spinner fa-spin mr-1"></i> Localisation…';
+    navigator.geolocation.getCurrentPosition(function(p){
+      document.getElementById('o_lat').value=p.coords.latitude;
+      document.getElementById('o_lng').value=p.coords.longitude;
+      document.getElementById('setoffice').submit();
+    }, function(){ b.disabled=false; b.innerHTML='<i class="fa-solid fa-location-crosshairs mr-1"></i> Définir depuis ma position'; alert("Localisation refusée."); },
+    {enableHighAccuracy:true, timeout:10000});
+  }
+</script>
+{% endif %}
+<div class="bg-white rounded-xl shadow-card overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-50 text-slate-500 text-left"><tr>
+      <th class="px-4 py-3">Employé</th><th class="px-4 py-3">Arrivée</th><th class="px-4 py-3">Départ</th>
+      <th class="px-4 py-3">Durée</th><th class="px-4 py-3">Statut</th></tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for a in records %}
+      <tr class="hover:bg-slate-50">
+        <td class="px-4 py-3 font-medium text-slate-800">{{ a.employee.full_name }}</td>
+        <td class="px-4 py-3">{{ a.check_in|date:"H:i"|default:"—" }}</td>
+        <td class="px-4 py-3">{{ a.check_out|date:"H:i"|default:"—" }}</td>
+        <td class="px-4 py-3">{{ a.worked }}</td>
+        <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs bg-{{ a.status_color }}-50 text-{{ a.status_color }}-600">{{ a.get_status_display }}</span></td>
+      </tr>
+      {% empty %}<tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">Aucun pointage ce jour.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

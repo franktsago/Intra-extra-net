@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Contrat{% endblock %}
+{% block page_title %}{% if obj %}Modifier le contrat{% else %}Nouveau contrat{% endif %}{% endblock %}
+{% block content %}
+<div class="max-w-2xl bg-white rounded-xl shadow-card p-6">
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    {% include "includes/form.html" %}
+    <div class="mt-6 flex gap-3">
+      <button class="lpm-gradient text-white font-semibold px-5 py-2.5 rounded-lg shadow">Enregistrer</button>
+      <a href="{% url 'hr:contracts' %}" class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600">Annuler</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

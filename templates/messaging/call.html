@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Appel {{ mode }} — {{ title }} · LPM Consulting Group</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0a1a33; font-family: Inter, system-ui, sans-serif; }
+    #bar { height: 52px; display: flex; align-items: center; gap: 10px; color: #fff; padding: 0 16px; background: linear-gradient(90deg,#0a1a33,#0d2347); }
+    #bar .t { font-weight: 700; }
+    #bar .sub { font-size: 12px; color: #9fb3d1; }
+    #leave { margin-left: auto; background: #e23; color: #fff; text-decoration: none; padding: 7px 14px; border-radius: 9px; font-size: 14px; font-weight: 600; }
+    #jitsi { height: calc(100% - 52px); }
+    #msg { color: #cdd9ec; padding: 24px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div id="bar">
+    <i class="fa"></i>
+    <div><div class="t">{% if mode == 'audio' %}📞 Appel audio{% else %}📹 Appel vidéo{% endif %}</div>
+    <div class="sub">{{ title }}</div></div>
+    <a id="leave" href="{{ back }}">Quitter l'appel</a>
+  </div>
+  <div id="jitsi"><p id="msg">Connexion à l'appel…</p></div>
+  <script src="https://meet.jit.si/external_api.js"></script>
+  <script>
+    (function () {
+      if (typeof JitsiMeetExternalAPI === 'undefined') {
+        document.getElementById('jitsi').innerHTML = '<p id="msg">Impossible de charger le service d\'appel (vérifiez votre connexion Internet).</p>';
+        return;
+      }
+      var options = {
+        roomName: "{{ room }}",
+        parentNode: document.getElementById('jitsi'),
+        userInfo: { displayName: "{{ request.user.get_full_name|default:request.user.username|escapejs }}" },
+        configOverwrite: {
+          startWithVideoMuted: {% if mode == 'audio' %}true{% else %}false{% endif %},
+          startWithAudioMuted: false,
+          prejoinPageEnabled: false,
+          disableDeepLinking: true
+        },
+        interfaceConfigOverwrite: { MOBILE_APP_PROMO: false }
+      };
+      // Tonalité d'appel (ringback) tant que personne n'a décroché.
+      var actx = null, rb = null;
+      function ringback() {
+        try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (e) { return; }
+        function beep() { try { var o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = 440; o.connect(g); g.connect(actx.destination); var t = actx.currentTime; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.2, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.0); o.start(t); o.stop(t + 1.05); } catch (e) {} }
+        beep(); rb = setInterval(beep, 3000);
+      }
+      function stopRingback() { if (rb) { clearInterval(rb); rb = null; } }
+      {% if is_caller %}ringback();{% endif %}
+      var endUrl = "{% if call %}{% url 'messaging:call_end' call.pk %}{% endif %}";
+      function endCall() {
+        if (!endUrl) return;
+        try { navigator.sendBeacon(endUrl); } catch (e) {}
+      }
+      window.addEventListener('pagehide', endCall);
+      try {
+        var api = new JitsiMeetExternalAPI("meet.jit.si", options);
+        var answered = false;
+        {% if is_caller %}
+        // Si personne ne décroche dans les 45 s → appel manqué et on quitte.
+        var noAnswer = setTimeout(function () {
+          if (!answered) { stopRingback(); endCall(); alert("Personne n'a répondu. Appel manqué."); window.location.href = "{{ back }}"; }
+        }, 45000);
+        {% endif %}
+        api.addEventListener('participantJoined', function () {
+          answered = true; stopRingback();
+          {% if is_caller %}clearTimeout(noAnswer);{% endif %}
+        });
+        // Raccrochage propagé : dès qu'il ne reste plus qu'une personne (moi),
+        // l'appel se termine automatiquement (1-1, ou les 2 derniers d'un groupe).
+        api.addEventListener('participantLeft', function () {
+          try {
+            if (answered && api.getNumberOfParticipants() <= 1) {
+              stopRingback(); endCall();
+              try { api.dispose(); } catch (e) {}
+              window.location.href = "{{ back }}";
+            }
+          } catch (e) {}
+        });
+        api.addEventListener('readyToClose', function () { stopRingback(); endCall(); window.location.href = "{{ back }}"; });
+      } catch (e) {
+        document.getElementById('jitsi').innerHTML = '<p id="msg">Erreur de démarrage de l\'appel.</p>';
+      }
+    })();
+  </script>
+</body>
+</html>

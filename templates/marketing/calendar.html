@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Calendrier éditorial{% endblock %}
+{% block page_title %}Calendrier éditorial{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-center gap-3 mb-5">
+  <form class="flex gap-2">
+    <select name="status" class="rounded-lg border border-slate-300 px-3 py-2">
+      <option value="">Tous les statuts</option>
+      {% for v,l in statuses %}<option value="{{ v }}" {% if status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+    </select>
+    <button class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium">Filtrer</button>
+  </form>
+  {% if pending_count and user.is_manager %}<span class="px-3 py-2 rounded-lg bg-amber-50 text-amber-700 text-sm font-medium"><i class="fa-solid fa-clock"></i> {{ pending_count }} à valider</span>{% endif %}
+  <a href="{% url 'marketing:post_create' %}" class="ml-auto bg-lpm hover:bg-lpm-dark text-white px-4 py-2 rounded-lg font-medium shadow-sm"><i class="fa-solid fa-plus mr-1"></i> Publication</a>
+</div>
+
+<h3 class="font-bold text-slate-900 mb-3">À venir</h3>
+<div class="space-y-2 mb-8">
+  {% for p in upcoming %}{% include "marketing/_post_row.html" %}{% empty %}<p class="text-sm text-slate-400">Aucune publication programmée.</p>{% endfor %}
+</div>
+{% if past %}
+<h3 class="font-bold text-slate-900 mb-3">Historique récent</h3>
+<div class="space-y-2 opacity-80">
+  {% for p in past %}{% include "marketing/_post_row.html" %}{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends user.is_external|yesno:"base_extranet.html,base.html" %}
+{% block title %}Galerie{% endblock %}
+{% block page_title %}Galerie photos & vidéos{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-slate-900 mb-1">Galerie terrain</h1>
+<p class="text-slate-500 mb-6">Suivez l'exécution de vos activations : photos, vidéos et comptes-rendus terrain.</p>
+
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+  {% for m in media %}
+  <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
+    {% if m.is_image %}
+    <a href="{{ m.file.url }}" target="_blank"><img src="{{ m.file.url }}" class="w-full h-40 object-cover"></a>
+    {% elif m.is_video %}
+    <video src="{{ m.file.url }}" class="w-full h-40 object-cover bg-black" controls preload="metadata"></video>
+    {% else %}
+    <a href="{{ m.file.url }}" target="_blank" class="flex items-center justify-center h-40 bg-slate-50 text-slate-400"><i class="fa-solid fa-file text-3xl"></i></a>
+    {% endif %}
+    <div class="p-3">
+      <div class="text-sm font-medium text-slate-800 truncate">{{ m.caption|default:m.project.name }}</div>
+      <div class="text-xs text-slate-400 flex items-center justify-between mt-1">
+        <span>{{ m.created_at|date:"d/m/Y" }}</span>
+        {% if m.has_geo %}<a href="{{ m.maps_url }}" target="_blank" class="text-lpm hover:underline"><i class="fa-solid fa-location-dot"></i> Carte</a>{% endif %}
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-span-full bg-white rounded-2xl border border-slate-200 shadow-card p-12 text-center text-slate-400">
+    <i class="fa-solid fa-images text-4xl"></i><p class="mt-3">Aucun média terrain pour le moment.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

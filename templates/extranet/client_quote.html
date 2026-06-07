@@ -1,0 +1,73 @@
+{% extends user.is_external|yesno:"base_extranet.html,base.html" %}
+{% load humanize %}
+{% block title %}Devis {{ quote.number }}{% endblock %}
+{% block page_title %}Devis {{ quote.number }}{% endblock %}
+{% block content %}
+<a href="{% url 'extranet:my_quotes' %}" class="text-sm text-lpm hover:underline">← Mes devis</a>
+<div class="max-w-3xl bg-white rounded-2xl border border-slate-200 shadow-card p-6 mt-3">
+  <div class="flex items-center justify-between">
+    <div><h2 class="text-lg font-bold text-slate-800">{{ quote.title }}</h2>
+      <p class="text-sm text-slate-500">{{ quote.number }} · émis le {{ quote.issue_date|date:"d/m/Y" }}{% if quote.valid_until %} · valable jusqu'au {{ quote.valid_until|date:"d/m/Y" }}{% endif %}</p></div>
+    <span class="px-3 py-1 rounded-full text-xs font-medium bg-{{ quote.status_color }}-100 text-{{ quote.status_color }}-700">{{ quote.get_status_display }}</span>
+  </div>
+  <table class="w-full text-sm mt-5">
+    <thead class="bg-slate-50 text-slate-500 text-left"><tr><th class="px-3 py-2">Désignation</th><th class="px-3 py-2 text-right">Qté</th><th class="px-3 py-2 text-right">P.U.</th><th class="px-3 py-2 text-right">Total</th></tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for l in quote.lines.all %}<tr><td class="px-3 py-2">{{ l.designation }}</td><td class="px-3 py-2 text-right">{{ l.quantity|floatformat:"-2" }}</td><td class="px-3 py-2 text-right">{{ l.unit_price|intcomma }}</td><td class="px-3 py-2 text-right font-medium">{{ l.total|intcomma }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  <div class="mt-4 ml-auto w-64 text-sm space-y-1">
+    <div class="flex justify-between"><span class="text-slate-500">Sous-total HT</span><span>{{ quote.subtotal|intcomma }} F</span></div>
+    <div class="flex justify-between"><span class="text-slate-500">TVA ({{ quote.tax_rate|floatformat:"-2" }}%)</span><span>{{ quote.tax_amount|intcomma }} F</span></div>
+    <div class="flex justify-between font-bold text-slate-900 text-base border-t pt-1"><span>TOTAL TTC</span><span>{{ quote.total|intcomma }} F</span></div>
+  </div>
+  <div class="mt-6 pt-5 border-t">
+    <a href="{% url 'extranet:client_quote_pdf' quote.pk %}" class="inline-block bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-download mr-1"></i> Télécharger le PDF</a>
+    {% if quote.status == 'SENT' %}
+    <div class="mt-5 bg-slate-50 border border-slate-200 rounded-xl p-4">
+      <h4 class="font-semibold text-slate-800 text-sm mb-2"><i class="fa-solid fa-signature text-lpm"></i> Signer électroniquement</h4>
+      <form method="post" action="{% url 'extranet:client_quote_decide' quote.pk 'accept' %}" class="space-y-3">{% csrf_token %}
+        <input name="signature" required placeholder="Tapez votre nom et prénom" class="w-full rounded-lg border border-slate-300 px-3 py-2.5">
+        <label class="flex items-start gap-2 text-xs text-slate-500"><input type="checkbox" required class="mt-0.5"> J'accepte ce devis et reconnais que la saisie de mon nom vaut signature électronique (avec horodatage et adresse IP).</label>
+        <div class="flex flex-wrap gap-2">
+          <button class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-check mr-1"></i> Accepter & signer</button>
+          <a href="{% url 'extranet:client_quote_decide' quote.pk 'refuse' %}" class="border border-red-300 text-red-600 px-4 py-2 rounded-lg text-sm">Refuser</a>
+        </div>
+      </form>
+      <form method="post" action="{% url 'extranet:client_quote_decide' quote.pk 'changes' %}" class="mt-3 pt-3 border-t border-slate-200 space-y-2">{% csrf_token %}
+        <label class="text-sm font-medium text-slate-700"><i class="fa-solid fa-pen text-orange-500"></i> Demander des modifications</label>
+        <textarea name="comment" rows="2" required placeholder="Précisez les modifications souhaitées…" class="w-full rounded-lg border border-slate-300 px-3 py-2"></textarea>
+        <button class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium">Envoyer ma demande de modification</button>
+      </form>
+    </div>
+    {% elif quote.status == 'SIGNED' %}
+    <div class="mt-4 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+      <i class="fa-solid fa-circle-check"></i> Devis accepté{% if quote.signed_by_name %} — signé électroniquement par <strong>{{ quote.signed_by_name }}</strong> le {{ quote.signed_at|date:"d/m/Y à H:i" }}{% endif %}.
+    </div>
+    {% elif quote.status == 'CHANGES' %}
+    <div class="mt-4 text-sm text-orange-700 bg-orange-50 border border-orange-200 rounded-xl p-3">
+      <i class="fa-solid fa-pen"></i> Vous avez demandé des modifications. Notre équipe revient vers vous avec une version révisée.
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Historique des validations -->
+  {% if quote.events.all %}
+  <div class="mt-6 pt-5 border-t">
+    <h4 class="font-semibold text-slate-800 text-sm mb-3"><i class="fa-solid fa-clock-rotate-left text-slate-400"></i> Historique</h4>
+    <ol class="space-y-3">
+      {% for e in quote.events.all %}
+      <li class="flex gap-3">
+        <span class="h-7 w-7 rounded-full bg-{{ e.color }}-50 text-{{ e.color }}-600 flex items-center justify-center flex-shrink-0 text-xs"><i class="fa-solid {{ e.icon }}"></i></span>
+        <div>
+          <div class="text-sm font-medium text-slate-800">{{ e.get_action_display }}</div>
+          <div class="text-xs text-slate-400">{{ e.created_at|date:"d/m/Y à H:i" }}{% if e.actor %} · {{ e.actor.get_full_name|default:e.actor.username }}{% endif %}</div>
+          {% if e.comment %}<div class="text-sm text-slate-600 mt-1 bg-slate-50 rounded-lg px-3 py-2">{{ e.comment }}</div>{% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

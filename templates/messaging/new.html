@@ -1,0 +1,31 @@
+{% extends user.is_external|yesno:"base_extranet.html,base.html" %}
+{% block title %}Nouveau message{% endblock %}
+{% block content_top %}{% endblock %}
+{% block content %}
+<div class="max-w-xl mx-auto">
+  <a href="{% url 'messaging:inbox' %}" class="text-sm text-lpm hover:underline">← Conversations</a>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 mt-3">
+    <h2 class="font-bold text-slate-900 mb-4">Écrire un message</h2>
+    <form method="post" enctype="multipart/form-data" class="space-y-4">{% csrf_token %}
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Destinataire</label>
+        {{ form.recipient }}
+        {% if form.recipient.errors %}<p class="text-xs text-red-600 mt-1">{{ form.recipient.errors|join:" " }}</p>{% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Message</label>
+        {{ form.body }}
+        {% if form.body.errors %}<p class="text-xs text-red-600 mt-1">{{ form.body.errors|join:" " }}</p>{% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Pièce jointe (facultatif)</label>
+        {{ form.attachment }}
+      </div>
+      <div class="flex gap-3">
+        <button class="bg-lpm hover:bg-lpm-dark text-white font-semibold px-5 py-2.5 rounded-xl shadow-sm"><i class="fa-solid fa-paper-plane mr-1"></i> Envoyer</button>
+        <a href="{% url 'messaging:inbox' %}" class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600">Annuler</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

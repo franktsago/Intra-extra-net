@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ opening.title }}{% endblock %}
+{% block page_title %}{{ opening.title }}{% endblock %}
+{% block content %}
+<a href="{% url 'hr:openings' %}" class="text-sm text-lpm hover:underline">← Recrutement</a>
+<div class="grid lg:grid-cols-3 gap-6 mt-3">
+  <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-slate-900">Candidatures ({{ candidates|length }})</h3>
+      {% if user.is_rh %}<a href="{% url 'hr:opening_edit' opening.pk %}" class="text-sm text-lpm hover:underline"><i class="fa-solid fa-pen"></i> Modifier l'offre</a>{% endif %}
+    </div>
+    <div class="space-y-2">
+      {% for c in candidates %}
+      <a href="{% url 'hr:candidate_detail' c.pk %}" class="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50">
+        <div><div class="font-medium text-slate-800">{{ c.full_name }}</div><div class="text-xs text-slate-400">{{ c.email }} · {{ c.phone }}</div></div>
+        <div class="flex items-center gap-2">
+          {% if c.cv %}<span class="text-xs text-slate-400"><i class="fa-solid fa-file-pdf"></i> CV</span>{% endif %}
+          <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-{{ c.status_color }}-50 text-{{ c.status_color }}-600">{{ c.get_status_display }}</span>
+        </div>
+      </a>
+      {% empty %}<p class="text-sm text-slate-400">Aucune candidature.</p>{% endfor %}
+    </div>
+  </div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <h3 class="font-bold text-slate-900 mb-3">Ajouter une candidature</h3>
+    <form method="post" enctype="multipart/form-data" class="space-y-3">{% csrf_token %}
+      {% for f in form %}<div><label class="text-xs text-slate-500">{{ f.label }}</label>{{ f }}</div>{% endfor %}
+      <button class="w-full lpm-gradient text-white font-medium py-2 rounded-lg text-sm">Ajouter</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

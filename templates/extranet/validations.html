@@ -1,0 +1,42 @@
+{% extends user.is_external|yesno:"base_extranet.html,base.html" %}
+{% load humanize %}
+{% block title %}Validations{% endblock %}
+{% block page_title %}Validations{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-slate-900 mb-1">Validations</h1>
+<p class="text-slate-500 mb-6">Validez vos propositions commerciales et les documents qui vous sont transmis.</p>
+
+<!-- Devis à signer -->
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 mb-6">
+  <h3 class="font-bold text-slate-900 mb-4"><i class="fa-solid fa-file-signature text-violet-500 mr-1"></i> Propositions à valider</h3>
+  <div class="divide-y divide-slate-100">
+    {% for q in quotes %}
+    <div class="flex items-center justify-between py-3 first:pt-0">
+      <div><div class="font-medium text-slate-800">{{ q.title }}</div>
+        <div class="text-xs text-slate-400">{{ q.number }} · {{ q.issue_date|date:"d/m/Y" }} · {{ q.total|intcomma }} F</div></div>
+      <a href="{% url 'extranet:client_quote' q.pk %}" class="bg-lpm hover:bg-lpm-dark text-white text-sm font-medium px-4 py-2 rounded-lg">Examiner & signer</a>
+    </div>
+    {% empty %}<p class="text-sm text-slate-400 py-2">Aucune proposition en attente.</p>{% endfor %}
+  </div>
+</div>
+
+<!-- Documents à valider -->
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+  <h3 class="font-bold text-slate-900 mb-4"><i class="fa-solid fa-file-circle-question text-amber-500 mr-1"></i> Documents à valider</h3>
+  <div class="divide-y divide-slate-100">
+    {% for f in files %}
+    <div class="flex items-center justify-between py-3 first:pt-0">
+      <div class="flex items-center gap-3 min-w-0">
+        <i class="fa-regular fa-file-lines text-slate-400"></i>
+        <div class="min-w-0"><div class="font-medium text-slate-800 truncate">{{ f.title }}</div>
+          <div class="text-xs text-slate-400">{{ f.project.name }} · {{ f.created_at|date:"d/m/Y" }}</div></div>
+      </div>
+      <div class="flex gap-2 flex-shrink-0">
+        <a href="{% url 'extranet:file_validate' f.pk 'approve' %}" class="bg-emerald-600 text-white text-sm font-medium px-3 py-1.5 rounded-lg">Valider</a>
+        <a href="{% url 'extranet:file_validate' f.pk 'reject' %}" class="border border-red-300 text-red-600 text-sm font-medium px-3 py-1.5 rounded-lg">Rejeter</a>
+      </div>
+    </div>
+    {% empty %}<p class="text-sm text-slate-400 py-2">Aucun document en attente.</p>{% endfor %}
+  </div>
+</div>
+{% endblock %}

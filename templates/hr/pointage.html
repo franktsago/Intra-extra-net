@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Pointage{% endblock %}
+{% block page_title %}Mon pointage{% endblock %}
+{% block content %}
+{% if not employee %}
+<div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-5">Aucune fiche employé associée à votre compte.</div>
+{% elif mission_today %}
+<div class="max-w-xl">
+  <div class="bg-violet-50 border border-violet-200 rounded-2xl shadow-card p-6 text-center">
+    <div class="text-violet-700 font-semibold text-lg"><i class="fa-solid fa-plane-departure mr-1"></i> Vous êtes en mission</div>
+    <p class="text-sm text-violet-600 mt-2">{% if mission_today.destination %}{{ mission_today.destination }} — {% endif %}du {{ mission_today.start_date|date:"d/m/Y" }} au {{ mission_today.end_date|date:"d/m/Y" }}.</p>
+    <p class="text-xs text-violet-500 mt-2">Aucun pointage requis : ces jours sont comptés « En mission ».</p>
+    <a href="{% url 'hr:mission_pdf' mission_today.pk %}" class="inline-flex items-center gap-2 mt-4 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-4 py-2 rounded-lg"><i class="fa-solid fa-file-arrow-down"></i> Télécharger l'ordre de mission</a>
+  </div>
+</div>
+{% else %}
+<div class="max-w-xl">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 text-center">
+    <div class="text-sm text-slate-500">Aujourd'hui — {% now "l d F Y" %}</div>
+    <div class="grid grid-cols-2 gap-4 my-5">
+      <div><div class="text-xs text-slate-400">Arrivée</div><div class="text-2xl font-bold text-slate-900">{{ today.check_in|date:"H:i"|default:"—" }}</div></div>
+      <div><div class="text-xs text-slate-400">Départ</div><div class="text-2xl font-bold text-slate-900">{{ today.check_out|date:"H:i"|default:"—" }}</div></div>
+    </div>
+    <div class="flex gap-3 justify-center">
+      {% if not today.check_in %}
+      <form method="post" action="{% url 'hr:clock' 'in' %}" id="clockin">{% csrf_token %}
+        <input type="hidden" name="lat" id="lat"><input type="hidden" name="lng" id="lng">
+        <button type="button" onclick="pointerArrivee()" id="btn-in" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-3 rounded-xl"><i class="fa-solid fa-location-crosshairs mr-1"></i> Pointer l'arrivée</button>
+      </form>
+      {% elif not today.check_out %}
+      <form method="post" action="{% url 'hr:clock' 'out' %}">{% csrf_token %}
+        <button class="bg-slate-800 hover:bg-slate-900 text-white font-semibold px-6 py-3 rounded-xl"><i class="fa-solid fa-right-from-bracket mr-1"></i> Pointer le départ</button>
+      </form>
+      {% else %}
+      <div class="text-emerald-600 font-medium"><i class="fa-solid fa-circle-check"></i> Journée pointée ({{ today.worked }}){% if today.on_site %} · <span class="text-xs">sur site</span>{% endif %}</div>
+      {% endif %}
+    </div>
+    <p class="text-xs text-slate-400 mt-3"><i class="fa-solid fa-shield-halved"></i> Le pointage d'arrivée vérifie votre position GPS : il n'est validé que depuis le bureau.</p>
+    <p class="text-xs text-slate-400 mt-1"><i class="fa-solid fa-clock"></i> Arrivée après <strong>{{ late_after }}</strong> = « En retard » (retenue au prorata des minutes de retard).</p>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card mt-6 overflow-x-auto">
+    <div class="px-5 py-3 border-b font-bold text-slate-800">Historique récent</div>
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-500 text-left"><tr><th class="px-4 py-2">Date</th><th class="px-4 py-2">Arrivée</th><th class="px-4 py-2">Départ</th><th class="px-4 py-2">Durée</th><th class="px-4 py-2">Statut</th></tr></thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for a in history %}
+        <tr><td class="px-4 py-2">{{ a.date|date:"d/m/Y" }}</td><td class="px-4 py-2">{{ a.check_in|date:"H:i"|default:"—" }}</td><td class="px-4 py-2">{{ a.check_out|date:"H:i"|default:"—" }}</td><td class="px-4 py-2">{{ a.worked }}</td>
+        <td class="px-4 py-2"><span class="px-2 py-0.5 rounded-full text-xs bg-{{ a.status_color }}-50 text-{{ a.status_color }}-600">{{ a.get_status_display }}</span></td></tr>
+        {% empty %}<tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">Aucun pointage.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+<script>
+  function pointerArrivee(){
+    var btn=document.getElementById('btn-in');
+    // Les navigateurs mobiles n'autorisent la géolocalisation que dans un contexte
+    // sécurisé (HTTPS ou localhost). En HTTP simple (ex. IP locale) le GPS est bloqué.
+    if(!window.isSecureContext && location.hostname!=='localhost' && location.hostname!=='127.0.0.1'){
+      alert("Le pointage GPS nécessite une connexion sécurisée (HTTPS).\n\nVous êtes sur « "+location.protocol+"//"+location.host+" » : le téléphone bloque la localisation.\nUtilisez l'adresse HTTPS de l'application pour pointer.");
+      return;
+    }
+    if(!navigator.geolocation){alert("La géolocalisation n'est pas disponible sur cet appareil.");return;}
+    btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin mr-1"></i> Localisation…';
+    navigator.geolocation.getCurrentPosition(function(pos){
+      document.getElementById('lat').value=pos.coords.latitude;
+      document.getElementById('lng').value=pos.coords.longitude;
+      document.getElementById('clockin').submit();
+    }, function(err){
+      btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-location-crosshairs mr-1"></i> Pointer l\'arrivée';
+      var msg="Localisation refusée. Activez le GPS et autorisez l'accès pour pointer depuis le bureau.";
+      if(err && err.code===1){ msg="Accès à la localisation refusé. Autorisez la géolocalisation pour ce site dans les réglages du navigateur, puis réessayez."; }
+      else if(err && err.code===2){ msg="Position indisponible. Vérifiez que le GPS est activé."; }
+      else if(err && err.code===3){ msg="Délai dépassé pour obtenir la position. Réessayez en extérieur ou près d'une fenêtre."; }
+      alert(msg);
+    }, {enableHighAccuracy:true, timeout:10000});
+  }
+</script>
+{% endblock %}

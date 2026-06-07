@@ -1,0 +1,274 @@
+{% extends user.is_external|yesno:"base_extranet.html,base.html" %}
+{% load static %}
+{% block title %}Messagerie{% endblock %}
+{% block content_top %}{% endblock %}
+{% block content %}
+<style>
+  /* Fond façon WhatsApp (motif léger, teinté charte LPM) */
+  .wa-bg{background-color:#e7eef6;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='%23cfdcec' fill-opacity='0.35'%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3Ccircle cx='50' cy='30' r='2'/%3E%3Ccircle cx='30' cy='60' r='2'/%3E%3Ccircle cx='70' cy='70' r='2'/%3E%3C/g%3E%3C/svg%3E");}
+  .wa-in{background:#fff}
+  .wa-out{background:#d6e9ff}
+  .wa-tail-out:after{content:"";position:absolute;top:0;right:-7px;width:0;height:0;border:7px solid transparent;border-top-color:#d6e9ff;border-right:0}
+  .wa-tail-in:after{content:"";position:absolute;top:0;left:-7px;width:0;height:0;border:7px solid transparent;border-top-color:#fff;border-left:0}
+  .wa-input{max-height:120px;min-height:24px;resize:none}
+  .emoji-pop{position:absolute;bottom:60px;left:8px;display:none;background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:8px;width:260px;z-index:30}
+  .emoji-pop.show{display:block}
+  .emoji-pop button{font-size:20px;line-height:1;padding:4px;border-radius:8px}
+  .emoji-pop button:hover{background:#f1f5f9}
+  /* Hauteur adaptative : 100dvh gère la barre d'adresse mobile */
+  .wa-shell{height:calc(100dvh - 150px);min-height:520px}
+  @media (max-width:640px){
+    .wa-shell{height:calc(100dvh - 80px);min-height:0;border-radius:0;border-left:0;border-right:0;
+              margin-left:-1rem;margin-right:-1rem}
+    .emoji-pop{width:calc(100vw - 32px);left:8px}
+  }
+</style>
+<div class="wa-shell bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden flex">
+
+  <!-- ===== Liste des conversations ===== -->
+  <aside class="w-full sm:w-[340px] flex-shrink-0 border-r border-slate-200 flex flex-col {% if active %}hidden sm:flex{% endif %}">
+    <div class="px-4 h-16 flex items-center justify-between border-b border-slate-100">
+      <h2 class="font-bold text-slate-800 text-lg">Messagerie</h2>
+      <div class="flex items-center gap-1">
+        <a href="{% url 'messaging:new' %}" class="p-2.5 rounded-xl hover:bg-slate-100 text-slate-500" title="Nouveau message"><i class="fa-solid fa-pen-to-square"></i></a>
+        {% if user.is_internal %}<a href="{% url 'messaging:group_create' %}" class="p-2.5 rounded-xl hover:bg-slate-100 text-slate-500" title="Nouveau groupe"><i class="fa-solid fa-user-group"></i></a>{% endif %}
+      </div>
+    </div>
+    <div class="p-2">
+      <div class="flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2">
+        <i class="fa-solid fa-magnifying-glass text-slate-400 text-sm"></i>
+        <input id="convSearch" placeholder="Rechercher…" class="bg-transparent text-sm w-full focus:outline-none" onkeyup="filterConvs(this.value)">
+      </div>
+    </div>
+    <div class="flex-1 overflow-y-auto" id="convList">
+      {% for it in items %}
+      <a href="?conv={{ it.key }}" data-name="{{ it.name|lower }}"
+         class="convitem flex items-center gap-3 px-4 py-3 border-b border-slate-50 hover:bg-slate-50 {% if it.key == request.GET.conv %}bg-lpm/5{% endif %}">
+        <div class="relative flex-shrink-0">
+          {% if it.type == 'group' %}
+            <span class="h-12 w-12 rounded-full flex items-center justify-center {% if it.is_general %}lpm-gradient text-white{% else %}bg-slate-200 text-slate-600{% endif %}"><i class="fa-solid {% if it.is_general %}fa-bullhorn{% else %}fa-user-group{% endif %}"></i></span>
+          {% elif it.user.avatar %}
+            <img src="{{ it.user.avatar.url }}" class="h-12 w-12 rounded-full object-cover">
+          {% else %}
+            <span class="h-12 w-12 rounded-full lpm-gradient text-white text-sm font-bold flex items-center justify-center">{{ it.user.display_initials }}</span>
+          {% endif %}
+          {% if it.type == 'direct' and it.user.is_online %}<span class="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white"></span>{% endif %}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-semibold text-slate-800 text-sm truncate">{% if it.pinned %}<i class="fa-solid fa-thumbtack text-slate-400 text-[10px] mr-1"></i>{% endif %}{{ it.name }}</span>
+            {% if it.last %}<span class="text-[10px] {% if it.unread %}text-lpm font-bold{% else %}text-slate-400{% endif %} flex-shrink-0">{{ it.last.created_at|date:"H:i" }}</span>{% endif %}
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs text-slate-400 truncate">
+              {% if it.last %}{% if it.type == 'group' and it.last.sender %}{{ it.last.sender.display_initials }}: {% endif %}{% if it.last.body %}{{ it.last.body|truncatechars:34 }}{% elif it.last.is_audio %}🎤 Message vocal{% elif it.last.attachment %}📎 Pièce jointe{% endif %}{% else %}—{% endif %}
+            </span>
+            {% if it.unread %}<span class="bg-lpm text-white text-[10px] font-bold rounded-full h-5 min-w-5 px-1.5 flex items-center justify-center flex-shrink-0">{{ it.unread }}</span>{% endif %}
+          </div>
+        </div>
+      </a>
+      {% empty %}
+      <p class="text-center text-sm text-slate-400 py-10">Aucune conversation.<br>Démarrez-en une avec « ✎ ».</p>
+      {% endfor %}
+    </div>
+  </aside>
+
+  <!-- ===== Conversation active ===== -->
+  <section class="flex-1 flex flex-col {% if not active %}hidden sm:flex{% endif %}">
+    {% if not active %}
+    <div class="flex-1 flex flex-col items-center justify-center text-center text-slate-400 p-8 wa-bg">
+      <i class="fa-solid fa-comments text-6xl text-slate-300 mb-4"></i>
+      <p class="font-medium text-slate-500">Sélectionnez une conversation</p>
+      <p class="text-sm">ou démarrez-en une nouvelle.</p>
+    </div>
+    {% else %}
+    <!-- En-tête -->
+    <div class="flex items-center gap-3 px-4 h-16 border-b border-slate-100 bg-white">
+      <a href="{% url 'messaging:inbox' %}" class="sm:hidden p-1 text-slate-500"><i class="fa-solid fa-arrow-left"></i></a>
+      {% if active.type == 'direct' %}
+        <a href="{% if user.is_internal and active.other.employee %}{% url 'employees:detail' active.other.employee.pk %}{% else %}#{% endif %}" title="Voir la fiche" class="relative">
+        {% if active.other.avatar %}<img src="{{ active.other.avatar.url }}" class="h-10 w-10 rounded-full object-cover">
+        {% else %}<span class="h-10 w-10 rounded-full lpm-gradient text-white text-sm font-bold flex items-center justify-center">{{ active.other.display_initials }}</span>{% endif %}
+        {% if active.other.is_online %}<span class="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white"></span>{% endif %}
+        </a>
+        <div class="min-w-0 flex-1"><div class="font-semibold text-slate-800 truncate">{{ active.other.get_full_name|default:active.other.username }}</div>
+        <div class="text-xs truncate" data-presence>{% if active.other.is_online %}<span class="text-emerald-500 font-medium">● en ligne</span>{% else %}<span class="text-slate-400">● hors ligne · {{ active.other.get_role_display }}</span>{% endif %}</div></div>
+        <a href="{% url 'messaging:call_start' 'd' active.other.pk 'audio' %}" class="p-2 rounded-lg hover:bg-slate-100 text-lpm" title="Appel audio"><i class="fa-solid fa-phone"></i></a>
+        <a href="{% url 'messaging:call_start' 'd' active.other.pk 'video' %}" class="p-2 rounded-lg hover:bg-slate-100 text-lpm" title="Appel vidéo"><i class="fa-solid fa-video"></i></a>
+        <form method="post" action="{% url 'messaging:pin_conversation' active.key %}">{% csrf_token %}
+          <button class="p-2 rounded-lg hover:bg-slate-100 {% if active.pinned %}text-lpm{% else %}text-slate-400{% endif %}" title="{% if active.pinned %}Désépingler{% else %}Épingler{% endif %} la conversation"><i class="fa-solid fa-thumbtack"></i></button>
+        </form>
+        <form method="post" action="{% url 'messaging:thread_delete' active.other.pk %}" onsubmit="return confirm('Supprimer toute la conversation ?');">{% csrf_token %}
+          <button class="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600" title="Supprimer la conversation"><i class="fa-solid fa-trash"></i></button>
+        </form>
+      {% else %}
+        <span class="h-10 w-10 rounded-full flex items-center justify-center {% if active.group.is_general %}lpm-gradient text-white{% else %}bg-slate-200 text-slate-600{% endif %}"><i class="fa-solid {% if active.group.is_general %}fa-bullhorn{% else %}fa-user-group{% endif %}"></i></span>
+        <a href="{% if active.group.is_general %}#{% else %}{% url 'messaging:group_manage' active.group.pk %}{% endif %}" class="min-w-0 flex-1 block" title="Voir les participants"><div class="font-semibold text-slate-800 truncate">{{ active.group.name }}</div>
+        <div class="text-xs text-slate-400 truncate">{% for mem in active.group.members.all|slice:":6" %}{{ mem.get_full_name|default:mem.username }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if active.group.members.count > 6 %}…{% endif %}</div></a>
+        <a href="{% url 'messaging:call_start' 'g' active.group.pk 'audio' %}" class="p-2 rounded-lg hover:bg-slate-100 text-lpm" title="Appel audio de groupe"><i class="fa-solid fa-phone"></i></a>
+        <a href="{% url 'messaging:call_start' 'g' active.group.pk 'video' %}" class="p-2 rounded-lg hover:bg-slate-100 text-lpm" title="Appel vidéo de groupe"><i class="fa-solid fa-video"></i></a>
+        <form method="post" action="{% url 'messaging:pin_conversation' active.key %}">{% csrf_token %}
+          <button class="p-2 rounded-lg hover:bg-slate-100 {% if active.pinned %}text-lpm{% else %}text-slate-400{% endif %}" title="{% if active.pinned %}Désépingler{% else %}Épingler{% endif %}"><i class="fa-solid fa-thumbtack"></i></button>
+        </form>
+        {% if not active.group.is_general %}<a href="{% url 'messaging:group_manage' active.group.pk %}" class="p-2 rounded-lg hover:bg-slate-100 text-slate-500" title="{% if active.is_admin %}Paramètres & participants{% else %}Voir les participants{% endif %}"><i class="fa-solid {% if active.is_admin %}fa-gear{% else %}fa-users{% endif %}"></i></a>{% endif %}
+        {% if not active.group.is_general %}<form method="post" action="{% url 'messaging:group_leave' active.group.pk %}" onsubmit="return confirm('Quitter ce groupe ?');">{% csrf_token %}<button class="p-2 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600" title="Quitter"><i class="fa-solid fa-right-from-bracket"></i></button></form>{% endif %}
+      {% endif %}
+    </div>
+
+    <!-- Messages -->
+    <div id="thread" class="flex-1 overflow-y-auto px-4 py-4 space-y-1.5 wa-bg"
+         data-poll-kind="{{ active.poll_kind }}" data-poll-pk="{{ active.poll_pk }}" data-last-id="{{ active.last_id }}">
+      {% if active.pinned_msgs %}
+      <div class="sticky top-0 z-20 bg-white/95 backdrop-blur border border-slate-200 rounded-lg shadow-sm px-3 py-2 mb-3">
+        <div class="text-[11px] font-semibold text-slate-500 mb-1"><i class="fa-solid fa-thumbtack mr-1"></i>Messages épinglés</div>
+        {% for pm in active.pinned_msgs %}
+        <div class="flex items-center gap-2 text-xs py-0.5">
+          <button type="button" data-jump="msg-{{ pm.pk }}" class="flex items-center gap-2 flex-1 min-w-0 text-left hover:bg-slate-50 rounded px-1 py-0.5">
+            <span class="font-medium text-lpm flex-shrink-0">{{ pm.sender.get_full_name|default:pm.sender.username }}</span>
+            <span class="text-slate-500 truncate flex-1">{{ pm.short }}</span>
+          </button>
+          <form method="post" action="{% if active.type == 'group' %}{% url 'messaging:pin_message' 'g' pm.pk %}{% else %}{% url 'messaging:pin_message' 'd' pm.pk %}{% endif %}">{% csrf_token %}<button class="text-slate-400 hover:text-red-600" title="Désépingler"><i class="fa-solid fa-xmark"></i></button></form>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% for m in active.msgs %}
+      {% ifchanged m.created_at.date %}
+      <div class="flex justify-center my-3"><span class="bg-white/95 text-slate-500 text-[11px] font-medium px-3 py-1 rounded-lg shadow-sm">{{ m.created_at|date:"l j F Y"|capfirst }}</span></div>
+      {% endifchanged %}
+      {% if m.deleted_for_all or user in m.deleted_for.all %}
+      <div class="flex {% if m.sender == user %}justify-end{% endif %} my-1">
+        <span class="rounded-lg px-3 py-1.5 text-xs italic text-slate-400 bg-white/70 border border-slate-200 inline-flex items-center gap-1.5">
+          <i class="fa-solid fa-ban"></i> {% if m.deleted_for_all %}Ce message a été supprimé{% else %}Vous avez supprimé ce message{% endif %}
+        </span>
+      </div>
+      {% elif m.is_system %}
+      <div class="flex justify-center my-2">
+        <span class="bg-white/85 text-slate-500 text-[11px] font-medium px-3 py-1 rounded-lg shadow-sm inline-flex items-center gap-1.5">
+          <i class="fa-solid fa-user-plus text-slate-400"></i> {{ m.body }}
+        </span>
+      </div>
+      {% elif '📞' in m.body and not m.attachment %}
+      <div class="flex justify-center my-2">
+        <span class="bg-white border border-slate-200 rounded-full px-3 py-1 text-xs shadow-sm inline-flex items-center gap-1.5 {% if 'manqué' in m.body or 'refusé' in m.body %}text-red-600{% elif 'terminé' in m.body %}text-lpm{% else %}text-emerald-600{% endif %}">
+          <i class="fa-solid {% if 'vidéo' in m.body %}fa-video{% else %}fa-phone{% endif %}"></i> {{ m.body|slice:"2:" }} · {{ m.created_at|date:"H:i" }}
+        </span>
+      </div>
+      {% else %}
+      {% if active.type == 'group' %}{% url 'messaging:react' 'g' m.pk as react_url %}{% else %}{% url 'messaging:react' 'd' m.pk as react_url %}{% endif %}
+      <div id="msg-{{ m.pk }}" class="flex items-end gap-1.5 group rounded-lg transition-colors {% if m.sender == user %}justify-end{% endif %}">
+        <!-- Menu du message (au survol) -->
+        <div class="relative self-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition order-{% if m.sender == user %}first{% else %}last{% endif %}">
+          <button type="button" data-menu-btn class="p-1.5 text-slate-400 hover:text-slate-700"><i class="fa-solid fa-chevron-down text-xs"></i></button>
+          <div data-menu class="hidden absolute z-30 bottom-8 {% if m.sender == user %}right-0{% else %}left-0{% endif %} w-44 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden">
+            <form method="post" action="{{ react_url }}" class="flex justify-around px-2 py-2 border-b border-slate-100 text-lg">{% csrf_token %}
+              <button name="emoji" value="👍" class="hover:scale-125 transition">👍</button>
+              <button name="emoji" value="❤️" class="hover:scale-125 transition">❤️</button>
+              <button name="emoji" value="😂" class="hover:scale-125 transition">😂</button>
+              <button name="emoji" value="😮" class="hover:scale-125 transition">😮</button>
+              <button name="emoji" value="😢" class="hover:scale-125 transition">😢</button>
+              <button name="emoji" value="🙏" class="hover:scale-125 transition">🙏</button>
+            </form>
+            <button type="button" data-reply data-id="{{ m.pk }}" data-name="{{ m.sender.get_full_name|default:m.sender.username }}" data-text="{{ m.short }}" class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"><i class="fa-solid fa-reply fa-fw mr-2 text-slate-400"></i>Répondre</button>
+            <a href="{% if active.type == 'group' %}{% url 'messaging:forward' 'g' m.pk %}{% else %}{% url 'messaging:forward' 'd' m.pk %}{% endif %}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"><i class="fa-solid fa-share fa-fw mr-2 text-slate-400"></i>Transférer</a>
+            {% if m.body %}<button type="button" data-copy="{{ m.body }}" class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"><i class="fa-solid fa-copy fa-fw mr-2 text-slate-400"></i>Copier</button>{% endif %}
+            <form method="post" action="{% if active.type == 'group' %}{% url 'messaging:pin_message' 'g' m.pk %}{% else %}{% url 'messaging:pin_message' 'd' m.pk %}{% endif %}">{% csrf_token %}
+              <button class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"><i class="fa-solid fa-thumbtack fa-fw mr-2 text-slate-400"></i>{% if m.is_pinned %}Désépingler{% else %}Épingler{% endif %}</button>
+            </form>
+            <form method="post" action="{% if active.type == 'group' %}{% url 'messaging:group_message_delete_me' m.pk %}{% else %}{% url 'messaging:message_delete_me' m.pk %}{% endif %}" onsubmit="return confirm('Supprimer ce message pour vous ?');">{% csrf_token %}
+              <button class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"><i class="fa-solid fa-trash fa-fw mr-2 text-slate-400"></i>Supprimer pour moi</button>
+            </form>
+            {% if m.sender == user or active.is_admin %}
+            <form method="post" action="{% if active.type == 'group' %}{% url 'messaging:group_message_delete' m.pk %}{% else %}{% url 'messaging:message_delete' m.pk %}{% endif %}" onsubmit="return confirm('Supprimer pour tout le monde ?');">{% csrf_token %}
+              <button class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"><i class="fa-solid fa-trash-can fa-fw mr-2"></i>Supprimer pour tout le monde</button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+        {% if active.type == 'group' and m.sender != user %}
+        <a href="{% if user.is_internal and m.sender.employee %}{% url 'employees:detail' m.sender.employee.pk %}{% else %}#{% endif %}" class="flex-shrink-0 self-end" title="Voir la fiche de {{ m.sender.get_full_name|default:m.sender.username }}">
+          {% if m.sender.avatar %}<img src="{{ m.sender.avatar.url }}" class="h-7 w-7 rounded-full object-cover">
+          {% else %}<span class="h-7 w-7 rounded-full lpm-gradient text-white text-[10px] font-bold flex items-center justify-center">{{ m.sender.display_initials }}</span>{% endif %}
+        </a>
+        {% endif %}
+        <div class="flex flex-col {% if m.sender == user %}items-end{% else %}items-start{% endif %} max-w-[78%]">
+          <div class="relative rounded-lg px-2.5 py-1.5 shadow-sm w-fit max-w-full {% if m.sender == user %}wa-out wa-tail-out rounded-tr-none{% else %}wa-in wa-tail-in rounded-tl-none{% endif %}">
+            {% if active.type == 'group' and m.sender != user %}<div class="text-[12px] font-semibold text-lpm mb-0.5">{{ m.sender.get_full_name|default:m.sender.username }}</div>{% endif %}
+            {% if m.is_forwarded %}<div class="text-[11px] italic text-slate-400 mb-0.5 flex items-center gap-1"><i class="fa-solid fa-share"></i> Transféré{% if active.type == 'group' %} par {{ m.sender.get_full_name|default:m.sender.username }}{% endif %}</div>{% endif %}
+            {% if m.reply_to %}
+            <div class="border-l-4 border-lpm bg-black/5 rounded px-2 py-1 mb-1 text-xs">
+              <div class="font-semibold text-lpm">{{ m.reply_to.sender.get_full_name|default:m.reply_to.sender.username }}</div>
+              <div class="text-slate-500 truncate">{{ m.reply_to.short }}</div>
+            </div>
+            {% endif %}
+            {% if m.attachment %}
+              {% if m.is_audio %}<audio src="{{ m.attachment.url }}" controls preload="metadata" class="mt-1 mb-1 w-60 max-w-full"></audio>
+              {% elif m.is_image %}<a href="{{ m.attachment.url }}" target="_blank" class="block mb-1"><img src="{{ m.attachment.url }}" class="rounded-md max-h-60 max-w-full"></a>
+              {% elif m.is_video %}<video src="{{ m.attachment.url }}" class="mb-1 rounded-md max-h-60 max-w-full" controls preload="metadata"></video>
+              {% else %}<a href="{{ m.attachment.url }}" download class="inline-flex items-center gap-2 text-sm mb-1 {% if m.sender == user %}text-lpm-dark{% else %}text-lpm{% endif %} hover:underline"><i class="fa-solid fa-file-arrow-down"></i> {{ m.ext|upper }} — Télécharger</a>{% endif %}
+            {% endif %}
+            {% if m.body %}<span class="text-sm whitespace-pre-line text-slate-800">{{ m.body }}</span>{% endif %}
+            <span class="float-right ml-2 mt-1 select-none text-[10px] leading-none flex items-center gap-1 {% if m.sender == user %}text-slate-500{% else %}text-slate-400{% endif %}">
+              {{ m.created_at|date:"H:i" }}
+              {% if active.type == 'direct' and m.sender == user %}<i class="fa-solid {% if m.is_read %}fa-check-double text-sky-600{% else %}fa-check text-slate-400{% endif %}"></i>{% endif %}
+            </span>
+            <div class="clear-both"></div>
+          </div>
+          {% with reacts=m.reaction_summary %}
+          {% if reacts %}
+          <div class="flex gap-1 -mt-1.5 z-10">
+            {% for r in reacts %}
+            <form method="post" action="{{ react_url }}">{% csrf_token %}
+              <button name="emoji" value="{{ r.emoji }}" title="{{ r.names }}" class="bg-white border border-slate-200 rounded-full px-1.5 py-0.5 text-xs shadow-sm hover:bg-slate-50">{{ r.emoji }}{% if r.count > 1 %} {{ r.count }}{% endif %}</button>
+            </form>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% endwith %}
+        </div>
+      </div>
+      {% endif %}
+      {% empty %}<p class="text-center text-sm text-slate-500 py-6">Démarrez la discussion 👋</p>{% endfor %}
+    </div>
+
+    <div data-typing class="hidden px-4 py-1 text-xs text-emerald-600 font-medium italic bg-slate-50">…</div>
+    <!-- Composer -->
+    <form method="post" enctype="multipart/form-data" class="relative border-t border-slate-100 p-2.5 bg-slate-50"
+          action="{% if active.type == 'group' %}{% url 'messaging:group' active.group.pk %}{% else %}{% url 'messaging:thread' active.other.pk %}{% endif %}" data-composer>{% csrf_token %}
+      <input type="hidden" name="reply_to" data-reply-input>
+      <div data-reply-bar class="hidden items-center gap-2 mb-2 px-3 py-2 bg-slate-100 rounded-lg border-l-4 border-lpm">
+        <div class="flex-1 min-w-0 text-xs"><div class="font-semibold text-lpm" data-reply-name></div><div class="text-slate-500 truncate" data-reply-text></div></div>
+        <button type="button" data-reply-cancel class="text-slate-400 hover:text-red-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div data-voice-bar class="hidden items-center gap-2 mb-2 px-3 py-2 bg-slate-100 rounded-lg">
+        <button type="button" data-voice-cancel class="h-9 w-9 rounded-full hover:bg-red-50 text-red-500 flex items-center justify-center flex-shrink-0" title="Annuler"><i class="fa-solid fa-trash"></i></button>
+        <audio data-voice-audio controls class="flex-1 h-9"></audio>
+        <button type="submit" data-voice-send class="h-9 px-4 rounded-full bg-lpm hover:bg-lpm-dark text-white flex items-center gap-1 flex-shrink-0" title="Envoyer"><i class="fa-solid fa-paper-plane"></i> Envoyer</button>
+      </div>
+      <div class="emoji-pop" data-emoji-pop></div>
+      <div class="flex items-end gap-2">
+        <button type="button" data-emoji class="p-2.5 rounded-full hover:bg-slate-200 text-slate-500 flex-shrink-0" title="Émojis"><i class="fa-regular fa-face-smile text-lg"></i></button>
+        <div class="flex-1 flex items-end bg-white rounded-2xl border border-slate-200 px-3 py-1.5">
+          <textarea name="body" rows="1" data-input placeholder="Écrivez un message…" class="wa-input flex-1 bg-transparent text-sm focus:outline-none border-0 p-0"></textarea>
+          <label class="pl-2 text-slate-400 hover:text-slate-600 cursor-pointer flex-shrink-0" title="Joindre">
+            <i class="fa-solid fa-paperclip"></i>
+            <input type="file" name="attachment" class="hidden" onchange="if(this.files[0]){document.getElementById('fname').textContent='📎 '+this.files[0].name; this.form.submit();}">
+          </label>
+        </div>
+        <button type="button" data-mic class="h-11 w-11 rounded-full bg-lpm hover:bg-lpm-dark text-white flex items-center justify-center flex-shrink-0" title="Message vocal"><i class="fa-solid fa-microphone"></i></button>
+        <button type="submit" data-send class="h-11 w-11 rounded-full bg-lpm hover:bg-lpm-dark text-white items-center justify-center flex-shrink-0 hidden" title="Envoyer"><i class="fa-solid fa-paper-plane"></i></button>
+      </div>
+      <div class="flex items-center justify-between mt-1 px-2">
+        <div id="fname" class="text-xs text-slate-400"></div>
+        <div data-mic-label class="text-xs text-red-600 font-medium"></div>
+      </div>
+    </form>
+    {% endif %}
+  </section>
+</div>
+<script>
+(function(){var t=document.getElementById('thread');if(t)t.scrollTop=t.scrollHeight;})();
+function filterConvs(q){q=(q||'').toLowerCase();document.querySelectorAll('#convList .convitem').forEach(function(el){el.style.display=el.getAttribute('data-name').indexOf(q)>-1?'':'none';});}
+</script>
+<script src="{% static 'js/chat.js' %}?v=9"></script>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends user.is_external|yesno:"base_extranet.html,base.html" %}
+{% load humanize %}
+{% block title %}Mes campagnes{% endblock %}
+{% block page_title %}Mes campagnes{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-slate-900 mb-1">Suivi des campagnes</h1>
+<p class="text-slate-500 mb-6">État, budget et avancement de vos campagnes en temps réel.</p>
+
+<div class="space-y-5">
+  {% for c in campaigns %}
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <h3 class="text-lg font-bold text-slate-900"><i class="fa-solid {{ c.channel_icon }} text-lpm mr-1"></i> {{ c.name }}</h3>
+        <p class="text-sm text-slate-500">{{ c.get_channel_display }}{% if c.brand %} · {{ c.brand.name }}{% endif %}
+          {% if c.start_date %} · {{ c.start_date|date:"d/m/Y" }}{% if c.end_date %} → {{ c.end_date|date:"d/m/Y" }}{% endif %}{% endif %}</p>
+      </div>
+      <span class="px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 bg-{{ c.status_color }}-50 text-{{ c.status_color }}-600">{{ c.get_status_display }}</span>
+    </div>
+
+    <div class="grid sm:grid-cols-3 gap-4 mt-4">
+      <div class="rounded-xl bg-slate-50 p-3">
+        <div class="text-xs text-slate-400">Budget</div>
+        <div class="font-bold text-slate-800">{{ c.budget|intcomma }} F</div>
+      </div>
+      <div class="rounded-xl bg-slate-50 p-3">
+        <div class="text-xs text-slate-400">Portée</div>
+        <div class="font-bold text-slate-800">{{ c.actual_reach|default:0|intcomma }}{% if c.target_reach %} / {{ c.target_reach|intcomma }}{% endif %}</div>
+      </div>
+      <div class="rounded-xl bg-slate-50 p-3">
+        <div class="text-xs text-slate-400">Leads générés</div>
+        <div class="font-bold text-slate-800">{{ c.leads|default:0|intcomma }}</div>
+      </div>
+    </div>
+
+    {% if c.project and c.project.phases.all %}
+    <div class="mt-5">
+      <div class="text-sm font-semibold text-slate-700 mb-2">Activités</div>
+      <table class="w-full text-sm">
+        <thead class="text-slate-400 text-left text-xs"><tr><th class="py-1">Activité</th><th class="py-1 text-right">Statut</th></tr></thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for ph in c.project.phases.all %}
+          <tr>
+            <td class="py-2 text-slate-700">{{ ph.name }}</td>
+            <td class="py-2 text-right">
+              <span class="px-2 py-0.5 rounded-full text-xs font-medium {% if ph.status == 'DONE' %}bg-emerald-50 text-emerald-600{% elif ph.status == 'DOING' %}bg-blue-50 text-blue-600{% else %}bg-slate-100 text-slate-500{% endif %}">{{ ph.get_status_display }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="mt-3"><div class="flex justify-between text-xs text-slate-400 mb-1"><span>Avancement</span><span>{{ c.project.progress }}%</span></div>
+        <div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full lpm-gradient" style="width: {{ c.project.progress }}%"></div></div></div>
+    </div>
+    {% endif %}
+  </div>
+  {% empty %}
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-12 text-center text-slate-400">
+    <i class="fa-solid fa-bullhorn text-4xl"></i><p class="mt-3">Aucune campagne pour le moment.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

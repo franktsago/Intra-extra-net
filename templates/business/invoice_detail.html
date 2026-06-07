@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}{{ invoice.number }}{% endblock %}
+{% block page_title %}Facture {{ invoice.number }}{% endblock %}
+{% block content %}
+<a href="{% url 'business:invoice_list' %}" class="text-sm text-lpm hover:underline">← Factures</a>
+<div class="grid lg:grid-cols-3 gap-6 mt-3">
+  <div class="lg:col-span-2 bg-white rounded-xl shadow-card p-6">
+    <div class="flex items-center justify-between">
+      <div><h2 class="text-lg font-bold text-slate-800">{{ invoice.title }}</h2>
+        <p class="text-sm text-slate-500">{{ invoice.client.name|default:invoice.supplier_name }} · {{ invoice.issue_date|date:"d/m/Y" }}{% if invoice.due_date %} · échéance {{ invoice.due_date|date:"d/m/Y" }}{% endif %}</p></div>
+      <span class="px-3 py-1 rounded-full text-xs font-medium bg-{{ invoice.status_color }}-100 text-{{ invoice.status_color }}-700">{{ invoice.get_status_display }}</span>
+    </div>
+    <table class="w-full text-sm mt-5">
+      <thead class="bg-slate-50 text-slate-500 text-left"><tr><th class="px-3 py-2">Désignation</th><th class="px-3 py-2 text-right">Qté</th><th class="px-3 py-2 text-right">P.U.</th><th class="px-3 py-2 text-right">Total</th></tr></thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for l in invoice.lines.all %}<tr><td class="px-3 py-2">{{ l.designation }}</td><td class="px-3 py-2 text-right">{{ l.quantity|floatformat:"-2" }}</td><td class="px-3 py-2 text-right">{{ l.unit_price|intcomma }}</td><td class="px-3 py-2 text-right font-medium">{{ l.total|intcomma }}</td></tr>
+        {% empty %}<tr><td colspan="4" class="px-3 py-4 text-center text-slate-400">Aucune ligne.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+    <div class="mt-4 ml-auto w-64 text-sm space-y-1">
+      <div class="flex justify-between"><span class="text-slate-500">Sous-total HT</span><span>{{ invoice.subtotal|intcomma }} F</span></div>
+      <div class="flex justify-between"><span class="text-slate-500">TVA ({{ invoice.tax_rate|floatformat:"-2" }}%)</span><span>{{ invoice.tax_amount|intcomma }} F</span></div>
+      <div class="flex justify-between font-bold text-slate-900 text-base border-t pt-1"><span>TOTAL TTC</span><span>{{ invoice.total|intcomma }} F</span></div>
+      <div class="flex justify-between text-emerald-600"><span>Réglé</span><span>{{ invoice.amount_paid|intcomma }} F</span></div>
+      <div class="flex justify-between font-semibold text-red-600"><span>Reste à payer</span><span>{{ invoice.balance|intcomma }} F</span></div>
+    </div>
+    <div class="mt-6 pt-5 border-t flex flex-wrap gap-2">
+      <a href="{% url 'business:invoice_pdf' invoice.pk %}" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-download mr-1"></i> PDF</a>
+      <a href="{% url 'business:invoice_edit' invoice.pk %}" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm">Modifier</a>
+      {% if invoice.status == 'DRAFT' %}<a href="{% url 'business:invoice_issue' invoice.pk %}" class="px-4 py-2 rounded-lg bg-sky-600 text-white text-sm">Émettre</a>{% endif %}
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-card p-6">
+    <h3 class="font-bold text-slate-800 mb-3">Paiements</h3>
+    <div class="space-y-2 mb-4">
+      {% for p in invoice.payments.all %}
+      <div class="flex items-center justify-between text-sm border border-slate-100 rounded-lg p-2.5">
+        <div><div class="font-medium text-slate-800">{{ p.amount|intcomma }} F</div><div class="text-xs text-slate-400">{{ p.get_method_display }} · {{ p.paid_at|date:"d/m/Y" }}</div></div>
+        <i class="fa-solid fa-circle-check text-emerald-500"></i>
+      </div>
+      {% empty %}<p class="text-sm text-slate-400">Aucun paiement.</p>{% endfor %}
+    </div>
+    {% if invoice.balance > 0 and invoice.status != 'DRAFT' %}
+    <form method="post" action="{% url 'business:invoice_payment' invoice.pk %}" class="border-t pt-4 space-y-2">{% csrf_token %}
+      <div class="text-sm font-medium text-slate-700">Enregistrer un paiement</div>
+      {% for f in pay_form %}<div><label class="text-xs text-slate-500">{{ f.label }}</label>{{ f }}</div>{% endfor %}
+      <button class="w-full lpm-gradient text-white font-medium py-2 rounded-lg text-sm">Valider le paiement</button>
+    </form>
+    {% elif invoice.status == 'DRAFT' %}
+    <p class="text-xs text-slate-400 border-t pt-4">Émettez la facture pour enregistrer des paiements.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Supprimer la tâche{% endblock %}
+{% block page_title %}Supprimer la tâche{% endblock %}
+{% block content %}
+<div class="max-w-lg mx-auto bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+  <div class="flex items-start gap-3">
+    <span class="h-11 w-11 rounded-xl bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-triangle-exclamation text-lg"></i></span>
+    <div><h2 class="font-bold text-slate-900">Confirmer la suppression</h2>
+    <p class="text-sm text-slate-500 mt-1">La tâche <strong>« {{ task.title }} »</strong> sera définitivement supprimée.</p></div>
+  </div>
+  <div class="mt-6 flex gap-3">
+    <form method="post">{% csrf_token %}
+      <button class="bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow-sm"><i class="fa-solid fa-trash mr-1"></i> Supprimer</button>
+    </form>
+    <a href="{% url 'tasks:detail' task.pk %}" class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600">Annuler</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,139 @@
+===== PAGE 12 =====
+8. STRUCTURE TECHNIQUE DU PROJET
+Structure envisagée
+Le projet devra intégrer les modules intranet et extranet dans une architecture centralisée
+et sécurisée.
+intranet_lpm/
+│
+├── accounts/
+├── employees/
+├── documents/
+├── communication/
+├── conges/
+├── dashboard/
+├── tasks/
+├── disciplinary/
+├── notifications/
+├── extranet/
+├── templates/
+├── static/
+├── media/
+├── config/
+└── manage.py
+9. BASE DE DONNÉES
+Principales tables
+• Utilisateurs ;
+• Employés ;
+• Départements ;
+• Documents ;
+===== PAGE 13 =====
+• Congés ;
+• Notifications ;
+• Messages ;
+• Tâches ;
+• Sanctions disciplinaires.
+10. MODULES PRIORITAIRES (PHASE 1)
+Phase 1
+• Authentification ;
+• Tableau de bord ;
+• Gestions employées ;
+• Gestion documentaire ;
+• Actualités.
+Phase 2
+• Congés ;
+• Messagerie ;
+• Notifications ;
+• Calendrier.
+Phase 3
+• Statistiques ;
+• reporting ;
+• Application mobile ;
+• API externe.
+===== PAGE 14 =====
+11. LIVRABLES ATTENDUS
+Livrables
+• Cahier de charges ;
+• Maquettes UI ;
+• Code source ;
+• Documentation technique ;
+• Documentation utilisateur ;
+• Base de données ;
+• Version de production.
+12. CONTRAINTES TECHNIQUES
+Contraintes
+• Compatibilité multi-navigateurs ;
+• Responsive mobile ;
+• Sécurité des données ;
+• Évolutivité.
+13. ORGANISATION DU DÉVELOPPEMENT
+Méthodologie
+Développement progressif par modules.
+Étapes
+1. Analyse des besoins
+2. Conception UI/UX
+3. Développement backend
+4. Développement frontend
+5. Tests
+6. Déploiement
+7. Maintenance
+===== PAGE 15 =====
+14. ROADMAP DE DÉVELOPPEMENT
+Sprint 1
+• Configuration Django ;
+• Système d’authentification ;
+• Structure du projet.
+Sprint 2
+• Dashboard ;
+• Gestions employées ;
+• Profils utilisateurs.
+Sprint 3
+• Documents ;
+• Actualités ;
+• Notifications.
+Sprint 4
+• Congés ;
+• Calendrier ;
+• Messagerie.
+15. SPÉCIFICITÉS DE L’EXTRANET
+Fonctionnement attendu
+L’extranet devra permettre :
+• Aux clients de consulter leurs dossiers ;
+• Aux partenaires de partager des documents ;
+• Aux fournisseurs de transmettre des informations ;
+===== PAGE 16 =====
+• À l’entreprise de collaborer avec des utilisateurs externes ;
+• De limiter l’accès selon les droits attribués.
+Sécurité extranet
+• Authentification forte ;
+• Permissions avancées ;
+• Chiffrement des échanges ;
+• Journalisation des actions ;
+• Contrôle des accès.
+16. ÉVOLUTIONS FUTURES
+Possibilités futures
+• Application mobile Android/iOS ;
+• Signature électronique ;
+• Visioconférence ;
+• Chatbot interne ;
+• Intelligence artificielle ;
+• Génération automatique de rapports.
+17. CONCLUSION
+Ce projet d’intranet et extranet vise à mettre en place une plateforme professionnelle
+moderne permettant de centraliser les activités internes et externes de l’entreprise.
+La solution devra être :
+• Sécurisée ;
+• Évolutive ;
+• Collaborative ;
+• Adaptée aux besoins opérationnels de l’organisation.
+L’intranet permettra d’améliorer la gestion interne, la communication et l’organisation
+des équipes.
+===== PAGE 17 =====
+L’extranet permettra quant à lui de faciliter les échanges avec les clients, partenaires et
+collaborateurs externes grâce à un accès sécurisé aux ressources et services autorisés.
+Le développement sera réalisé progressivement afin d’assurer :
+• Une stabilité maximale ;
+• Une bonne expérience utilisateur ;
+• Une maintenance simplifiée ;
+• Une évolutivité future du système.
+À terme, cette plateforme constituera un véritable outil stratégique de transformation
+digitale pour LPM Consulting Group.

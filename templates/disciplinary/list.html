@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Discipline{% endblock %}
+{% block page_title %}Dossiers disciplinaires{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-5">
+  <p class="text-sm text-slate-500">Échelle légale : avertissement → blâme → mise à pied (max 8 j) → licenciement.</p>
+  <a href="{% url 'disciplinary:create' %}" class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium shadow">+ Nouveau dossier</a>
+</div>
+<div class="bg-white rounded-xl shadow-card overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-50 text-slate-500 text-left"><tr>
+      <th class="px-4 py-3">Employé</th><th class="px-4 py-3">Sanction</th><th class="px-4 py-3">Statut</th><th class="px-4 py-3">Date des faits</th><th></th>
+    </tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for r in records %}
+      <tr class="hover:bg-slate-50">
+        <td class="px-4 py-3 font-medium text-slate-800">{{ r.employee.full_name }}</td>
+        <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-xs font-medium {% if r.sanction_type == 'DISMISSAL' %}bg-red-100 text-red-700{% elif r.sanction_type == 'SUSPENSION' %}bg-amber-100 text-amber-700{% else %}bg-slate-100 text-slate-600{% endif %}">{{ r.get_sanction_type_display }}</span></td>
+        <td class="px-4 py-3 text-slate-500">{{ r.get_status_display }}</td>
+        <td class="px-4 py-3 text-slate-500">{{ r.fault_date|date:"d/m/Y"|default:"—" }}</td>
+        <td class="px-4 py-3 text-right"><a href="{% url 'disciplinary:detail' r.pk %}" class="text-lpm hover:underline">Détail</a></td>
+      </tr>
+      {% empty %}<tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">Aucun dossier.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

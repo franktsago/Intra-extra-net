@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Discussions{% endblock %}
+{% block content_top %}{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div><h1 class="text-2xl font-bold text-slate-900">Discussions</h1>
+  <p class="text-slate-500 mt-0.5">Canal général et groupes d'équipe.</p></div>
+  <a href="{% url 'messaging:group_create' %}" class="bg-lpm hover:bg-lpm-dark text-white px-4 py-2.5 rounded-xl font-medium shadow-sm"><i class="fa-solid fa-users-rectangle mr-1"></i> Nouveau groupe</a>
+</div>
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card divide-y divide-slate-100">
+  {% for c in groups %}
+  <a href="{% url 'messaging:group' c.g.pk %}" class="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 {% if c.unread %}bg-emerald-50/40{% endif %}">
+    <span class="h-11 w-11 rounded-full flex items-center justify-center flex-shrink-0 {% if c.g.is_general %}lpm-gradient text-white{% else %}bg-slate-200 text-slate-600{% endif %}">
+      <i class="fa-solid {% if c.g.is_general %}fa-bullhorn{% else %}fa-user-group{% endif %}"></i></span>
+    <div class="min-w-0 flex-1">
+      <div class="flex items-center justify-between">
+        <span class="font-semibold text-slate-800 truncate">{{ c.g.name }}{% if c.g.is_general %} <span class="text-[10px] bg-lpm/10 text-lpm px-1.5 py-0.5 rounded-full align-middle">Général</span>{% endif %}</span>
+        {% if c.last %}<span class="text-xs text-slate-400 flex-shrink-0 ml-2">{{ c.last.created_at|date:"d/m H:i" }}</span>{% endif %}
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="text-sm text-slate-500 truncate {% if c.unread %}font-semibold text-slate-700{% endif %}">
+          {% if c.last %}<strong>{{ c.last.sender.first_name|default:c.last.sender.username }} :</strong> {{ c.last.body|default:"Pièce jointe"|truncatechars:42 }}{% else %}{{ c.g.members.count }} membre(s){% endif %}</span>
+        {% if c.unread %}<span class="ml-2 bg-emerald-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 flex-shrink-0">{{ c.unread }}</span>{% endif %}
+      </div>
+    </div>
+  </a>
+  {% empty %}<div class="px-5 py-12 text-center text-slate-400"><i class="fa-regular fa-comments text-4xl"></i><p class="mt-3">Aucune discussion.</p></div>{% endfor %}
+</div>
+{% endblock %}

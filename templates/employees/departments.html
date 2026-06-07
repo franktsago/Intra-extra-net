@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Départements{% endblock %}
+{% block page_title %}Départements & services{% endblock %}
+{% block content %}
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 bg-white rounded-xl shadow-card overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-500 text-left"><tr>
+        <th class="px-4 py-3">Département</th><th class="px-4 py-3">Code</th>
+        <th class="px-4 py-3">Responsable</th><th class="px-4 py-3">Effectif</th>
+        <th class="px-4 py-3 text-right">Actions</th></tr></thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for d in departments %}
+        <tr class="hover:bg-slate-50">
+          <td class="px-4 py-3 font-medium text-slate-800">{{ d.name }}
+            {% if d.parent %}<span class="text-xs text-slate-400">· {{ d.parent.name }}</span>{% endif %}</td>
+          <td class="px-4 py-3 text-slate-500">{{ d.code|default:"—" }}</td>
+          <td class="px-4 py-3 text-slate-500">{{ d.manager.get_full_name|default:"—" }}</td>
+          <td class="px-4 py-3">{{ d.headcount }}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap">
+            <a href="{% url 'employees:department_edit' d.pk %}" class="text-lpm hover:underline" title="Modifier"><i class="fa-solid fa-pen"></i></a>
+            <a href="{% url 'employees:department_delete' d.pk %}" class="text-red-600 hover:underline ml-3" title="Supprimer"><i class="fa-solid fa-trash"></i></a>
+          </td>
+        </tr>
+        {% empty %}<tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">Aucun département.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="bg-white rounded-xl shadow-card p-6">
+    <h3 class="font-bold text-slate-800 mb-4">
+      {% if editing %}<i class="fa-solid fa-pen text-lpm"></i> Modifier « {{ editing.name }} »{% else %}<i class="fa-solid fa-plus text-lpm"></i> Nouveau département{% endif %}
+    </h3>
+    <form method="post" class="space-y-3"
+          action="{% if editing %}{% url 'employees:department_edit' editing.pk %}{% else %}{% url 'employees:departments' %}{% endif %}">{% csrf_token %}
+      {% for f in form %}
+      <div><label class="text-sm font-medium text-slate-700">{{ f.label }}</label>{{ f }}
+        {% if f.errors %}<p class="text-xs text-red-600 mt-1">{{ f.errors|striptags }}</p>{% endif %}</div>
+      {% endfor %}
+      <div class="flex gap-2">
+        <button class="flex-1 lpm-gradient text-white font-semibold py-2.5 rounded-lg">{% if editing %}Enregistrer{% else %}Créer{% endif %}</button>
+        {% if editing %}<a href="{% url 'employees:departments' %}" class="px-4 py-2.5 rounded-lg border border-slate-300 text-slate-600">Annuler</a>{% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

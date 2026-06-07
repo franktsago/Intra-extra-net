@@ -1,0 +1,161 @@
+{% extends user.is_external|yesno:"base_extranet.html,base.html" %}
+{% block title %}Extranet{% endblock %}
+{% block page_title %}{% if is_external %}Portail clients & partenaires{% else %}Administration de l'extranet{% endif %}{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-900">{% if is_external %}Bonjour {{ user.organization|default:user.get_full_name|default:user.username }},{% else %}Espaces clients & partenaires{% endif %}</h1>
+    <p class="text-slate-500 mt-0.5">{% if is_external %}Vous avez <strong class="text-slate-700">{{ active_campaigns }}</strong> campagne{{ active_campaigns|pluralize }} en cours, <strong class="text-slate-700">{{ pending_quotes_count }}</strong> devis en attente et <strong class="text-slate-700">{{ unpaid_invoices }}</strong> facture{{ unpaid_invoices|pluralize }} à régler{% if open_tickets %}, <strong class="text-slate-700">{{ open_tickets }}</strong> réclamation{{ open_tickets|pluralize }} ouverte{{ open_tickets|pluralize }}{% endif %}.{% else %}Gérez les projets, fichiers et accès des utilisateurs externes.{% endif %}</p>
+  </div>
+  {% if can_manage %}<a href="{% url 'extranet:create' %}" class="bg-lpm hover:bg-lpm-dark text-white px-4 py-2.5 rounded-xl font-medium shadow-sm transition"><i class="fa-solid fa-plus mr-1"></i> Nouveau projet</a>{% endif %}
+</div>
+
+<!-- Cartes statistiques -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 flex items-center gap-4">
+    <span class="h-12 w-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center"><i class="fa-solid fa-briefcase text-xl"></i></span>
+    <div><div class="text-2xl font-bold text-slate-900 leading-none">{{ count_active }}</div><div class="text-sm text-slate-500 mt-1">Projets actifs</div></div>
+  </div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 flex items-center gap-4">
+    <span class="h-12 w-12 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center"><i class="fa-solid fa-file-lines text-xl"></i></span>
+    <div><div class="text-2xl font-bold text-slate-900 leading-none">{{ count_files }}</div><div class="text-sm text-slate-500 mt-1">Documents partagés</div></div>
+  </div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 flex items-center gap-4">
+    <span class="h-12 w-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center"><i class="fa-solid fa-comments text-xl"></i></span>
+    <div><div class="text-2xl font-bold text-slate-900 leading-none">{{ count_msgs }}</div><div class="text-sm text-slate-500 mt-1">Messages échangés</div></div>
+  </div>
+  {% if can_manage %}
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 flex items-center gap-4">
+    <span class="h-12 w-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fa-solid fa-user-group text-xl"></i></span>
+    <div><div class="text-2xl font-bold text-slate-900 leading-none">{{ count_externals }}</div><div class="text-sm text-slate-500 mt-1">Utilisateurs externes</div></div>
+  </div>
+  {% else %}
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 flex items-center gap-4">
+    <span class="h-12 w-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fa-solid fa-circle-check text-xl"></i></span>
+    <div><div class="text-2xl font-bold text-slate-900 leading-none">{{ count_done }}</div><div class="text-sm text-slate-500 mt-1">Projets terminés</div></div>
+  </div>
+  {% endif %}
+</div>
+
+{% if is_external %}
+{# ---------------- Vue CLIENT / PARTENAIRE ---------------- #}
+
+{% if pending_quotes or pending_files %}
+<div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6">
+  <h3 class="font-bold text-amber-800 mb-3"><i class="fa-solid fa-bell mr-1"></i> Actions requises</h3>
+  <div class="space-y-2">
+    {% for q in pending_quotes %}
+    <a href="{% url 'extranet:client_quote' q.pk %}" class="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-amber-100 hover:border-amber-300">
+      <div class="flex items-center gap-3"><i class="fa-solid fa-file-signature text-amber-500"></i>
+        <span class="text-sm text-slate-700">Devis <strong>{{ q.number }}</strong> à valider — {{ q.title }}</span></div>
+      <span class="text-xs font-semibold text-amber-600">Signer →</span>
+    </a>
+    {% endfor %}
+    {% for f in pending_files %}
+    <a href="{% url 'extranet:project' f.project.pk %}" class="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-amber-100 hover:border-amber-300">
+      <div class="flex items-center gap-3"><i class="fa-solid fa-file-circle-question text-amber-500"></i>
+        <span class="text-sm text-slate-700">Document <strong>« {{ f.title }} »</strong> à valider — {{ f.project.name }}</span></div>
+      <span class="text-xs font-semibold text-amber-600">Examiner →</span>
+    </a>
+    {% endfor %}
+  </div>
+  <a href="{% url 'extranet:validations' %}" class="inline-block text-sm font-medium text-amber-700 hover:underline mt-3">Voir toutes les validations →</a>
+</div>
+{% endif %}
+
+<div class="grid lg:grid-cols-2 gap-6">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <h3 class="font-bold text-slate-900 mb-4">Mes projets</h3>
+    <div class="divide-y divide-slate-100">
+      {% for p in projects %}
+      <a href="{% url 'extranet:project' p.pk %}" class="flex items-center justify-between py-3 first:pt-0 group">
+        <div><div class="font-medium text-slate-800 group-hover:text-lpm">{{ p.name }}</div>
+        <div class="text-xs text-slate-400">Échéance : {{ p.deadline|date:"d M Y"|default:"—" }}</div></div>
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium {% if p.status == 'DONE' %}bg-emerald-50 text-emerald-600{% elif p.status == 'ACTIVE' %}bg-blue-50 text-blue-600{% else %}bg-amber-50 text-amber-600{% endif %}">{{ p.get_status_display }}</span>
+      </a>
+      {% empty %}<p class="text-sm text-slate-400 py-3">Aucun projet.</p>{% endfor %}
+    </div>
+  </div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <h3 class="font-bold text-slate-900 mb-4">Documents récents</h3>
+    <div class="divide-y divide-slate-100">
+      {% for f in recent_files %}
+      <a href="{{ f.file.url }}" class="flex items-center justify-between py-3 first:pt-0 group">
+        <div class="flex items-center gap-3 min-w-0">
+          <i class="fa-regular fa-file-lines text-slate-400 flex-shrink-0"></i>
+          <span class="text-sm font-medium text-slate-700 truncate group-hover:text-lpm">{{ f.title }}</span>
+        </div>
+        <span class="text-xs text-slate-400 flex-shrink-0">{{ f.created_at|date:"d M Y" }}</span>
+      </a>
+      {% empty %}<p class="text-sm text-slate-400 py-3">Aucun document partagé.</p>{% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Accès rapides client -->
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mt-6">
+  <a href="{% url 'extranet:progress' %}" class="bg-white rounded-2xl border border-slate-200 shadow-card p-4 text-center hover:border-lpm transition">
+    <i class="fa-solid fa-briefcase text-xl text-blue-600"></i><div class="text-sm font-medium text-slate-700 mt-2">Suivi des projets</div></a>
+  <a href="{% url 'extranet:validations' %}" class="bg-white rounded-2xl border border-slate-200 shadow-card p-4 text-center hover:border-lpm transition">
+    <i class="fa-solid fa-clipboard-check text-xl text-amber-600"></i><div class="text-sm font-medium text-slate-700 mt-2">Validations</div></a>
+  <a href="{% url 'extranet:my_quotes' %}" class="bg-white rounded-2xl border border-slate-200 shadow-card p-4 text-center hover:border-lpm transition">
+    <i class="fa-solid fa-file-signature text-xl text-violet-600"></i><div class="text-sm font-medium text-slate-700 mt-2">Mes devis</div></a>
+  <a href="{% url 'extranet:reports' %}" class="bg-white rounded-2xl border border-slate-200 shadow-card p-4 text-center hover:border-lpm transition">
+    <i class="fa-solid fa-chart-line text-xl text-emerald-600"></i><div class="text-sm font-medium text-slate-700 mt-2">Rapports{% if report_count %} ({{ report_count }}){% endif %}</div></a>
+  <a href="{% url 'extranet:my_invoices' %}" class="bg-white rounded-2xl border border-slate-200 shadow-card p-4 text-center hover:border-lpm transition">
+    <i class="fa-solid fa-file-invoice-dollar text-xl text-rose-600"></i><div class="text-sm font-medium text-slate-700 mt-2">Mes factures</div></a>
+</div>
+
+{% else %}
+{# ---------------- Vue ADMINISTRATION (interne) ---------------- #}
+<div class="grid lg:grid-cols-3 gap-6">
+  <!-- Tableau des projets -->
+  <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-card overflow-x-auto">
+    <div class="px-6 py-4 border-b border-slate-100 font-bold text-slate-900">Tous les projets</div>
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-500 text-left">
+        <tr><th class="px-6 py-3 font-semibold">Projet</th><th class="px-4 py-3 font-semibold">Client</th>
+        <th class="px-4 py-3 font-semibold">Chargé</th><th class="px-4 py-3 font-semibold">Statut</th><th class="px-4 py-3 font-semibold text-right">Actions</th></tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for p in projects %}
+        <tr class="hover:bg-slate-50">
+          <td class="px-6 py-3"><a href="{% url 'extranet:project' p.pk %}" class="font-medium text-slate-800 hover:text-lpm">{{ p.name }}</a>
+            <div class="text-xs text-slate-400">{{ p.progress }}% · {{ p.reference|default:"" }}</div></td>
+          <td class="px-4 py-3 text-slate-600">{{ p.client.get_full_name|default:p.client.username }}</td>
+          <td class="px-4 py-3 text-slate-600">{{ p.internal_lead.get_full_name|default:"—" }}</td>
+          <td class="px-4 py-3"><span class="px-2.5 py-0.5 rounded-full text-xs font-medium {% if p.status == 'DONE' %}bg-emerald-50 text-emerald-600{% elif p.status == 'ACTIVE' %}bg-blue-50 text-blue-600{% else %}bg-amber-50 text-amber-600{% endif %}">{{ p.get_status_display }}</span></td>
+          <td class="px-4 py-3 text-right whitespace-nowrap">
+            <a href="{% url 'extranet:project' p.pk %}" class="text-slate-400 hover:text-lpm px-1.5" title="Ouvrir"><i class="fa-solid fa-eye"></i></a>
+            <a href="{% url 'extranet:edit' p.pk %}" class="text-slate-400 hover:text-lpm px-1.5" title="Modifier"><i class="fa-solid fa-pen"></i></a>
+            <a href="{% url 'extranet:delete' p.pk %}" class="text-slate-400 hover:text-red-600 px-1.5" title="Supprimer"><i class="fa-solid fa-trash"></i></a>
+          </td>
+        </tr>
+        {% empty %}<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Aucun projet. Cliquez sur « Nouveau projet ».</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Utilisateurs externes -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-slate-900">Utilisateurs externes</h3>
+      {% if user.is_admin_lpm %}<a href="{% url 'accounts:user_create' %}" class="text-sm font-medium text-lpm hover:underline"><i class="fa-solid fa-plus"></i> Inviter</a>{% endif %}
+    </div>
+    <div class="space-y-3">
+      {% for ext in external_users|slice:":8" %}
+      <div class="flex items-center gap-3">
+        <span class="h-9 w-9 rounded-full lpm-gradient text-white text-xs font-bold flex items-center justify-center">{{ ext.display_initials }}</span>
+        <div class="min-w-0 flex-1">
+          <div class="text-sm font-medium text-slate-800 truncate">{{ ext.get_full_name|default:ext.username }}</div>
+          <div class="text-xs text-slate-400 truncate">{{ ext.get_role_display }}{% if ext.organization %} · {{ ext.organization }}{% endif %}</div>
+        </div>
+        {% if not ext.is_active %}<span class="text-[10px] text-slate-400">Inactif</span>{% endif %}
+      </div>
+      {% empty %}<p class="text-sm text-slate-400">Aucun utilisateur externe. Invitez un client ou un partenaire.</p>{% endfor %}
+    </div>
+    {% if user.is_admin_lpm %}<a href="{% url 'accounts:user_list' %}?scope=extranet" class="inline-block text-sm font-medium text-lpm hover:underline mt-4">Gérer tous les accès →</a>{% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

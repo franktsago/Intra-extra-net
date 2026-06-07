@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Pipeline{% endblock %}
+{% block page_title %}Pipeline commercial{% endblock %}
+{% block content %}
+<div class="flex justify-end mb-4">
+  <a href="{% url 'business:opportunity_create' %}" class="bg-lpm hover:bg-lpm-dark text-white px-4 py-2 rounded-lg font-medium shadow-sm"><i class="fa-solid fa-plus mr-1"></i> Opportunité</a>
+</div>
+<div class="grid md:grid-cols-3 xl:grid-cols-5 gap-4">
+  {% for col in columns %}
+  <div class="bg-slate-100 rounded-xl p-3">
+    <h3 class="font-semibold text-slate-700 px-1 flex items-center justify-between text-sm">
+      <span>{{ col.label }}</span><span class="text-xs bg-white rounded-full px-2 py-0.5 text-slate-500">{{ col.opps|length }}</span>
+    </h3>
+    <div class="text-[11px] text-slate-400 px-1 mb-2">{{ col.total|intcomma }} FCFA</div>
+    <div class="space-y-2">
+      {% for o in col.opps %}
+      <a href="{% url 'business:opportunity_edit' o.pk %}" class="block bg-white rounded-lg p-3 shadow-sm hover:shadow transition">
+        <div class="text-sm font-medium text-slate-800">{{ o.title }}</div>
+        <div class="text-xs text-slate-400">{{ o.client.name }}</div>
+        <div class="mt-1 flex items-center justify-between">
+          <span class="text-xs font-semibold text-lpm">{{ o.amount|intcomma }} F</span>
+          <span class="text-[10px] text-slate-400">{{ o.probability }}%</span>
+        </div>
+      </a>
+      {% empty %}<p class="text-xs text-slate-400 px-1 py-2">—</p>{% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}{{ project.name }}{% endblock %}
+{% block page_title %}{{ project.name }}{% endblock %}
+{% block content %}
+<a href="{% url 'projects:list' %}" class="text-sm text-lpm hover:underline">← Projets</a>
+
+<!-- En-tête -->
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 mt-3 mb-6">
+  <div class="flex items-start justify-between flex-wrap gap-3">
+    <div>
+      <span class="text-xs font-medium px-2 py-0.5 rounded-full {% if project.kind == 'EVENT' %}bg-violet-50 text-violet-600{% else %}bg-blue-50 text-blue-600{% endif %}">{{ project.get_kind_display }}</span>
+      <h1 class="text-xl font-bold text-slate-900 mt-2">{{ project.name }}</h1>
+      <p class="text-sm text-slate-500">{{ project.code }}{% if project.client %} · {% if user.is_manager %}<a href="{% url 'business:client_detail' project.client.pk %}" class="text-lpm hover:underline">{{ project.client.name }}</a>{% else %}{{ project.client.name }}{% endif %}{% endif %}</p>
+    </div>
+    <div class="text-right">
+      <span class="px-3 py-1 rounded-full text-xs font-medium bg-{{ project.status_color }}-100 text-{{ project.status_color }}-700">{{ project.get_status_display }}</span>
+      {% if can_edit %}<a href="{% url 'projects:edit' project.pk %}" class="block mt-2 text-sm text-lpm hover:underline"><i class="fa-solid fa-pen"></i> Modifier</a>{% endif %}
+    </div>
+  </div>
+  {% if project.description %}<p class="text-sm text-slate-600 mt-3">{{ project.description }}</p>{% endif %}
+  <div class="grid sm:grid-cols-3 gap-4 mt-5">
+    <div>
+      <div class="flex justify-between text-xs text-slate-400 mb-1"><span>Avancement</span><span>{{ project.progress }}%</span></div>
+      <div class="h-2.5 rounded-full bg-slate-100 overflow-hidden"><div class="h-full lpm-gradient" style="width: {{ project.progress }}%"></div></div>
+    </div>
+    <div>
+      <div class="flex justify-between text-xs text-slate-400 mb-1"><span>Budget</span><span>{{ project.budget_pct }}%</span></div>
+      <div class="h-2.5 rounded-full bg-slate-100 overflow-hidden"><div class="h-full {% if project.is_over_budget %}bg-red-500{% else %}bg-emerald-500{% endif %}" style="width: {{ project.budget_pct }}%"></div></div>
+      <div class="text-xs text-slate-400 mt-1">{{ project.spent|intcomma }} / {{ project.budget|intcomma }} FCFA</div>
+    </div>
+    <div class="text-sm text-slate-600">
+      {% if project.start_date %}<div><i class="fa-solid fa-flag-checkered fa-fw text-slate-400"></i> Début : {{ project.start_date|date:"d/m/Y" }}</div>{% endif %}
+      {% if project.deadline %}<div><i class="fa-solid fa-hourglass-half fa-fw text-slate-400"></i> Échéance : {{ project.deadline|date:"d/m/Y" }}</div>{% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Infos événement -->
+{% if project.kind == 'EVENT' %}
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 mb-6">
+  <h3 class="font-bold text-slate-900 mb-3"><i class="fa-solid fa-calendar-star text-violet-500"></i> Informations événement</h3>
+  <div class="grid sm:grid-cols-4 gap-4 text-sm">
+    <div><div class="text-slate-400">Date</div><div class="font-medium">{{ project.event_date|date:"d/m/Y"|default:"—" }}</div></div>
+    <div><div class="text-slate-400">Lieu</div><div class="font-medium">{{ project.location|default:"—" }}</div></div>
+    <div><div class="text-slate-400">Participants attendus</div><div class="font-medium">{{ project.attendees_expected|default:"—" }}</div></div>
+    <div><div class="text-slate-400">Participants réels</div><div class="font-medium">{{ project.attendees_actual|default:"—" }}</div></div>
+  </div>
+  {% if project.providers %}<div class="mt-3 text-sm"><div class="text-slate-400">Prestataires</div><p class="text-slate-700 whitespace-pre-line">{{ project.providers }}</p></div>{% endif %}
+</div>
+{% endif %}
+
+<div class="grid lg:grid-cols-3 gap-6">
+  <!-- Phases + Tâches -->
+  <div class="lg:col-span-2 space-y-6">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+      <h3 class="font-bold text-slate-900 mb-4">Phases</h3>
+      <div class="space-y-2">
+        {% for ph in project.phases.all %}
+        <div class="flex items-center justify-between p-3 rounded-xl border border-slate-100">
+          <div class="flex items-center gap-3">
+            <span class="h-7 w-7 rounded-full flex items-center justify-center text-xs {% if ph.status == 'DONE' %}bg-emerald-100 text-emerald-600{% elif ph.status == 'DOING' %}bg-amber-100 text-amber-600{% else %}bg-slate-100 text-slate-400{% endif %}">
+              {% if ph.status == 'DONE' %}<i class="fa-solid fa-check"></i>{% else %}{{ ph.order|add:1 }}{% endif %}</span>
+            <span class="text-sm font-medium text-slate-800">{{ ph.name }}</span>
+          </div>
+          <div class="flex gap-1">
+            <a href="{% url 'projects:phase_set' project.pk ph.pk 'TODO' %}" class="px-2 py-1 rounded text-xs {% if ph.status == 'TODO' %}bg-slate-200{% else %}text-slate-400 hover:bg-slate-100{% endif %}">À faire</a>
+            <a href="{% url 'projects:phase_set' project.pk ph.pk 'DOING' %}" class="px-2 py-1 rounded text-xs {% if ph.status == 'DOING' %}bg-amber-100 text-amber-700{% else %}text-slate-400 hover:bg-slate-100{% endif %}">En cours</a>
+            <a href="{% url 'projects:phase_set' project.pk ph.pk 'DONE' %}" class="px-2 py-1 rounded text-xs {% if ph.status == 'DONE' %}bg-emerald-100 text-emerald-700{% else %}text-slate-400 hover:bg-slate-100{% endif %}">Terminée</a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+      <div class="flex items-center justify-between mb-4"><h3 class="font-bold text-slate-900">Tâches</h3>
+        <a href="{% url 'tasks:create' %}" class="text-sm text-lpm hover:underline">+ Tâche</a></div>
+      <div class="space-y-2">
+        {% for t in project.tasks.all %}
+        <a href="{% url 'tasks:detail' t.pk %}" class="flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 text-sm">
+          <span class="text-slate-700">{{ t.title }}</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">{{ t.get_status_display }}</span>
+        </a>
+        {% empty %}<p class="text-sm text-slate-400">Aucune tâche liée.</p>{% endfor %}
+      </div>
+    </div>
+
+    <!-- Rapport terrain / médias -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+      <h3 class="font-bold text-slate-900 mb-4">Rapport terrain & médias</h3>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+        {% for m in project.media.all %}
+        <div class="rounded-xl border border-slate-100 overflow-hidden">
+          {% if m.is_image %}<a href="{{ m.file.url }}" target="_blank"><img src="{{ m.file.url }}" class="w-full h-24 object-cover"></a>
+          {% elif m.is_video %}<video src="{{ m.file.url }}" class="w-full h-24 object-cover bg-black" controls></video>
+          {% else %}<a href="{{ m.file.url }}" class="flex items-center justify-center h-24 bg-slate-50 text-slate-400"><i class="fa-solid fa-file text-2xl"></i></a>{% endif %}
+          {% if m.caption %}<div class="px-2 py-1 text-[11px] text-slate-500 truncate">{{ m.caption }}</div>{% endif %}
+        </div>
+        {% empty %}<p class="text-sm text-slate-400 col-span-full">Aucun média.</p>{% endfor %}
+      </div>
+      <form method="post" action="{% url 'projects:media_upload' project.pk %}" enctype="multipart/form-data" class="border-t pt-4 flex flex-wrap gap-2 items-end">{% csrf_token %}
+        <div class="flex-1 min-w-40">{{ media_form.file }}</div>
+        <div class="flex-1 min-w-40">{{ media_form.caption }}</div>
+        <button class="lpm-gradient text-white px-4 py-2 rounded-lg text-sm font-medium">Ajouter</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Équipe -->
+  <div class="space-y-6">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+      <h3 class="font-bold text-slate-900 mb-4">Équipe</h3>
+      {% if project.manager %}
+      <div class="flex items-center gap-3 mb-3 pb-3 border-b">
+        <span class="h-9 w-9 rounded-full lpm-gradient text-white text-xs font-bold flex items-center justify-center">{{ project.manager.display_initials }}</span>
+        <div><div class="text-sm font-medium text-slate-800">{{ project.manager.get_full_name }}</div><div class="text-xs text-lpm">Chef de projet</div></div>
+      </div>
+      {% endif %}
+      <div class="space-y-2">
+        {% for m in project.team.all %}
+        <div class="flex items-center gap-3">
+          <span class="h-8 w-8 rounded-full bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center">{{ m.display_initials }}</span>
+          <div><div class="text-sm text-slate-700">{{ m.get_full_name|default:m.username }}</div><div class="text-xs text-slate-400">{{ m.get_role_display }}</div></div>
+        </div>
+        {% empty %}<p class="text-sm text-slate-400">Aucun membre.</p>{% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

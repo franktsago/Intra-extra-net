@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Demande de congé{% endblock %}
+{% block page_title %}Demande de congé{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <a href="{% if is_owner %}{% url 'conges:my' %}{% else %}{% url 'conges:queue' %}{% endif %}" class="text-sm text-lpm hover:underline">← Retour</a>
+  <div class="bg-white rounded-xl shadow-card p-6 mt-3">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-bold text-slate-800">{{ leave.employee.full_name }}</h2>
+      <span class="px-3 py-1 rounded-full text-xs font-medium bg-{{ leave.status_color }}-100 text-{{ leave.status_color }}-700">{{ leave.get_status_display }}</span>
+    </div>
+    <div class="grid sm:grid-cols-2 gap-4 mt-5 text-sm">
+      <div><div class="text-slate-400">Type</div><div class="font-medium text-slate-800">{{ leave.leave_type.name }}</div></div>
+      <div><div class="text-slate-400">Jours ouvrables</div><div class="font-medium text-slate-800">{{ leave.days_count }}</div></div>
+      <div><div class="text-slate-400">Du</div><div class="font-medium text-slate-800">{{ leave.start_date|date:"d/m/Y" }}</div></div>
+      <div><div class="text-slate-400">Au</div><div class="font-medium text-slate-800">{{ leave.end_date|date:"d/m/Y" }}</div></div>
+    </div>
+    {% if leave.reason %}<div class="mt-4 text-sm"><div class="text-slate-400">Motif</div><p class="text-slate-700">{{ leave.reason }}</p></div>{% endif %}
+
+    <!-- Suivi du workflow : niveaux de validation (dynamiques selon le rôle) -->
+    <div class="mt-6 pt-5 border-t">
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Circuit de validation</div>
+      <div class="space-y-3">
+        <div class="flex items-start gap-3 text-sm">
+          <span class="h-6 w-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs flex-shrink-0"><i class="fa-solid fa-check"></i></span>
+          <span class="text-slate-600"><strong>Demande</strong> — soumise par {{ leave.employee.full_name }} le {{ leave.created_at|date:"d/m/Y H:i" }}</span>
+        </div>
+        {% for step in steps %}
+        <div class="flex items-start gap-3 text-sm">
+          <span class="h-6 w-6 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0
+            {% if step.approval and step.approval.approved %}bg-emerald-100 text-emerald-600
+            {% elif step.approval and not step.approval.approved %}bg-red-100 text-red-600
+            {% elif step.is_current %}bg-amber-100 text-amber-600
+            {% else %}bg-slate-100 text-slate-400{% endif %}">
+            {% if step.approval and step.approval.approved %}<i class="fa-solid fa-check"></i>
+            {% elif step.approval %}<i class="fa-solid fa-xmark"></i>
+            {% else %}{{ step.index }}{% endif %}
+          </span>
+          <span class="text-slate-600">
+            <strong>Niveau {{ step.index }} — {{ step.label }}</strong>
+            {% if step.approval %}
+              {% if step.approval.approved %}: validé{% else %}: refusé{% endif %}
+              par {{ step.approval.approver.get_full_name|default:"—" }}
+              {% if step.approval.comment %} (« {{ step.approval.comment }} »){% endif %}
+              <span class="text-xs text-slate-400">· {{ step.approval.decided_at|date:"d/m/Y H:i" }}</span>
+            {% elif step.is_current %}: <span class="text-amber-600 font-medium">en attente de décision</span>
+            {% else %}: à venir{% endif %}
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if leave.status == 'APPROVED' %}
+    <div class="mt-6 bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between gap-3">
+      <div class="text-sm text-emerald-800">
+        <div class="font-semibold"><i class="fa-solid fa-file-circle-check"></i> Note de congé officielle disponible</div>
+        <div class="text-xs">Référence : <strong>{{ leave.reference }}</strong> · sur papier en-tête LPM</div>
+      </div>
+      <a href="{% url 'conges:pdf' leave.pk %}" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2.5 rounded-xl shadow-sm whitespace-nowrap"><i class="fa-solid fa-download mr-1"></i> Télécharger (PDF)</a>
+    </div>
+    {% endif %}
+
+    <div class="mt-6 flex gap-3">
+      {% if can_decide %}<a href="{% url 'conges:decide' leave.pk %}" class="lpm-gradient text-white font-semibold px-5 py-2.5 rounded-lg shadow">Traiter la demande</a>{% endif %}
+      {% if is_owner and not leave.is_final %}
+      <form method="post" action="{% url 'conges:cancel' leave.pk %}">{% csrf_token %}
+        <button class="px-5 py-2.5 rounded-lg border border-red-300 text-red-600">Annuler ma demande</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

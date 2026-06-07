@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ article.title }}{% endblock %}
+{% block page_title %}Actualité{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <a href="{% url 'communication:list' %}" class="text-sm text-lpm hover:underline">← Toutes les actualités</a>
+  <article class="bg-white rounded-xl shadow-card overflow-hidden mt-3">
+    {% if article.image %}<img src="{{ article.image.url }}" class="w-full max-h-80 object-cover">{% endif %}
+    <div class="p-6 sm:p-8">
+      <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-lpm/10 text-lpm">{{ article.get_category_display }}</span>
+      <h1 class="text-2xl font-extrabold text-slate-800 mt-3">{{ article.title }}</h1>
+      <p class="text-sm text-slate-400 mt-1">Par {{ article.author.get_full_name|default:"LPM" }} · {{ article.created_at|date:"d F Y à H:i" }}</p>
+      {% if user.is_rh %}
+      <div class="flex items-center gap-4 mt-1">
+        <a href="{% url 'communication:edit' article.pk %}" class="text-sm text-lpm hover:underline"><i class="fa-solid fa-pen"></i> Modifier</a>
+        <a href="{% url 'communication:delete' article.pk %}" class="text-sm text-red-600 hover:underline"><i class="fa-solid fa-trash"></i> Supprimer</a>
+      </div>
+      {% endif %}
+      <div class="prose prose-slate max-w-none mt-5 text-slate-700 whitespace-pre-line leading-relaxed">{{ article.content }}</div>
+    </div>
+  </article>
+
+  <div class="bg-white rounded-xl shadow-card p-6 mt-5">
+    <h3 class="font-bold text-slate-800 mb-4"><i class="fa-solid fa-comments"></i> Commentaires ({{ comments|length }})</h3>
+    <form method="post" class="flex gap-3 mb-5">{% csrf_token %}
+      <span class="h-9 w-9 rounded-full lpm-gradient text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{{ user.display_initials }}</span>
+      <div class="flex-1">{{ form.body }}<button class="mt-2 lpm-gradient text-white px-4 py-1.5 rounded-lg text-sm font-medium">Publier</button></div>
+    </form>
+    <div class="space-y-4">
+      {% for c in comments %}
+      <div class="flex gap-3">
+        <span class="h-9 w-9 rounded-full bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center flex-shrink-0">{{ c.author.display_initials }}</span>
+        <div class="bg-slate-50 rounded-lg px-4 py-2 flex-1">
+          <div class="text-sm"><span class="font-medium text-slate-800">{{ c.author.get_full_name|default:c.author.username }}</span>
+          <span class="text-xs text-slate-400"> · {{ c.created_at|timesince }}</span></div>
+          <p class="text-sm text-slate-600 mt-1">{{ c.body }}</p>
+        </div>
+      </div>
+      {% empty %}<p class="text-sm text-slate-400">Soyez le premier à commenter.</p>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

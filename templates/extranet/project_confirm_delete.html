@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Supprimer le projet{% endblock %}
+{% block page_title %}Supprimer le projet{% endblock %}
+{% block content %}
+<div class="max-w-lg mx-auto bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+  <div class="flex items-start gap-3">
+    <span class="h-11 w-11 rounded-xl bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-triangle-exclamation text-lg"></i></span>
+    <div>
+      <h2 class="font-bold text-slate-900">Confirmer la suppression</h2>
+      <p class="text-sm text-slate-500 mt-1">Le projet <strong>« {{ project.name }} »</strong> et tous ses fichiers et messages seront définitivement supprimés. Cette action est irréversible.</p>
+    </div>
+  </div>
+  <form method="post" class="mt-6 flex gap-3">{% csrf_token %}
+    <button class="bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow-sm"><i class="fa-solid fa-trash mr-1"></i> Supprimer définitivement</button>
+    <a href="{% url 'extranet:project' project.pk %}" class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600">Annuler</a>
+  </form>
+</div>
+{% endblock %}

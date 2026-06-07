@@ -1,0 +1,45 @@
+{% comment %}Rendu d'un formset de lignes (designation, quantity, unit_price). Variable: formset{% endcomment %}
+{{ formset.management_form }}
+<div class="overflow-x-auto">
+  <table class="w-full text-sm" id="lines-table">
+    <thead class="bg-slate-50 text-slate-500 text-left">
+      <tr><th class="px-3 py-2">Désignation</th><th class="px-3 py-2 w-24">Quantité</th><th class="px-3 py-2 w-36">P.U. (FCFA)</th><th class="px-3 py-2 w-10"></th></tr>
+    </thead>
+    <tbody id="lines-body">
+      {% for f in formset %}
+      <tr class="line-row border-t border-slate-100">
+        {{ f.id }}
+        <td class="px-2 py-1.5">{{ f.designation }}</td>
+        <td class="px-2 py-1.5">{{ f.quantity }}</td>
+        <td class="px-2 py-1.5">{{ f.unit_price }}</td>
+        <td class="px-2 py-1.5 text-center">{% if f.instance.pk %}{{ f.DELETE }}{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<button type="button" onclick="addLine()" class="mt-2 text-sm text-lpm hover:underline"><i class="fa-solid fa-plus"></i> Ajouter une ligne</button>
+
+<template id="empty-line">
+  <tr class="line-row border-t border-slate-100">
+    {{ formset.empty_form.id }}
+    <td class="px-2 py-1.5">{{ formset.empty_form.designation }}</td>
+    <td class="px-2 py-1.5">{{ formset.empty_form.quantity }}</td>
+    <td class="px-2 py-1.5">{{ formset.empty_form.unit_price }}</td>
+    <td></td>
+  </tr>
+</template>
+<script>
+  function addLine(){
+    var total=document.getElementById('id_{{ formset.prefix }}-TOTAL_FORMS');
+    var idx=parseInt(total.value);
+    var html=document.getElementById('empty-line').innerHTML.replace(/__prefix__/g, idx);
+    var tr=document.createElement('tr'); tr.className='line-row border-t border-slate-100'; tr.innerHTML=html;
+    document.getElementById('lines-body').appendChild(tr);
+    total.value=idx+1;
+  }
+  // Styliser les champs générés
+  document.querySelectorAll('#lines-table input').forEach(function(i){
+    if(i.type!=='checkbox' && i.type!=='hidden'){ i.className='w-full rounded-lg border border-slate-300 px-2 py-1.5'; }
+  });
+</script>

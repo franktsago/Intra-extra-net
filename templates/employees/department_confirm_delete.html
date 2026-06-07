@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Supprimer le département{% endblock %}
+{% block page_title %}Supprimer le département{% endblock %}
+{% block content %}
+<div class="max-w-lg mx-auto bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+  <div class="flex items-start gap-3">
+    <span class="h-11 w-11 rounded-xl bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-triangle-exclamation text-lg"></i></span>
+    <div><h2 class="font-bold text-slate-900">Confirmer la suppression</h2>
+    <p class="text-sm text-slate-500 mt-1">Le département <strong>« {{ department.name }} »</strong> sera définitivement supprimé.</p>
+    {% if department.headcount %}<p class="text-sm text-amber-600 mt-2"><i class="fa-solid fa-circle-info"></i> {{ department.headcount }} employé(s) y sont rattachés : ils ne seront pas supprimés mais perdront leur rattachement.</p>{% endif %}
+    {% if department.positions.exists %}<p class="text-sm text-amber-600 mt-1"><i class="fa-solid fa-circle-info"></i> Les postes liés à ce département seront aussi supprimés.</p>{% endif %}
+    </div>
+  </div>
+  <div class="mt-6 flex gap-3">
+    <form method="post">{% csrf_token %}
+      <button class="bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow-sm"><i class="fa-solid fa-trash mr-1"></i> Supprimer</button>
+    </form>
+    <a href="{% url 'employees:departments' %}" class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600">Annuler</a>
+  </div>
+</div>
+{% endblock %}

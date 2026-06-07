@@ -1,0 +1,52 @@
+{% extends user.is_external|yesno:"base_extranet.html,base.html" %}
+{% block title %}Suivi des projets{% endblock %}
+{% block page_title %}Suivi des projets{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-slate-900 mb-1">Mes projets</h1>
+<p class="text-slate-500 mb-6">Suivez l'avancement de chacun de vos projets en temps réel.</p>
+
+<div class="space-y-5">
+  {% for p in projects %}
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <a href="{% url 'extranet:project' p.pk %}" class="text-lg font-bold text-slate-900 hover:text-lpm">{{ p.name }}</a>
+        <p class="text-sm text-slate-500">{{ p.reference|default:"" }}{% if p.internal_lead %} · Chargé de compte : {{ p.internal_lead.get_full_name|default:p.internal_lead.username }}{% endif %}</p>
+      </div>
+      <span class="px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 {% if p.status == 'DONE' %}bg-emerald-50 text-emerald-600{% elif p.status == 'ACTIVE' %}bg-blue-50 text-blue-600{% elif p.status == 'ON_HOLD' %}bg-amber-50 text-amber-600{% else %}bg-slate-100 text-slate-500{% endif %}">{{ p.get_status_display }}</span>
+    </div>
+
+    <!-- Barre d'avancement -->
+    <div class="mt-4">
+      <div class="flex justify-between text-xs text-slate-400 mb-1"><span>Avancement</span><span>{{ p.progress }}%</span></div>
+      <div class="h-2.5 rounded-full bg-slate-100 overflow-hidden"><div class="h-full lpm-gradient" style="width: {{ p.progress }}%"></div></div>
+    </div>
+
+    <!-- Frise des statuts -->
+    <div class="mt-5 flex items-center justify-between">
+      {% for s in status_order %}
+      <div class="flex flex-col items-center flex-1 relative">
+        {% if not forloop.first %}<div class="absolute top-2.5 right-1/2 w-full h-0.5 {% if p.status == 'DONE' or s == 'ACTIVE' and p.status == 'ACTIVE' %}bg-lpm{% else %}bg-slate-200{% endif %}"></div>{% endif %}
+        <span class="relative z-10 h-5 w-5 rounded-full flex items-center justify-center text-[9px] text-white
+          {% if s == p.status %}lpm-gradient{% elif p.status == 'DONE' %}bg-emerald-500{% else %}bg-slate-300{% endif %}">
+          {% if s == p.status %}<i class="fa-solid fa-circle text-[7px]"></i>{% elif p.status == 'DONE' %}<i class="fa-solid fa-check"></i>{% endif %}
+        </span>
+        <span class="text-[10px] text-slate-500 mt-1 text-center">{% if s == 'PENDING' %}À démarrer{% elif s == 'ACTIVE' %}En cours{% elif s == 'ON_HOLD' %}En pause{% else %}Terminé{% endif %}</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="mt-5 flex flex-wrap items-center gap-4 text-sm text-slate-500 border-t border-slate-100 pt-4">
+      <span><i class="fa-regular fa-calendar text-slate-400"></i> Début : {{ p.start_date|date:"d/m/Y"|default:"—" }}</span>
+      <span><i class="fa-solid fa-flag-checkered text-slate-400"></i> Échéance : {{ p.deadline|date:"d/m/Y"|default:"—" }}</span>
+      <span><i class="fa-solid fa-paperclip text-slate-400"></i> {{ p.files.count }} fichier(s)</span>
+      <a href="{% url 'extranet:project' p.pk %}" class="ml-auto text-lpm font-medium hover:underline">Ouvrir l'espace projet →</a>
+    </div>
+  </div>
+  {% empty %}
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-12 text-center text-slate-400">
+    <i class="fa-solid fa-briefcase text-4xl"></i><p class="mt-3">Aucun projet pour le moment.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

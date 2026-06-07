@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Documents{% endblock %}
+{% block page_title %}Gestion documentaire{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-center gap-3 mb-5">
+  <form class="flex gap-2 flex-1 min-w-64">
+    <input name="q" value="{{ q }}" placeholder="Rechercher un document…" class="flex-1 rounded-lg border border-slate-300 px-3 py-2">
+    <select name="cat" class="rounded-lg border border-slate-300 px-3 py-2">
+      <option value="">Toutes catégories</option>
+      {% for c in categories %}<option value="{{ c.id }}" {% if cat == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+    </select>
+    <button class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium">Filtrer</button>
+  </form>
+  <a href="?archived={% if show_archived %}0{% else %}1{% endif %}" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 font-medium">{% if show_archived %}<i class="fa-solid fa-folder-open"></i> Actifs{% else %}<i class="fa-solid fa-box-archive"></i> Archives{% endif %}</a>
+  {% if user.is_manager %}<a href="{% url 'documents:upload' %}" class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium shadow">+ Déposer</a>{% endif %}
+</div>
+
+<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  {% for d in page_obj %}
+  <div class="bg-white rounded-xl shadow-card p-5">
+    <div class="flex items-start gap-3">
+      <span class="h-12 w-12 rounded-lg bg-lpm/10 text-lpm flex items-center justify-center text-lg font-bold uppercase">{{ d.extension|default:"?" }}</span>
+      <div class="min-w-0 flex-1">
+        <h3 class="font-semibold text-slate-800 truncate">{{ d.title }}
+          {% if d.is_confidential %}<i class="fa-solid fa-lock text-red-500 text-xs ml-1" title="Confidentiel"></i>{% endif %}</h3>
+        <p class="text-xs text-slate-400">{{ d.category.name|default:"Sans catégorie" }} · {{ d.created_at|date:"d/m/Y" }}</p>
+      </div>
+    </div>
+    {% if d.description %}<p class="text-sm text-slate-500 mt-3 line-clamp-2">{{ d.description }}</p>{% endif %}
+    <div class="mt-4 flex items-center justify-between">
+      <span class="text-xs text-slate-400">{% if d.is_confidential %}<i class="fa-solid fa-lock text-red-400"></i> Confidentiel{% else %}<i class="fa-solid fa-download"></i> {{ d.download_count }}{% endif %} · {{ d.get_visibility_display }}</span>
+      <div class="flex gap-3">
+        <a href="{% url 'documents:view' d.pk %}" class="text-sm font-medium text-lpm hover:underline"><i class="fa-solid fa-book-open"></i> Lire</a>
+        {% if not d.is_confidential %}<a href="{% url 'documents:download' d.pk %}" class="text-sm font-medium text-slate-600 hover:text-lpm">Télécharger</a>{% endif %}
+        {% if user.is_manager and not d.is_confidential or user.is_rh %}
+        <a href="{% url 'documents:archive' d.pk %}" class="text-sm text-slate-400 hover:text-slate-600">{% if d.is_archived %}Désarchiver{% else %}Archiver{% endif %}</a>
+        <a href="{% url 'documents:delete' d.pk %}" class="text-sm text-red-400 hover:text-red-600" title="Supprimer"><i class="fa-solid fa-trash"></i></a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% empty %}<p class="text-slate-400 col-span-full text-center py-10">Aucun document.</p>{% endfor %}
+</div>
+{% include "includes/pagination.html" %}
+{% endblock %}

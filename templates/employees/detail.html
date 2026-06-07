@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}{{ employee.full_name }}{% endblock %}
+{% block page_title %}Fiche employé{% endblock %}
+{% block content %}
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="bg-white rounded-xl shadow-card p-6 text-center">
+    {% if employee.user.avatar %}<img src="{{ employee.user.avatar.url }}" class="h-28 w-28 rounded-full object-cover mx-auto">
+    {% else %}<div class="h-28 w-28 rounded-full lpm-gradient text-white text-3xl font-bold flex items-center justify-center mx-auto">{{ employee.user.display_initials }}</div>{% endif %}
+    <h2 class="mt-4 text-xl font-bold text-slate-800">{{ employee.full_name }}</h2>
+    <p class="text-slate-500">{{ employee.position_titles|default:"—" }}</p>
+    <span class="inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium bg-lpm/10 text-lpm">{{ employee.get_status_display }}</span>
+    <div class="mt-4 pt-4 border-t text-left space-y-2 text-sm">
+      <div class="flex justify-between"><span class="text-slate-400"><i class="fa-solid fa-envelope"></i> Email</span><span class="text-slate-700">{{ employee.email|default:"—" }}</span></div>
+      <div class="flex justify-between"><span class="text-slate-400"><i class="fa-solid fa-phone"></i> Tél.</span><span class="text-slate-700">{{ employee.phone|default:"—" }}</span></div>
+      <div class="flex justify-between"><span class="text-slate-400"><i class="fa-solid fa-city"></i> Ville</span><span class="text-slate-700">{{ employee.city|default:"—" }}</span></div>
+    </div>
+    {% if user.is_rh %}<a href="{% url 'employees:edit' employee.pk %}" class="block mt-4 lpm-gradient text-white font-medium py-2 rounded-lg">Modifier la fiche</a>{% endif %}
+  </div>
+
+  <div class="lg:col-span-2 space-y-6">
+    <div class="bg-white rounded-xl shadow-card p-6">
+      <h3 class="font-bold text-slate-800 mb-4">Informations professionnelles</h3>
+      <div class="grid sm:grid-cols-2 gap-4 text-sm">
+        <div><div class="text-slate-400">Matricule</div><div class="font-medium text-slate-800">{{ employee.matricule }}</div></div>
+        <div><div class="text-slate-400">Département(s)</div><div class="font-medium text-slate-800">{{ employee.department_names|default:"—" }}</div></div>
+        <div><div class="text-slate-400">Type de contrat</div><div class="font-medium text-slate-800">{{ employee.get_contract_type_display }}</div></div>
+        <div><div class="text-slate-400">Date d'embauche</div><div class="font-medium text-slate-800">{{ employee.hire_date|date:"d/m/Y" }}</div></div>
+        <div><div class="text-slate-400">Ancienneté</div><div class="font-medium text-slate-800">{{ employee.seniority_years }} an(s)</div></div>
+        <div><div class="text-slate-400">Responsable</div><div class="font-medium text-slate-800">{{ employee.manager.full_name|default:"—" }}</div></div>
+        {% if user.is_rh %}<div><div class="text-slate-400">N° CNPS</div><div class="font-medium text-slate-800">{{ employee.cnps_number|default:"—" }}</div></div>{% endif %}
+        {% if user.is_rh %}
+        <div class="sm:col-span-2 pt-3 mt-1 border-t border-slate-100">
+          <div class="text-slate-400"><i class="fa-solid fa-phone-volume text-lpm/70 mr-1"></i> Personne(s) à contacter en cas d'urgence</div>
+          <div class="font-medium text-slate-800 mt-1">{{ employee.emergency_contact|default:"—" }}{% if employee.emergency_contact_phone %} — <span class="text-slate-600">{{ employee.emergency_contact_phone }}</span>{% endif %}</div>
+          {% if employee.emergency_contact2 or employee.emergency_contact2_phone %}
+          <div class="text-slate-700 mt-1">{{ employee.emergency_contact2|default:"—" }}{% if employee.emergency_contact2_phone %} — <span class="text-slate-500">{{ employee.emergency_contact2_phone }}</span>{% endif %}</div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if user.is_rh %}
+    <div class="bg-white rounded-xl shadow-card p-6">
+      <h3 class="font-bold text-slate-800 mb-4"><i class="fa-solid fa-folder-open text-lpm mr-1"></i> Documents</h3>
+      <div class="flex flex-wrap gap-3">
+        {% if employee.is_intern %}
+        <span class="inline-flex items-center gap-2 bg-slate-50 text-slate-300 px-4 py-2 rounded-lg text-sm cursor-not-allowed" title="Réservée aux salariés (CDI/CDD/Temporaire)"><i class="fa-solid fa-file-arrow-down"></i> Attestation de travail</span>
+        <a href="{% url 'employees:attestation_stage' employee.pk %}" class="inline-flex items-center gap-2 bg-lpm/10 text-lpm hover:bg-lpm/20 px-4 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-file-arrow-down"></i> Attestation de stage</a>
+        {% else %}
+        <a href="{% url 'employees:attestation_travail' employee.pk %}" class="inline-flex items-center gap-2 bg-lpm/10 text-lpm hover:bg-lpm/20 px-4 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-file-arrow-down"></i> Attestation de travail</a>
+        <span class="inline-flex items-center gap-2 bg-slate-50 text-slate-300 px-4 py-2 rounded-lg text-sm cursor-not-allowed" title="Réservée aux stagiaires"><i class="fa-solid fa-file-arrow-down"></i> Attestation de stage</span>
+        {% endif %}
+        {% if latest_contract %}
+        <a href="{% url 'hr:contract_generate' latest_contract.pk %}" class="inline-flex items-center gap-2 bg-lpm/10 text-lpm hover:bg-lpm/20 px-4 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-file-pen"></i> Contrat de travail ({{ latest_contract.get_type_display }})</a>
+        {% endif %}
+        {% if has_contract_file %}
+        <a href="{% url 'employees:contract_download' employee.pk %}" class="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-file-contract"></i> Contrat signé (téléversé)</a>
+        {% endif %}
+        {% if not latest_contract and not has_contract_file %}
+        <span class="inline-flex items-center gap-2 bg-slate-50 text-slate-400 px-4 py-2 rounded-lg text-sm" title="Aucun contrat enregistré"><i class="fa-solid fa-file-contract"></i> Aucun contrat</span>
+        {% endif %}
+      </div>
+      <p class="text-xs text-slate-400 mt-3">Attestations générées sur papier en-tête, signées et cachetées automatiquement.</p>
+    </div>
+    {% endif %}
+
+    {% if subordinates %}
+    <div class="bg-white rounded-xl shadow-card p-6">
+      <h3 class="font-bold text-slate-800 mb-4">Équipe ({{ subordinates|length }})</h3>
+      <div class="grid sm:grid-cols-2 gap-3">
+        {% for s in subordinates %}
+        <a href="{% url 'employees:detail' s.pk %}" class="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50">
+          <span class="h-9 w-9 rounded-full lpm-gradient text-white text-xs font-bold flex items-center justify-center">{{ s.user.display_initials }}</span>
+          <div><div class="text-sm font-medium text-slate-800">{{ s.full_name }}</div><div class="text-xs text-slate-400">{{ s.position_titles }}</div></div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

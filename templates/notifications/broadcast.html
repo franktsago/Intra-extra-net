@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Diffuser une annonce{% endblock %}
+{% block page_title %}Diffuser une annonce{% endblock %}
+{% block content %}
+<div class="max-w-2xl">
+  <p class="text-slate-500 mb-6">
+    Envoyez une notification (et un e-mail) au <strong>personnel</strong>, aux <strong>clients & partenaires</strong>,
+    ou aux deux. Le périmètre intranet/extranet de chaque destinataire est appliqué automatiquement.
+  </p>
+
+  <form method="post" class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 space-y-5">
+    {% csrf_token %}
+
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.title.label }}</label>
+      {{ form.title }}
+      {% if form.title.errors %}<p class="text-xs text-red-600 mt-1">{{ form.title.errors|join:" " }}</p>{% endif %}
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.message.label }}</label>
+      {{ form.message }}
+      {% if form.message.errors %}<p class="text-xs text-red-600 mt-1">{{ form.message.errors|join:" " }}</p>{% endif %}
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-2">{{ form.target.label }}</label>
+      <div class="grid sm:grid-cols-3 gap-2">
+        {% for r in form.target %}
+        <label class="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2.5 cursor-pointer hover:border-lpm has-[:checked]:border-lpm has-[:checked]:bg-lpm/5 text-sm">
+          {{ r.tag }} <span>{{ r.choice_label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.level.label }}</label>
+        {{ form.level }}
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">{{ form.url.label }}</label>
+        {{ form.url }}
+      </div>
+    </div>
+
+    <details class="border border-slate-200 rounded-xl p-3">
+      <summary class="text-sm font-medium text-slate-700 cursor-pointer">{{ form.roles.label }}</summary>
+      <div class="grid sm:grid-cols-2 gap-1.5 mt-3 text-sm">
+        {% for c in form.roles %}<label class="flex items-center gap-2">{{ c.tag }} {{ c.choice_label }}</label>{% endfor %}
+      </div>
+      <p class="text-xs text-slate-400 mt-2">{{ form.roles.help_text }}</p>
+    </details>
+
+    <div class="flex items-center gap-3 pt-2 border-t border-slate-100">
+      <button class="lpm-gradient text-white font-semibold px-5 py-2.5 rounded-lg shadow"><i class="fa-solid fa-paper-plane mr-1"></i> Diffuser</button>
+      <a href="{% url 'notifications:list' %}" class="text-sm text-slate-500 hover:underline">Annuler</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

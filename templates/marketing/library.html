@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Médiathèque{% endblock %}
+{% block page_title %}Médiathèque{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-center gap-3 mb-5">
+  <form class="flex gap-2 flex-wrap">
+    <select name="kind" class="rounded-lg border border-slate-300 px-3 py-2">
+      <option value="">Tous types</option>
+      {% for v,l in kinds %}<option value="{{ v }}" {% if kind == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+    </select>
+    <select name="brand" class="rounded-lg border border-slate-300 px-3 py-2">
+      <option value="">Toutes marques</option>
+      {% for b in brands %}<option value="{{ b.id }}" {% if brand == b.id|stringformat:'s' %}selected{% endif %}>{{ b.name }}</option>{% endfor %}
+    </select>
+    <button class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium">Filtrer</button>
+  </form>
+</div>
+
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 mb-6">
+  <form method="post" action="{% url 'marketing:media_upload' %}" enctype="multipart/form-data" class="grid sm:grid-cols-4 gap-3 items-end">{% csrf_token %}
+    <div>{{ form.title.label_tag }}{{ form.title }}</div>
+    <div>{{ form.brand.label_tag }}{{ form.brand }}</div>
+    <div>{{ form.kind.label_tag }}{{ form.kind }}</div>
+    <div>{{ form.file }}<button class="mt-2 w-full lpm-gradient text-white py-2 rounded-lg text-sm font-medium">Ajouter</button></div>
+  </form>
+</div>
+
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+  {% for a in assets %}
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden">
+    {% if a.is_image %}<a href="{{ a.file.url }}" target="_blank"><img src="{{ a.file.url }}" class="w-full h-32 object-cover"></a>
+    {% elif a.is_video %}<video src="{{ a.file.url }}" class="w-full h-32 object-cover bg-black" controls></video>
+    {% else %}<a href="{{ a.file.url }}" class="flex items-center justify-center h-32 bg-slate-50 text-slate-400"><i class="fa-solid fa-file text-3xl"></i></a>{% endif %}
+    <div class="p-3">
+      <div class="text-sm font-medium text-slate-800 truncate">{{ a.title }}</div>
+      <div class="text-xs text-slate-400">{{ a.get_kind_display }}{% if a.brand %} · {{ a.brand.name }}{% endif %}</div>
+      <a href="{{ a.file.url }}" download class="text-xs text-lpm hover:underline"><i class="fa-solid fa-download"></i> Télécharger</a>
+    </div>
+  </div>
+  {% empty %}<p class="text-slate-400 col-span-full text-center py-10">Aucun média.</p>{% endfor %}
+</div>
+{% endblock %}

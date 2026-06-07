@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Demande de congé{% endblock %}
+{% block page_title %}Nouvelle demande de congé{% endblock %}
+{% block content %}
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 bg-white rounded-xl shadow-card p-6">
+    <form method="post">{% csrf_token %}
+      {% include "includes/form.html" %}
+      <div class="mt-6 flex gap-3">
+        <button class="lpm-gradient text-white font-semibold px-5 py-2.5 rounded-lg shadow">Soumettre la demande</button>
+        <a href="{% url 'conges:my' %}" class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600">Annuler</a>
+      </div>
+    </form>
+  </div>
+  <div class="space-y-4">
+    <div class="lpm-gradient text-white rounded-xl p-5 text-center">
+      <div class="text-white/80 text-sm">Solde actuel</div>
+      <div class="text-3xl font-extrabold">{{ balance }} j</div>
+    </div>
+    <div class="bg-white rounded-xl shadow-card p-5 text-sm text-slate-600">
+      <h4 class="font-semibold text-slate-800 mb-2"><i class="fa-solid fa-circle-info"></i> Bon à savoir</h4>
+      <ul class="space-y-1.5 list-disc pl-4">
+        <li>Le décompte se fait en <strong>jours ouvrables</strong> (hors dimanches et jours fériés).</li>
+        <li>Votre <strong>responsable</strong> valide en premier, puis le <strong>RH</strong> entérine.</li>
+        <li>Droit annuel : 1,5 j/mois soit 18 j/an (+ majorations d'ancienneté).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

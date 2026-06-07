@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% load humanize static %}
+{% block title %}Direction Générale{% endblock %}
+{% block content_top %}
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-slate-900">Tableau de bord exécutif</h1>
+  <p class="text-slate-500 mt-0.5">Direction Générale — pilotage de la performance ({{ month_label }}).</p>
+</div>
+{% endblock %}
+{% block content %}
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+    <div class="flex items-center gap-2 text-slate-500 text-sm"><i class="fa-solid fa-sack-dollar text-blue-500"></i> CA facturé (mois)</div>
+    <div class="text-2xl font-bold text-slate-900 mt-2">{{ ca_mois|intcomma }} <span class="text-sm font-normal text-slate-400">FCFA</span></div>
+  </div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+    <div class="flex items-center gap-2 text-slate-500 text-sm"><i class="fa-solid fa-money-bill-trend-up text-emerald-500"></i> Encaissé (mois)</div>
+    <div class="text-2xl font-bold text-slate-900 mt-2">{{ encaisse_mois|intcomma }} <span class="text-sm font-normal text-slate-400">FCFA</span></div>
+  </div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+    <div class="flex items-center gap-2 text-slate-500 text-sm"><i class="fa-solid fa-hand-holding-dollar text-amber-500"></i> Créances clients</div>
+    <div class="text-2xl font-bold text-slate-900 mt-2">{{ creances|intcomma }} <span class="text-sm font-normal text-slate-400">FCFA</span></div>
+    {% if overdue %}<div class="text-xs text-red-500 mt-1">dont {{ overdue|intcomma }} échus</div>{% endif %}
+  </div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+    <div class="flex items-center gap-2 text-slate-500 text-sm"><i class="fa-solid fa-filter text-violet-500"></i> Pipeline ouvert</div>
+    <div class="text-2xl font-bold text-slate-900 mt-2">{{ pipeline_total|intcomma }} <span class="text-sm font-normal text-slate-400">FCFA</span></div>
+    <div class="text-xs text-slate-400 mt-1">pondéré : {{ pipeline_pondere|intcomma }} FCFA</div>
+  </div>
+</div>
+
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 text-center"><div class="text-2xl font-bold text-slate-900">{{ nb_clients }}</div><div class="text-sm text-slate-500">Clients actifs</div></div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 text-center"><div class="text-2xl font-bold text-slate-900">{{ nb_prospects }}</div><div class="text-sm text-slate-500">Prospects</div></div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 text-center"><div class="text-2xl font-bold text-slate-900">{{ devis_signes }}</div><div class="text-sm text-slate-500">Devis signés</div></div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 text-center"><div class="text-2xl font-bold text-slate-900">{{ devis_envoyes }}</div><div class="text-sm text-slate-500">Devis en attente</div></div>
+</div>
+
+<!-- Évolution CA / encaissements (12 mois) -->
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 mb-6">
+  <h3 class="font-bold text-slate-900 mb-1"><i class="fa-solid fa-chart-line text-lpm mr-1"></i> Évolution sur 12 mois</h3>
+  <p class="text-sm text-slate-400 mb-4">Chiffre d'affaires facturé et encaissements (FCFA).</p>
+  <div style="height:300px"><canvas id="caChart"></canvas></div>
+</div>
+{{ chart_labels|json_script:"ch-labels" }}
+{{ chart_ca|json_script:"ch-ca" }}
+{{ chart_enc|json_script:"ch-enc" }}
+
+<div class="grid lg:grid-cols-2 gap-6">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <h3 class="font-bold text-slate-900 mb-4">Top clients (CA cumulé)</h3>
+    <div class="space-y-3">
+      {% for t in top_clients %}
+      <div class="flex items-center justify-between">
+        <a href="{% url 'business:client_detail' t.client.pk %}" class="text-sm font-medium text-slate-700 hover:text-lpm">{{ t.client.name }}</a>
+        <span class="text-sm font-semibold text-slate-900">{{ t.ca|intcomma }} FCFA</span>
+      </div>
+      {% empty %}<p class="text-sm text-slate-400">Aucune facturation pour l'instant.</p>{% endfor %}
+    </div>
+  </div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <h3 class="font-bold text-slate-900 mb-4">Dernières factures</h3>
+    <div class="divide-y divide-slate-100">
+      {% for i in recent_invoices %}
+      <a href="{% url 'business:invoice_detail' i.pk %}" class="flex items-center justify-between py-2.5 first:pt-0">
+        <div><div class="text-sm font-medium text-slate-800">{{ i.number }}</div><div class="text-xs text-slate-400">{{ i.client.name|default:"—" }}</div></div>
+        <div class="text-right"><div class="text-sm font-semibold">{{ i.total|intcomma }} F</div>
+        <span class="text-[10px] px-2 py-0.5 rounded-full bg-{{ i.status_color }}-50 text-{{ i.status_color }}-600">{{ i.get_status_display }}</span></div>
+      </a>
+      {% empty %}<p class="text-sm text-slate-400">Aucune facture.</p>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'vendor/chart.umd.min.js' %}"></script>
+<script>
+(function(){
+  var el = document.getElementById('caChart');
+  if (!el || typeof Chart === 'undefined') return;
+  var labels = JSON.parse(document.getElementById('ch-labels').textContent);
+  var ca = JSON.parse(document.getElementById('ch-ca').textContent);
+  var enc = JSON.parse(document.getElementById('ch-enc').textContent);
+  var fmt = function(v){ return new Intl.NumberFormat('fr-FR').format(v); };
+  new Chart(el, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'CA facturé', data: ca, borderColor: '#0073DE', backgroundColor: 'rgba(1,150,242,.12)', fill: true, tension: .35, borderWidth: 2, pointRadius: 2 },
+        { label: 'Encaissements', data: enc, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.10)', fill: true, tension: .35, borderWidth: 2, pointRadius: 2 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } },
+        tooltip: { callbacks: { label: function(c){ return c.dataset.label + ' : ' + fmt(c.parsed.y) + ' FCFA'; } } }
+      },
+      scales: { y: { beginAtZero: true, ticks: { callback: function(v){ return fmt(v); } } } }
+    }
+  });
+})();
+</script>
+{% endblock %}

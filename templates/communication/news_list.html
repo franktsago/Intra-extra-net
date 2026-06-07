@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Actualités{% endblock %}
+{% block page_title %}Actualités{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-center gap-3 mb-5">
+  <form class="flex gap-2 flex-1 min-w-64">
+    <input name="q" value="{{ q }}" placeholder="Rechercher…" class="flex-1 rounded-lg border border-slate-300 px-3 py-2">
+    <button class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium">Rechercher</button>
+  </form>
+  {% if user.is_rh %}<a href="{% url 'communication:create' %}" class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium shadow">+ Publier</a>{% endif %}
+</div>
+
+<div class="grid md:grid-cols-2 gap-5">
+  {% for a in page_obj %}
+  <a href="{% url 'communication:detail' a.slug %}" class="bg-white rounded-xl shadow-card overflow-hidden hover:shadow-lg transition flex flex-col">
+    {% if a.image %}<img src="{{ a.image.url }}" class="h-44 w-full object-cover">
+    {% else %}<div class="h-44 lpm-gradient flex items-center justify-center text-white/40 text-5xl"><i class="fa-solid fa-newspaper"></i></div>{% endif %}
+    <div class="p-5 flex-1">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="px-2 py-0.5 rounded-full text-xs font-medium {% if a.category == 'ALERT' %}bg-red-100 text-red-700{% elif a.category == 'RH' %}bg-violet-100 text-violet-700{% elif a.category == 'EVENT' %}bg-amber-100 text-amber-700{% else %}bg-lpm/10 text-lpm{% endif %}">{{ a.get_category_display }}</span>
+        {% if a.is_pinned %}<span class="text-xs text-amber-500"><i class="fa-solid fa-thumbtack"></i> Épinglé</span>{% endif %}
+      </div>
+      <h3 class="font-bold text-slate-800">{{ a.title }}</h3>
+      <p class="text-sm text-slate-500 mt-1 line-clamp-2">{{ a.summary|default:a.content|truncatewords:24 }}</p>
+    </div>
+    <div class="px-5 py-3 border-t text-xs text-slate-400">{{ a.author.get_full_name|default:"LPM" }} · {{ a.created_at|date:"d M Y" }}</div>
+  </a>
+  {% empty %}<p class="text-slate-400 col-span-full text-center py-10">Aucune actualité.</p>{% endfor %}
+</div>
+{% include "includes/pagination.html" %}
+{% endblock %}

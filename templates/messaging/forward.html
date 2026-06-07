@@ -1,0 +1,35 @@
+{% extends user.is_external|yesno:"base_extranet.html,base.html" %}
+{% block title %}Transférer{% endblock %}
+{% block page_title %}Transférer le message{% endblock %}
+{% block content %}
+<div class="max-w-xl mx-auto">
+  <a href="{% url 'messaging:inbox' %}" class="text-sm text-lpm hover:underline">← Messagerie</a>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card mt-3 p-6">
+    {% if preview %}<div class="mb-4 px-3 py-2 bg-slate-100 rounded-lg text-sm text-slate-600 border-l-4 border-lpm"><i class="fa-solid fa-share mr-1 text-lpm"></i> {{ preview }}</div>{% endif %}
+    <form method="post">{% csrf_token %}
+      <p class="text-sm font-medium text-slate-700 mb-2">Transférer à :</p>
+      <div class="max-h-80 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
+        {% for g in groups %}
+        <label class="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 cursor-pointer">
+          <input type="radio" name="target" value="g{{ g.pk }}" class="!w-auto" required>
+          <span class="h-8 w-8 rounded-full flex items-center justify-center {% if g.is_general %}lpm-gradient text-white{% else %}bg-slate-200 text-slate-600{% endif %}"><i class="fa-solid {% if g.is_general %}fa-bullhorn{% else %}fa-user-group{% endif %} text-xs"></i></span>
+          <span class="text-sm text-slate-800">{{ g.name }}</span>
+        </label>
+        {% endfor %}
+        {% for u in people %}
+        <label class="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 cursor-pointer">
+          <input type="radio" name="target" value="u{{ u.pk }}" class="!w-auto" required>
+          {% if u.avatar %}<img src="{{ u.avatar.url }}" class="h-8 w-8 rounded-full object-cover">
+          {% else %}<span class="h-8 w-8 rounded-full lpm-gradient text-white text-[10px] font-bold flex items-center justify-center">{{ u.display_initials }}</span>{% endif %}
+          <span class="text-sm text-slate-800">{{ u.get_full_name|default:u.username }} <span class="text-xs text-slate-400">· {{ u.get_role_display }}</span></span>
+        </label>
+        {% empty %}{% if not groups %}<p class="px-4 py-6 text-center text-sm text-slate-400">Aucune destination disponible.</p>{% endif %}{% endfor %}
+      </div>
+      <div class="mt-5 flex gap-3">
+        <button class="lpm-gradient text-white font-semibold px-5 py-2.5 rounded-lg shadow"><i class="fa-solid fa-share mr-1"></i> Transférer</button>
+        <a href="{% url 'messaging:inbox' %}" class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600">Annuler</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

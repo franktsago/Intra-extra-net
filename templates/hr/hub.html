@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Espace RH{% endblock %}
+{% block content_top %}{% endblock %}
+{% block content %}
+<div class="mb-6"><h1 class="text-2xl font-bold text-slate-900">Espace Ressources Humaines</h1>
+<p class="text-slate-500 mt-0.5">Gestion du personnel, présences, recrutement et performance.</p></div>
+
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5"><div class="text-2xl font-bold text-slate-900">{{ nb_employes }}</div><div class="text-sm text-slate-500">Employés actifs</div></div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5"><div class="text-2xl font-bold text-slate-900">{{ presents_today }}</div><div class="text-sm text-slate-500">Présents aujourd'hui</div></div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5"><div class="text-2xl font-bold text-slate-900">{{ candidates }}</div><div class="text-sm text-slate-500">Candidatures en cours</div></div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5"><div class="text-2xl font-bold text-slate-900">{{ evaluations }}</div><div class="text-sm text-slate-500">Évaluations</div></div>
+</div>
+
+<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  {% include "hr/_hub_card.html" with url='employees:list' icon='fa-id-card' color='blue' title='Fiches employés' desc='Annuaire et profils du personnel' %}
+  {% if user.is_rh %}{% include "hr/_hub_card.html" with url='hr:contracts' icon='fa-file-contract' color='violet' title='Contrats' desc='CDI, CDD, stages — documents et salaires' %}{% endif %}
+  {% include "hr/_hub_card.html" with url='employees:org_chart' icon='fa-sitemap' color='sky' title='Organigramme' desc='Structure et départements' %}
+  {% include "hr/_hub_card.html" with url='hr:attendance' icon='fa-clock' color='emerald' title='Présences & pointage' desc='Suivi des arrivées / départs' %}
+  {% if user.is_rh %}{% include "hr/_hub_card.html" with url='hr:missions' icon='fa-plane-departure' color='violet' title='Missions' desc='Déplacements professionnels du personnel' %}{% endif %}
+  {% if user.is_rh %}{% include "hr/_hub_card.html" with url='hr:payroll_impacts' icon='fa-scale-balanced' color='amber' title='Incidences salariales' desc='Retards, absences & retenues prorata' %}{% endif %}
+  {% include "hr/_hub_card.html" with url='conges:queue' icon='fa-umbrella-beach' color='amber' title='Congés & absences' desc='Validation des demandes' %}
+  {% include "hr/_hub_card.html" with url='hr:openings' icon='fa-user-plus' color='rose' title='Recrutement' desc='Offres, candidatures, entretiens' %}
+  {% include "hr/_hub_card.html" with url='hr:evaluations' icon='fa-chart-simple' color='blue' title='Évaluations & KPI' desc='Objectifs et performance' %}
+  {% if user.is_rh %}{% include "hr/_hub_card.html" with url='disciplinary:list' icon='fa-scale-balanced' color='red' title='Discipline' desc='Sanctions et procédures' %}{% endif %}
+  {% if user.is_rh %}{% include "hr/_hub_card.html" with url='hr:birthdays' icon='fa-cake-candles' color='pink' title='Anniversaires' desc='Dates de naissance du personnel, classées' %}{% endif %}
+</div>
+{% endblock %}

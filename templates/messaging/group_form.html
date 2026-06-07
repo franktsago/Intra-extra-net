@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Nouveau groupe{% endblock %}
+{% block content_top %}{% endblock %}
+{% block content %}
+<div class="max-w-xl mx-auto">
+  <a href="{% url 'messaging:chat' %}" class="text-sm text-lpm hover:underline">← Discussions</a>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 mt-3">
+    <h2 class="font-bold text-slate-900 mb-1">Créer un groupe</h2>
+    <p class="text-sm text-slate-500 mb-4">Le groupe ne sera visible que par ses membres. Vous en faites automatiquement partie.</p>
+    <form method="post" class="space-y-4">{% csrf_token %}
+      {% for f in form %}
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">{{ f.label }}</label>{{ f }}
+        {% if f.name == 'members' %}<p class="text-xs text-slate-400 mt-1">Maintenez Ctrl (Cmd) pour sélectionner plusieurs personnes.</p>{% endif %}
+        {% if f.errors %}<p class="text-xs text-red-600 mt-1">{{ f.errors|join:" " }}</p>{% endif %}
+      </div>
+      {% endfor %}
+      <div class="flex gap-3"><button class="lpm-gradient text-white font-semibold px-5 py-2.5 rounded-lg shadow">Créer le groupe</button>
+      <a href="{% url 'messaging:chat' %}" class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600">Annuler</a></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Espace partenaire{% endblock %} · LPM Consulting Group</title>
+  <link rel="icon" href="{% static 'img/favicon.png' %}">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#0073DE">
+  <link rel="apple-touch-icon" href="{% static 'img/logo.png' %}">
+  <script src="{% static 'vendor/tailwind.min.js' %}"></script>
+  <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
+  <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{lpm:{light:'#0196F2',DEFAULT:'#0073DE',dark:'#0057CA'}},boxShadow:{card:'0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.06)'}}}}</script>
+  <style>body{background:#f6f8fb}.lpm-gradient{background:linear-gradient(135deg,#0196F2 0%,#0073DE 55%,#0057CA 100%)}
+  .xnav{color:#aebdd6}.xnav:hover{background:rgba(255,255,255,.06);color:#fff}.xnav.active{background:#0073DE;color:#fff}.xnav.active i{color:#fff !important}
+  input,select,textarea{width:100%;border:1px solid #cbd5e1;border-radius:.6rem;padding:.55rem .75rem}</style>
+</head>
+<body class="h-full font-sans text-slate-700 antialiased">
+<div class="min-h-full lg:flex">
+
+  <div id="overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-30 hidden lg:hidden"></div>
+
+  <!-- Sidebar foncée -->
+  <aside id="sidebar" class="w-64 flex-shrink-0 fixed inset-y-0 left-0 z-40 -translate-x-full lg:translate-x-0 transition-transform duration-200 flex flex-col" style="background:linear-gradient(180deg,#0a1a33 0%,#0d2347 100%)">
+    <div class="px-5 h-16 flex items-center gap-2.5 border-b border-white/10">
+      <img src="{% static 'img/logo-transparent.png' %}" class="h-9 w-9 rounded-full bg-white/95 p-0.5">
+      <div class="leading-tight"><div class="font-extrabold text-white text-[17px]">LPM</div><div class="text-[11px] text-white/50 mt-0.5">Consulting</div></div>
+    </div>
+    <nav class="flex-1 px-3 py-4 space-y-0.5 text-[14px] font-medium">
+      {% url 'extranet:home' as xhome %}
+      <a href="{{ xhome }}" class="xnav {% if request.path == xhome %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-house fa-fw text-white/50"></i> Accueil</a>
+      <a href="{% url 'extranet:progress' %}" class="xnav {% if '/extranet/projet' in request.path or '/extranet/suivi' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-briefcase fa-fw text-white/50"></i> Mes projets</a>
+      <a href="{% url 'extranet:campaigns' %}" class="xnav {% if '/campagnes' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-bullhorn fa-fw text-white/50"></i> Mes campagnes</a>
+      <a href="{% url 'extranet:creatives' %}" class="xnav {% if '/creations' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-palette fa-fw text-white/50"></i> Créations</a>
+      <a href="{% url 'extranet:validations' %}" class="xnav {% if '/validations' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-clipboard-check fa-fw text-white/50"></i> Validations</a>
+      <a href="{% url 'extranet:my_quotes' %}" class="xnav {% if '/devis' in request.path or '/mes-devis' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-file-signature fa-fw text-white/50"></i> Mes devis</a>
+      <a href="{% url 'extranet:my_invoices' %}" class="xnav {% if '/facture' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-file-invoice-dollar fa-fw text-white/50"></i> Mes factures</a>
+      <a href="{% url 'extranet:downloads' %}" class="xnav {% if '/telechargements' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-download fa-fw text-white/50"></i> Téléchargements</a>
+      <a href="{% url 'extranet:gallery' %}" class="xnav {% if '/galerie' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-images fa-fw text-white/50"></i> Galerie</a>
+      <a href="{% url 'extranet:reports' %}" class="xnav {% if '/rapports' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-chart-line fa-fw text-white/50"></i> Rapports</a>
+      <a href="{% url 'extranet:requests' %}" class="xnav {% if '/demandes' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-lightbulb fa-fw text-white/50"></i> Mes demandes</a>
+      <a href="{% url 'extranet:tickets' %}" class="xnav {% if '/reclamations' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-headset fa-fw text-white/50"></i> Réclamations</a>
+      <a href="{% url 'messaging:inbox' %}" class="xnav {% if '/messagerie' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-comments fa-fw text-white/50"></i> Messagerie{% with total=unread_messages|add:unread_chat %}{% if total %}<span class="ml-auto bg-lpm text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{{ total }}</span>{% endif %}{% endwith %}</a>
+      <a href="{% url 'notifications:list' %}" class="xnav {% if '/notifications' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-bell fa-fw text-white/50"></i> Notifications{% if unread_count %}<span class="ml-auto bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{{ unread_count }}</span>{% endif %}</a>
+      <a href="{% url 'accounts:profile' %}" class="xnav {% if '/profil' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-user fa-fw text-white/50"></i> Mon compte</a>
+    </nav>
+    <div class="p-3 border-t border-white/10">
+      <div class="flex items-center gap-3 p-2">
+        <span class="h-9 w-9 rounded-full bg-white/15 text-white text-xs font-bold flex items-center justify-center">{{ user.display_initials }}</span>
+        <div class="min-w-0"><div class="text-sm font-semibold text-white truncate">{{ user.get_full_name|default:user.username }}</div>
+        <div class="text-xs text-white/50 truncate">{{ user.get_role_display }}</div></div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="flex-1 lg:ml-64 flex flex-col min-h-screen">
+    <header class="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-slate-200">
+      <div class="h-16 px-4 sm:px-6 flex items-center gap-3">
+        <button onclick="toggleSidebar()" class="lg:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-600"><i class="fa-solid fa-bars text-lg"></i></button>
+        <div class="ml-auto flex items-center gap-1">
+          <a href="{% url 'notifications:list' %}" class="relative p-2.5 rounded-xl hover:bg-slate-100 text-slate-500">
+            <i class="fa-solid fa-bell"></i>
+            {% if unread_count %}<span class="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">{{ unread_count }}</span>{% endif %}</a>
+          <div class="w-px h-6 bg-slate-200 mx-1"></div>
+          <div class="flex items-center gap-2.5">
+            <span class="h-9 w-9 rounded-full lpm-gradient text-white text-xs font-bold flex items-center justify-center">{{ user.display_initials }}</span>
+            <div class="hidden sm:block leading-tight"><div class="text-sm font-semibold text-slate-800">{{ user.get_full_name|default:user.username }}</div><div class="text-[11px] text-slate-400">{{ user.get_role_display }}</div></div>
+            <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="ml-1 text-slate-400 hover:text-red-600 p-1" title="Déconnexion"><i class="fa-solid fa-right-from-bracket"></i></button></form>
+          </div>
+        </div>
+      </div>
+    </header>
+    <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-6xl w-full mx-auto">
+      {% if messages %}<div class="space-y-2 mb-5">{% for m in messages %}
+        <div class="px-4 py-3 rounded-xl text-sm border {% if m.tags == 'success' %}bg-emerald-50 border-emerald-200 text-emerald-800{% elif m.tags == 'error' %}bg-red-50 border-red-200 text-red-800{% else %}bg-sky-50 border-sky-200 text-sky-800{% endif %}">{{ m }}</div>
+      {% endfor %}</div>{% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+<script>
+  function toggleSidebar(){
+    document.getElementById('sidebar').classList.toggle('-translate-x-full');
+    document.getElementById('overlay').classList.toggle('hidden');
+  }
+  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(function(){}); }
+</script>
+<script src="{% static 'js/calls.js' %}?v=2"></script>
+</body>
+</html>

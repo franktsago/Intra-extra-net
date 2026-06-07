@@ -1,0 +1,11 @@
+{% if page_obj.has_other_pages %}
+<div class="flex items-center justify-center gap-1 mt-6">
+  {% if page_obj.has_previous %}
+  <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}" class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-sm hover:bg-slate-50">←</a>
+  {% endif %}
+  <span class="px-4 py-1.5 text-sm text-slate-500">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+  <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}" class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-sm hover:bg-slate-50">→</a>
+  {% endif %}
+</div>
+{% endif %}

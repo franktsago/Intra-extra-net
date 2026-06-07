@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Supprimer la mission{% endblock %}
+{% block page_title %}Supprimer la mission{% endblock %}
+{% block content %}
+<div class="max-w-lg bg-white rounded-xl shadow-card p-6">
+  <p class="text-slate-700">Confirmer la suppression de la mission de <strong>{{ mission.employee.full_name }}</strong>
+    ({{ mission.start_date|date:"d/m/Y" }} → {{ mission.end_date|date:"d/m/Y" }}) ?</p>
+  <form method="post" class="mt-6 flex gap-3">{% csrf_token %}
+    <button class="bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2.5 rounded-lg">Supprimer</button>
+    <a href="{% url 'hr:missions' %}" class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600">Annuler</a>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion · LPM Consulting Group</title>
+  <link rel="icon" href="{% static 'img/favicon.png' %}">
+  <script src="{% static 'vendor/tailwind.min.js' %}"></script>
+  <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
+  <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{lpm:{light:'#0196F2',DEFAULT:'#0073DE',dark:'#0057CA'}}}}}</script>
+  <style>body{font-family:'Inter',sans-serif}</style>
+</head>
+<body class="h-full">
+<div class="min-h-screen lg:grid lg:grid-cols-2">
+
+  <!-- Colonne gauche : image douce -->
+  <div class="hidden lg:block relative overflow-hidden">
+    <img src="{% static 'img/login-building.jpg' %}" alt="" class="absolute inset-0 w-full h-full object-cover">
+    <!-- Voile doux aux couleurs de la marque -->
+    <div class="absolute inset-0" style="background:linear-gradient(150deg,rgba(1,150,242,.55) 0%,rgba(0,115,222,.55) 45%,rgba(0,87,202,.78) 100%)"></div>
+    <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent"></div>
+
+    <div class="relative h-full flex flex-col justify-between p-12 text-white">
+      <div class="flex justify-center">
+        <img src="{% static 'img/logo.png' %}" class="h-32 w-32 rounded-full bg-white/95 p-1.5 shadow-lg">
+      </div>
+      <div>
+        <h2 class="text-4xl font-extrabold leading-tight drop-shadow-sm">Votre espace de<br>travail digital.</h2>
+        <p class="mt-4 text-white/90 text-lg max-w-md">Intranet & Extranet — centralisez la communication, les documents, les congés et la collaboration avec vos clients et partenaires.</p>
+        <div class="mt-8 flex flex-wrap gap-3">
+          <span class="inline-flex items-center gap-2 bg-white/15 backdrop-blur px-3 py-1.5 rounded-full text-sm"><i class="fa-solid fa-shield-halved"></i> Sécurisé</span>
+          <span class="inline-flex items-center gap-2 bg-white/15 backdrop-blur px-3 py-1.5 rounded-full text-sm"><i class="fa-solid fa-users"></i> Collaboratif</span>
+          <span class="inline-flex items-center gap-2 bg-white/15 backdrop-blur px-3 py-1.5 rounded-full text-sm"><i class="fa-solid fa-bolt"></i> Performant</span>
+          <span class="inline-flex items-center gap-2 bg-white/15 backdrop-blur px-3 py-1.5 rounded-full text-sm"><i class="fa-solid fa-mobile-screen"></i> Responsive</span>
+        </div>
+      </div>
+      <div class="text-white/70 text-sm">© {% now "Y" %} LPM Consulting Group — Douala, Cameroun</div>
+    </div>
+  </div>
+
+  <!-- Colonne droite : formulaire -->
+  <div class="flex items-center justify-center p-6 sm:p-10 min-h-screen bg-slate-100 lg:bg-white">
+    <div class="w-full max-w-md">
+      <!-- Logo (mobile) -->
+      <div class="flex flex-col items-center mb-8 lg:hidden">
+        <img src="{% static 'img/logo.png' %}" class="h-14 w-14 rounded-full shadow-sm">
+        <h1 class="mt-2 text-lg font-extrabold text-slate-900">LPM Consulting Group</h1>
+      </div>
+
+      <h2 class="text-2xl font-bold text-slate-900">Connexion</h2>
+      <p class="text-sm text-slate-500 mt-1 mb-6">Accédez à votre espace sécurisé.</p>
+
+      {% if messages %}{% for m in messages %}
+      <div class="mb-4 px-4 py-2.5 rounded-lg text-sm bg-sky-50 border border-sky-200 text-sky-800">{{ m }}</div>
+      {% endfor %}{% endif %}
+      {% if form.non_field_errors %}
+      <div class="mb-4 px-4 py-2.5 rounded-lg text-sm bg-red-50 border border-red-200 text-red-700 flex items-center gap-2">
+        <i class="fa-solid fa-circle-exclamation"></i><span>{{ form.non_field_errors|join:" " }}</span>
+      </div>{% endif %}
+
+      <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Identifiant</label>
+          <div class="relative">
+            <i class="fa-solid fa-user absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+            <input name="username" autofocus required placeholder="Nom d'utilisateur"
+              class="w-full rounded-xl border border-slate-300 pl-10 pr-3 py-2.5 text-slate-800 focus:border-lpm focus:ring-2 focus:ring-lpm/20 focus:outline-none transition">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Mot de passe</label>
+          <div class="relative">
+            <i class="fa-solid fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+            <input name="password" type="password" id="pwd" required placeholder="••••••••"
+              class="w-full rounded-xl border border-slate-300 pl-10 pr-10 py-2.5 text-slate-800 focus:border-lpm focus:ring-2 focus:ring-lpm/20 focus:outline-none transition">
+            <button type="button" onclick="const p=document.getElementById('pwd');p.type=p.type==='password'?'text':'password';this.querySelector('i').classList.toggle('fa-eye');this.querySelector('i').classList.toggle('fa-eye-slash')"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-eye"></i></button>
+          </div>
+        </div>
+        <div class="flex justify-end">
+          <a href="{% url 'accounts:password_reset' %}" class="text-sm text-lpm hover:underline font-medium">Mot de passe oublié ?</a>
+        </div>
+        <button type="submit" class="w-full bg-lpm hover:bg-lpm-dark text-white font-semibold py-3 rounded-xl shadow-sm transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-right-to-bracket"></i> Se connecter
+        </button>
+      </form>
+
+      <p class="text-center text-[11px] text-slate-400 mt-8">Accès réservé · Toutes les connexions sont journalisées.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

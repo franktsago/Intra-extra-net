@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Utilisateurs{% endblock %}
+{% block page_title %}Gestion des utilisateurs{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-center gap-3 mb-5">
+  <form class="flex gap-2 flex-1 min-w-64">
+    <input name="q" value="{{ q }}" placeholder="Rechercher un utilisateur…" class="flex-1 rounded-lg border border-slate-300 px-3 py-2">
+    <select name="scope" class="rounded-lg border border-slate-300 px-3 py-2">
+      <option value="">Tous</option>
+      <option value="intranet" {% if scope == 'intranet' %}selected{% endif %}>Intranet</option>
+      <option value="extranet" {% if scope == 'extranet' %}selected{% endif %}>Extranet</option>
+    </select>
+    <button class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium">Filtrer</button>
+  </form>
+  <a href="{% url 'accounts:user_create' %}" class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium shadow">+ Nouvel utilisateur</a>
+</div>
+
+<div class="bg-white rounded-xl shadow-card overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-50 text-slate-500 text-left">
+      <tr><th class="px-4 py-3 font-semibold">Utilisateur</th><th class="px-4 py-3 font-semibold">Rôle</th>
+      <th class="px-4 py-3 font-semibold hidden sm:table-cell">Email</th><th class="px-4 py-3 font-semibold">Statut</th><th></th></tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for u in page_obj %}
+      <tr class="hover:bg-slate-50">
+        <td class="px-4 py-3">
+          <div class="flex items-center gap-3">
+            <span class="h-9 w-9 rounded-full lpm-gradient text-white text-xs font-bold flex items-center justify-center">{{ u.display_initials }}</span>
+            <div><div class="font-medium text-slate-800">{{ u.get_full_name|default:u.username }}</div>
+            <div class="text-xs text-slate-400">@{{ u.username }}{% if u.organization %} · {{ u.organization }}{% endif %}</div></div>
+          </div>
+        </td>
+        <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium {% if u.is_external %}bg-violet-100 text-violet-700{% else %}bg-lpm/10 text-lpm{% endif %}">{{ u.get_role_display }}</span></td>
+        <td class="px-4 py-3 text-slate-500 hidden sm:table-cell">{{ u.email|default:"—" }}</td>
+        <td class="px-4 py-3">{% if u.is_active %}<span class="text-emerald-600">● Actif</span>{% else %}<span class="text-slate-400">● Inactif</span>{% endif %}</td>
+        <td class="px-4 py-3 text-right whitespace-nowrap">
+          {# Gérable selon le niveau : admin/superuser → admin principal ; CEO/externe → Direction. #}
+          {% if u.role == 'ADMIN' or u.is_superuser %}
+            {% if user.is_admin_lpm %}<a href="{% url 'accounts:user_edit' u.pk %}" class="text-lpm hover:underline font-medium">Modifier</a>{% else %}<span class="text-slate-300">—</span>{% endif %}
+          {% elif u.role == 'CEO' or u.is_external %}
+            {% if user.is_ceo %}<a href="{% url 'accounts:user_edit' u.pk %}" class="text-lpm hover:underline font-medium">Modifier</a>
+              {% if u.pk != user.pk and not u.is_superuser %}<a href="{% url 'accounts:user_delete' u.pk %}" class="text-red-500 hover:text-red-700 ml-3" title="Supprimer"><i class="fa-solid fa-trash"></i></a>{% endif %}
+            {% else %}<span class="text-slate-300">—</span>{% endif %}
+          {% else %}
+            <a href="{% url 'accounts:user_edit' u.pk %}" class="text-lpm hover:underline font-medium">Modifier</a>
+            {% if u.pk != user.pk %}<a href="{% url 'accounts:user_delete' u.pk %}" class="text-red-500 hover:text-red-700 ml-3" title="Supprimer"><i class="fa-solid fa-trash"></i></a>{% endif %}
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}<tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">Aucun utilisateur.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include "includes/pagination.html" %}
+{% endblock %}

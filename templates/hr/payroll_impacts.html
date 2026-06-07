@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Incidences salariales{% endblock %}
+{% block page_title %}Incidences salariales (retards & absences){% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <form class="flex gap-2 items-end">
+    <div><label class="text-xs text-slate-500">Mois</label>
+      <input type="month" name="month" value="{{ month }}" class="rounded-lg border border-slate-300 px-3 py-2"></div>
+    <button class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium">Voir</button>
+  </form>
+  <div class="flex gap-2">
+    <a href="{% url 'hr:payroll_export' %}?month={{ month }}" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-file-csv mr-1"></i> Exporter (CSV)</a>
+    <a href="{% url 'hr:attendance' %}" class="text-sm text-lpm hover:underline self-center">← Présences</a>
+  </div>
+</div>
+
+<div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 mb-4">
+  <i class="fa-solid fa-scale-balanced"></i> Retenue <strong>proportionnelle</strong> au temps non travaillé (durée légale : 173,33 h/mois). Retard = retenue au prorata des minutes ; absence non justifiée = journée déduite.
+</div>
+
+{% if can_edit %}
+<div class="bg-white rounded-xl shadow-card p-4 mb-4">
+  <form method="post" class="flex flex-wrap items-end gap-3">
+    {% csrf_token %}
+    <input type="hidden" name="month" value="{{ month }}">
+    <div>
+      <label class="text-xs text-slate-500 block">Coefficient de retenue sur retard</label>
+      <input type="number" step="0.05" min="0" max="10" name="late_coefficient" value="{{ coefficient }}"
+             class="rounded-lg border border-slate-300 px-3 py-2 w-32">
+    </div>
+    <button name="save_coefficient" value="1" class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium">Appliquer le coefficient</button>
+    <p class="text-xs text-slate-400 self-center">1,00 = 100 % · 0,50 = moitié · 0 = aucune retenue sur les retards.</p>
+  </form>
+</div>
+{% endif %}
+
+<form method="post">
+{% csrf_token %}
+<input type="hidden" name="month" value="{{ month }}">
+<div class="bg-white rounded-xl shadow-card overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-50 text-slate-500 text-left"><tr>
+      <th class="px-4 py-3">Employé</th><th class="px-4 py-3 text-right">Retards</th>
+      <th class="px-4 py-3 text-right">Minutes</th><th class="px-4 py-3 text-right">Absences</th>
+      <th class="px-4 py-3 text-right">Calculé</th>
+      <th class="px-4 py-3 text-right">Retenue appliquée (FCFA)</th>
+      {% if can_edit %}<th class="px-4 py-3">Motif ajustement</th>{% endif %}</tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for r in rows %}
+      <tr class="hover:bg-slate-50">
+        <td class="px-4 py-3 font-medium text-slate-800">{{ r.employee.full_name }}</td>
+        <td class="px-4 py-3 text-right">{{ r.late }}</td>
+        <td class="px-4 py-3 text-right">{{ r.late_minutes }}</td>
+        <td class="px-4 py-3 text-right">{{ r.absent }}</td>
+        <td class="px-4 py-3 text-right text-slate-400">{{ r.computed|intcomma }}</td>
+        {% if can_edit %}
+        <td class="px-4 py-3 text-right">
+          <input type="number" step="1" min="0" name="override_{{ r.employee.id }}" value="{{ r.deduction }}"
+                 class="rounded-lg border {% if r.overridden %}border-amber-400 bg-amber-50{% else %}border-slate-300{% endif %} px-2 py-1 w-28 text-right">
+          {% if r.overridden %}<div class="text-[10px] text-amber-600 mt-0.5">ajusté</div>{% endif %}
+        </td>
+        <td class="px-4 py-3"><input type="text" name="reason_{{ r.employee.id }}" value="{{ r.reason }}" placeholder="—"
+               class="rounded-lg border border-slate-200 px-2 py-1 w-44 text-xs"></td>
+        {% else %}
+        <td class="px-4 py-3 text-right font-semibold {% if r.deduction %}text-red-600{% else %}text-slate-400{% endif %}">{{ r.deduction|intcomma }}{% if r.overridden %} <span class="text-[10px] text-amber-600">(ajusté)</span>{% endif %}</td>
+        {% endif %}
+      </tr>
+      {% empty %}<tr><td colspan="{% if can_edit %}7{% else %}6{% endif %}" class="px-4 py-8 text-center text-slate-400">Aucune donnée pour ce mois.</td></tr>{% endfor %}
+    </tbody>
+    {% if rows %}<tfoot><tr class="bg-slate-50 font-bold"><td class="px-4 py-3" colspan="5">Total à retenir</td><td class="px-4 py-3 text-right text-red-600">{{ total|intcomma }} FCFA</td>{% if can_edit %}<td></td>{% endif %}</tr></tfoot>{% endif %}
+  </table>
+</div>
+{% if can_edit and rows %}
+<div class="mt-4 flex items-center gap-3">
+  <button name="save_adjustments" value="1" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg font-semibold">Enregistrer les ajustements</button>
+  <p class="text-xs text-slate-400">Modifiez un montant pour forcer la retenue ; videz le champ pour revenir au calcul automatique.</p>
+</div>
+{% endif %}
+</form>
+{% endblock %}

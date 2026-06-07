@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Factures{% endblock %}
+{% block page_title %}Factures{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-center gap-3 mb-5">
+  <form class="flex gap-2">
+    <select name="kind" class="rounded-lg border border-slate-300 px-3 py-2">
+      <option value="">Toutes</option>
+      <option value="CLIENT" {% if kind == 'CLIENT' %}selected{% endif %}>Clients</option>
+      <option value="SUPPLIER" {% if kind == 'SUPPLIER' %}selected{% endif %}>Fournisseurs</option>
+    </select>
+    <select name="status" class="rounded-lg border border-slate-300 px-3 py-2">
+      <option value="">Tous les statuts</option>
+      {% for v,l in statuses %}<option value="{{ v }}" {% if status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+    </select>
+    <button class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium">Filtrer</button>
+  </form>
+  <a href="{% url 'business:invoice_create' %}" class="ml-auto bg-lpm hover:bg-lpm-dark text-white px-4 py-2 rounded-lg font-medium shadow-sm"><i class="fa-solid fa-plus mr-1"></i> Facture</a>
+</div>
+<div class="bg-white rounded-xl shadow-card overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-50 text-slate-500 text-left"><tr>
+      <th class="px-4 py-3">N°</th><th class="px-4 py-3">Client</th><th class="px-4 py-3">Total TTC</th>
+      <th class="px-4 py-3">Réglé</th><th class="px-4 py-3">Statut</th><th></th></tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for i in page_obj %}
+      <tr class="hover:bg-slate-50">
+        <td class="px-4 py-3 font-medium text-slate-800">{{ i.number }}</td>
+        <td class="px-4 py-3 text-slate-500">{{ i.client.name|default:i.supplier_name|default:"—" }}</td>
+        <td class="px-4 py-3 font-medium">{{ i.total|intcomma }} F</td>
+        <td class="px-4 py-3 text-slate-500">{{ i.amount_paid|intcomma }} F</td>
+        <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium bg-{{ i.status_color }}-50 text-{{ i.status_color }}-600">{{ i.get_status_display }}</span></td>
+        <td class="px-4 py-3 text-right"><a href="{% url 'business:invoice_detail' i.pk %}" class="text-lpm hover:underline">Ouvrir</a></td>
+      </tr>
+      {% empty %}<tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Aucune facture.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include "includes/pagination.html" %}
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends user.is_external|yesno:"base_extranet.html,base.html" %}
+{% block title %}Messagerie{% endblock %}
+{% block content_top %}{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-900">Messagerie</h1>
+    <p class="text-slate-500 mt-0.5">Vos conversations avec vos collègues{% if not user.is_external %} et partenaires{% endif %}.</p>
+  </div>
+  <a href="{% url 'messaging:new' %}" class="bg-lpm hover:bg-lpm-dark text-white px-4 py-2.5 rounded-xl font-medium shadow-sm transition"><i class="fa-solid fa-pen-to-square mr-1"></i> Nouveau message</a>
+</div>
+
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card divide-y divide-slate-100">
+  {% for c in conversations %}
+  <a href="{% url 'messaging:thread' c.user.pk %}" class="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 {% if c.unread %}bg-lpm/5{% endif %}">
+    <span class="h-11 w-11 rounded-full lpm-gradient text-white text-sm font-bold flex items-center justify-center flex-shrink-0">{{ c.user.display_initials }}</span>
+    <div class="min-w-0 flex-1">
+      <div class="flex items-center justify-between">
+        <span class="font-semibold text-slate-800 truncate">{{ c.user.get_full_name|default:c.user.username }}</span>
+        <span class="text-xs text-slate-400 flex-shrink-0 ml-2">{{ c.last.created_at|date:"d/m H:i" }}</span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="text-sm text-slate-500 truncate {% if c.unread %}font-semibold text-slate-700{% endif %}">
+          {% if c.last.sender == user %}<i class="fa-solid fa-reply text-xs text-slate-300"></i> {% endif %}{{ c.last.body|default:"Pièce jointe"|truncatechars:48 }}
+        </span>
+        {% if c.unread %}<span class="ml-2 bg-lpm text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 flex-shrink-0">{{ c.unread }}</span>{% endif %}
+      </div>
+    </div>
+  </a>
+  {% empty %}
+  <div class="px-5 py-12 text-center">
+    <i class="fa-regular fa-comments text-4xl text-slate-300"></i>
+    <p class="text-slate-400 mt-3">Aucune conversation. Démarrez-en une avec « Nouveau message ».</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

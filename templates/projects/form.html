@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Projet{% endblock %}
+{% block page_title %}{% if project %}Modifier — {{ project.name }}{% else %}Nouveau projet / événement{% endif %}{% endblock %}
+{% block content %}
+<div class="max-w-3xl bg-white rounded-xl shadow-card p-6">
+  <p class="text-sm text-slate-500 mb-4">Choisissez le type « Événement » pour activer les champs lieu, date et participants. Les phases (Brief → Reporting) sont créées automatiquement.</p>
+  <form method="post">{% csrf_token %}
+    {% include "includes/form.html" %}
+    <div class="mt-6 flex gap-3">
+      <button class="lpm-gradient text-white font-semibold px-5 py-2.5 rounded-lg shadow">Enregistrer</button>
+      <a href="{% url 'projects:list' %}" class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600">Annuler</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

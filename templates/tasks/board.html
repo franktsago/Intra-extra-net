@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Tâches{% endblock %}
+{% block page_title %}Tâches{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-5">
+  <div class="inline-flex rounded-lg border border-slate-200 bg-white overflow-hidden text-sm">
+    <a href="?scope=mine" class="px-4 py-2 {% if scope == 'mine' %}lpm-gradient text-white{% else %}text-slate-600{% endif %}">Mes tâches</a>
+    <a href="?scope=all" class="px-4 py-2 {% if scope == 'all' %}lpm-gradient text-white{% else %}text-slate-600{% endif %}">{{ team_label }}</a>
+  </div>
+  {% if can_create %}<a href="{% url 'tasks:create' %}" class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium shadow">+ Nouvelle tâche</a>{% endif %}
+</div>
+<div class="grid md:grid-cols-3 gap-5">
+  {% for key, label in columns.items %}{% endfor %}
+  {% for col_key, tasks in columns.items %}
+  <div class="bg-slate-100 rounded-xl p-3">
+    <h3 class="font-semibold text-slate-700 px-2 py-1 flex items-center justify-between">
+      <span>{% if col_key == 'TODO' %}<i class="fa-solid fa-clipboard-list"></i> À faire{% elif col_key == 'IN_PROGRESS' %}<i class="fa-solid fa-arrows-rotate"></i> En cours{% else %}<i class="fa-solid fa-circle-check"></i> Terminées{% endif %}</span>
+      <span class="text-xs bg-white rounded-full px-2 py-0.5 text-slate-500">{{ tasks|length }}</span>
+    </h3>
+    <div class="space-y-2 mt-2">
+      {% for t in tasks %}
+      <a href="{% url 'tasks:detail' t.pk %}" class="block bg-white rounded-lg p-3 shadow-sm hover:shadow transition">
+        <div class="flex items-start gap-2">
+          <span class="h-2 w-2 rounded-full bg-{{ t.priority_color }}-400 mt-1.5"></span>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-slate-800">{{ t.title }}
+              {% if not t.is_approved %}<span class="ml-1 align-middle text-[10px] bg-amber-100 text-amber-700 rounded-full px-1.5 py-0.5 font-semibold"><i class="fa-solid fa-hourglass-half"></i> À valider</span>{% endif %}
+            </div>
+            <div class="text-xs text-slate-400 mt-1 flex items-center gap-2">
+              {% if t.assigned_to %}<span>{{ t.assigned_to.get_full_name|default:t.assigned_to.username }}</span>{% endif %}
+              {% if t.due_date %}<span class="{% if t.is_overdue %}text-red-500{% endif %}"><i class="fa-solid fa-calendar-days"></i> {{ t.due_date|date:"d/m" }}</span>{% endif %}
+            </div>
+          </div>
+        </div>
+      </a>
+      {% empty %}<p class="text-xs text-slate-400 px-2 py-3">Aucune tâche.</p>{% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

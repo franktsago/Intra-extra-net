@@ -1,0 +1,48 @@
+{% extends user.is_external|yesno:"base_extranet.html,base.html" %}
+{% block title %}{{ ticket.reference }}{% endblock %}
+{% block page_title %}Réclamation{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <a href="{% url 'extranet:tickets' %}" class="text-sm text-lpm hover:underline">← Toutes les réclamations</a>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 mt-3">
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-bold text-slate-900">{{ ticket.subject }}</h2>
+        <p class="text-sm text-slate-500">{{ ticket.reference }} · {{ ticket.get_kind_display }}{% if ticket.project %} · {{ ticket.project.name }}{% endif %} · {{ ticket.created_at|date:"d/m/Y H:i" }}</p>
+      </div>
+      <span class="px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 bg-{{ ticket.status_color }}-50 text-{{ ticket.status_color }}-600">{{ ticket.get_status_display }}</span>
+    </div>
+    <p class="text-sm text-slate-600 mt-3 whitespace-pre-line">{{ ticket.description }}</p>
+
+    {% if user.is_manager %}
+    <form method="post" class="mt-4 flex items-center gap-2 border-t border-slate-100 pt-4">{% csrf_token %}
+      <label class="text-sm text-slate-500">Statut :</label>
+      <select name="status" class="rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+        {% for val, label in statuses %}<option value="{{ val }}" {% if ticket.status == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      <button class="lpm-gradient text-white px-3 py-1.5 rounded-lg text-sm font-medium">Mettre à jour</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- Fil des échanges -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6 mt-5">
+    <h3 class="font-bold text-slate-800 mb-4">Échanges</h3>
+    <div class="space-y-3 mb-4">
+      {% for r in replies %}
+      <div class="flex gap-2 {% if r.author == user %}flex-row-reverse{% endif %}">
+        <span class="h-8 w-8 rounded-full lpm-gradient text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{{ r.author.display_initials }}</span>
+        <div class="rounded-xl px-3 py-2 max-w-[80%] {% if r.author == user %}bg-lpm text-white{% else %}bg-slate-100 text-slate-700{% endif %}">
+          <div class="text-sm">{{ r.body }}</div>
+          <div class="text-[10px] {% if r.author == user %}text-white/70{% else %}text-slate-400{% endif %} mt-0.5">{{ r.author.get_full_name|default:r.author.username }} · {{ r.created_at|date:"d/m H:i" }}</div>
+        </div>
+      </div>
+      {% empty %}<p class="text-sm text-slate-400">Aucun échange pour l'instant.</p>{% endfor %}
+    </div>
+    <form method="post" class="border-t border-slate-100 pt-4 flex gap-2">{% csrf_token %}
+      <div class="flex-1">{{ reply_form.body }}</div>
+      <button name="reply" class="lpm-gradient text-white px-4 rounded-lg text-sm font-medium self-start py-2">Répondre</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

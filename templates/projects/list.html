@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-center gap-3 mb-5">
+  <div class="inline-flex rounded-lg border border-slate-200 bg-white overflow-hidden text-sm">
+    <a href="{% url 'projects:list' %}" class="px-4 py-2 {% if not kind %}lpm-gradient text-white{% else %}text-slate-600{% endif %}">Tous</a>
+    <a href="?kind=CAMPAIGN" class="px-4 py-2 {% if kind == 'CAMPAIGN' %}lpm-gradient text-white{% else %}text-slate-600{% endif %}">Campagnes</a>
+    <a href="?kind=EVENT" class="px-4 py-2 {% if kind == 'EVENT' %}lpm-gradient text-white{% else %}text-slate-600{% endif %}">Événements</a>
+  </div>
+  {% if user.is_manager %}<a href="{% url 'projects:create' %}" class="ml-auto bg-lpm hover:bg-lpm-dark text-white px-4 py-2 rounded-lg font-medium shadow-sm"><i class="fa-solid fa-plus mr-1"></i> Projet</a>{% endif %}
+</div>
+
+<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+  {% for p in projects %}
+  <a href="{% url 'projects:detail' p.pk %}" class="bg-white rounded-2xl border border-slate-200 shadow-card p-5 hover:shadow-md transition">
+    <div class="flex items-start justify-between">
+      <span class="text-xs font-medium px-2 py-0.5 rounded-full {% if p.kind == 'EVENT' %}bg-violet-50 text-violet-600{% elif p.kind == 'CAMPAIGN' %}bg-blue-50 text-blue-600{% else %}bg-slate-100 text-slate-600{% endif %}">
+        <i class="fa-solid {% if p.kind == 'EVENT' %}fa-calendar-star{% else %}fa-bullhorn{% endif %}"></i> {{ p.get_kind_display }}</span>
+      <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-{{ p.status_color }}-50 text-{{ p.status_color }}-600">{{ p.get_status_display }}</span>
+    </div>
+    <h3 class="font-bold text-slate-800 mt-3">{{ p.name }}</h3>
+    <p class="text-xs text-slate-400">{{ p.code }}{% if p.client %} · {{ p.client.name }}{% endif %}</p>
+    {% if p.kind == 'EVENT' and p.event_date %}<p class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-calendar-days"></i> {{ p.event_date|date:"d/m/Y" }}{% if p.location %} · {{ p.location }}{% endif %}</p>{% endif %}
+    <div class="mt-4">
+      <div class="flex justify-between text-xs text-slate-400 mb-1"><span>Avancement</span><span>{{ p.progress }}%</span></div>
+      <div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full lpm-gradient" style="width: {{ p.progress }}%"></div></div>
+    </div>
+    {% if p.budget %}
+    <div class="mt-2 text-xs text-slate-400">Budget : {{ p.spent|intcomma }} / {{ p.budget|intcomma }} F {% if p.is_over_budget %}<span class="text-red-500 font-medium">(dépassé)</span>{% endif %}</div>
+    {% endif %}
+    <div class="mt-3 flex items-center gap-2">
+      {% if p.manager %}<span class="h-6 w-6 rounded-full lpm-gradient text-white text-[10px] font-bold flex items-center justify-center" title="{{ p.manager.get_full_name }}">{{ p.manager.display_initials }}</span>{% endif %}
+      <span class="text-xs text-slate-400">{{ p.team.count }} membre(s) · {{ p.tasks.count }} tâche(s)</span>
+    </div>
+  </a>
+  {% empty %}<p class="text-slate-400 col-span-full text-center py-10">Aucun projet.</p>{% endfor %}
+</div>
+{% endblock %}

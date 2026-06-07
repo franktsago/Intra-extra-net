@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Journal d'activité{% endblock %}
+{% block page_title %}Journal d'activité{% endblock %}
+{% block content %}
+<form class="mb-5 flex gap-2">
+  <select name="action" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+    <option value="">Toutes les actions</option>
+    {% for val, lbl in actions %}<option value="{{ val }}" {% if action == val %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
+  </select>
+  <button class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium text-sm">Filtrer</button>
+</form>
+<div class="bg-white rounded-xl shadow-card overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-50 text-slate-500 text-left">
+      <tr><th class="px-4 py-3">Date</th><th class="px-4 py-3">Utilisateur</th><th class="px-4 py-3">Action</th>
+      <th class="px-4 py-3 hidden md:table-cell">Détail</th><th class="px-4 py-3">IP</th></tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for log in page_obj %}
+      <tr>
+        <td class="px-4 py-2.5 text-slate-500 whitespace-nowrap">{{ log.created_at|date:"d/m/Y H:i" }}</td>
+        <td class="px-4 py-2.5">{{ log.user.get_username|default:"—" }}</td>
+        <td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded text-xs font-medium {% if log.action == 'LOGIN_FAILED' %}bg-red-100 text-red-700{% elif log.action == 'LOGIN' %}bg-emerald-100 text-emerald-700{% else %}bg-slate-100 text-slate-600{% endif %}">{{ log.get_action_display }}</span></td>
+        <td class="px-4 py-2.5 text-slate-500 hidden md:table-cell">{{ log.description }}</td>
+        <td class="px-4 py-2.5 text-slate-400 font-mono text-xs">{{ log.ip_address|default:"—" }}</td>
+      </tr>
+      {% empty %}<tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">Aucune activité.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include "includes/pagination.html" %}
+{% endblock %}

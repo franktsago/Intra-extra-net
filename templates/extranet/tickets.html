@@ -1,0 +1,34 @@
+{% extends user.is_external|yesno:"base_extranet.html,base.html" %}
+{% block title %}Réclamations{% endblock %}
+{% block page_title %}Réclamations & assistance{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-slate-900 mb-1">Réclamations & assistance</h1>
+<p class="text-slate-500 mb-6">Ouvrez un ticket et suivez son traitement : Ouvert → En cours → Résolu → Fermé.</p>
+
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-card divide-y divide-slate-100">
+    {% for t in tickets %}
+    <a href="{% url 'extranet:ticket' t.pk %}" class="flex items-center justify-between px-5 py-4 hover:bg-slate-50">
+      <div class="min-w-0">
+        <div class="font-semibold text-slate-800 truncate">{{ t.subject }}</div>
+        <div class="text-xs text-slate-400">{{ t.reference }} · {{ t.get_kind_display }}{% if is_external %}{% else %} · {{ t.client.get_full_name|default:t.client.username }}{% endif %} · {{ t.created_at|date:"d/m/Y" }}</div>
+      </div>
+      <span class="px-2.5 py-0.5 rounded-full text-xs font-medium flex-shrink-0 bg-{{ t.status_color }}-50 text-{{ t.status_color }}-600">{{ t.get_status_display }}</span>
+    </a>
+    {% empty %}<div class="px-5 py-12 text-center text-slate-400"><i class="fa-solid fa-headset text-4xl"></i><p class="mt-3">Aucune réclamation.</p></div>{% endfor %}
+  </div>
+
+  {% if is_external %}
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <h3 class="font-bold text-slate-900 mb-4">Nouvelle réclamation</h3>
+    <form method="post" class="space-y-3">{% csrf_token %}
+      {% for f in form %}
+      <div><label class="text-sm font-medium text-slate-700">{{ f.label }}</label>{{ f }}
+        {% if f.errors %}<p class="text-xs text-red-600 mt-1">{{ f.errors|striptags }}</p>{% endif %}</div>
+      {% endfor %}
+      <button class="w-full lpm-gradient text-white font-semibold py-2.5 rounded-lg">Envoyer</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

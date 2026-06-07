@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ candidate.full_name }}{% endblock %}
+{% block page_title %}Candidat — {{ candidate.full_name }}{% endblock %}
+{% block content %}
+<a href="{% url 'hr:opening_detail' candidate.opening.pk %}" class="text-sm text-lpm hover:underline">← {{ candidate.opening.title }}</a>
+<div class="grid lg:grid-cols-3 gap-6 mt-3">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-{{ candidate.status_color }}-50 text-{{ candidate.status_color }}-600">{{ candidate.get_status_display }}</span>
+    <h2 class="text-lg font-bold text-slate-800 mt-2">{{ candidate.full_name }}</h2>
+    <div class="mt-3 space-y-1 text-sm text-slate-600">
+      <div><i class="fa-solid fa-envelope fa-fw text-slate-400"></i> {{ candidate.email|default:"—" }}</div>
+      <div><i class="fa-solid fa-phone fa-fw text-slate-400"></i> {{ candidate.phone|default:"—" }}</div>
+      {% if candidate.cv %}<div><i class="fa-solid fa-file-pdf fa-fw text-slate-400"></i> <a href="{{ candidate.cv.url }}" class="text-lpm hover:underline">Télécharger le CV</a></div>{% endif %}
+    </div>
+    {% if candidate.notes %}<p class="text-sm text-slate-600 mt-3">{{ candidate.notes }}</p>{% endif %}
+    <div class="mt-4 pt-4 border-t">
+      <div class="text-xs text-slate-400 mb-2">Décision</div>
+      <div class="flex flex-wrap gap-2">
+        <a href="{% url 'hr:candidate_status' candidate.pk 'SHORTLIST' %}" class="px-3 py-1.5 rounded-lg bg-sky-50 text-sky-600 text-xs">Présélectionner</a>
+        <a href="{% url 'hr:candidate_status' candidate.pk 'HIRED' %}" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs">Recruter</a>
+        <a href="{% url 'hr:candidate_status' candidate.pk 'REJECTED' %}" class="px-3 py-1.5 rounded-lg border border-red-300 text-red-600 text-xs">Non retenu</a>
+      </div>
+    </div>
+  </div>
+  <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <h3 class="font-bold text-slate-900 mb-3">Entretiens</h3>
+    <div class="space-y-2 mb-5">
+      {% for it in interviews %}
+      <div class="p-3 rounded-xl border border-slate-100">
+        <div class="flex items-center justify-between">
+          <div class="font-medium text-slate-800">{{ it.scheduled_at|date:"d/m/Y H:i" }} · {{ it.mode }}</div>
+          {% if it.recommendation %}<span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{{ it.get_recommendation_display }}</span>{% endif %}
+        </div>
+        <div class="text-xs text-slate-400">Avec {{ it.interviewer.get_full_name|default:"—" }}</div>
+        {% if it.feedback %}<p class="text-sm text-slate-600 mt-1">{{ it.feedback }}</p>{% endif %}
+      </div>
+      {% empty %}<p class="text-sm text-slate-400">Aucun entretien planifié.</p>{% endfor %}
+    </div>
+    <h4 class="font-semibold text-slate-800 mb-2 text-sm">Planifier un entretien</h4>
+    <form method="post" class="grid sm:grid-cols-2 gap-3">{% csrf_token %}
+      {% for f in form %}<div class="{% if f.name == 'feedback' %}sm:col-span-2{% endif %}"><label class="text-xs text-slate-500">{{ f.label }}</label>{{ f }}</div>{% endfor %}
+      <div class="sm:col-span-2"><button class="lpm-gradient text-white font-medium px-4 py-2 rounded-lg text-sm">Enregistrer l'entretien</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

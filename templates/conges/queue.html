@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Validation des congés{% endblock %}
+{% block page_title %}Validation des congés{% endblock %}
+{% block content %}
+<p class="text-sm text-slate-500 mb-4">Demandes en attente de <strong>votre</strong> décision à l'étape courante du circuit.</p>
+<div class="bg-white rounded-xl shadow-card overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-50 text-slate-500 text-left"><tr>
+      <th class="px-4 py-3">Employé</th><th class="px-4 py-3">Type</th><th class="px-4 py-3">Période</th>
+      <th class="px-4 py-3">Jours</th><th class="px-4 py-3">Niveau attendu</th><th></th>
+    </tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for r in queue %}
+      <tr class="hover:bg-slate-50">
+        <td class="px-4 py-3 font-medium text-slate-800">{{ r.employee.full_name }}
+          <div class="text-xs text-slate-400">{{ r.employee.user.get_role_display }}</div></td>
+        <td class="px-4 py-3 text-slate-500">{{ r.leave_type.name }}</td>
+        <td class="px-4 py-3 text-slate-500">{{ r.start_date|date:"d/m" }} → {{ r.end_date|date:"d/m" }}</td>
+        <td class="px-4 py-3">{{ r.days_count }}</td>
+        <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-600">Niveau {{ r.current_level|add:1 }}/{{ r.total_levels }}</span></td>
+        <td class="px-4 py-3 text-right"><a href="{% url 'conges:decide' r.pk %}" class="lpm-gradient text-white px-3 py-1.5 rounded-lg text-xs font-medium">Traiter</a></td>
+      </tr>
+      {% empty %}<tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Rien à traiter pour le moment.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

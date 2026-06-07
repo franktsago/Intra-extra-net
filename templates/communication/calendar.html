@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Calendrier{% endblock %}
+{% block page_title %}Calendrier & événements{% endblock %}
+{% block content %}
+<div class="flex justify-end mb-4">
+  {% if user.is_manager %}<a href="{% url 'communication:event_create' %}" class="lpm-gradient text-white px-4 py-2 rounded-lg font-medium shadow">+ Événement</a>{% endif %}
+</div>
+<div class="grid lg:grid-cols-2 gap-6">
+  <div class="bg-white rounded-xl shadow-card p-6">
+    <h3 class="font-bold text-slate-800 mb-4">À venir</h3>
+    <div class="space-y-3">
+      {% for e in upcoming %}
+      <div class="flex gap-4 p-3 rounded-lg border border-slate-100">
+        <div class="text-center w-14 flex-shrink-0"><div class="text-2xl font-extrabold text-lpm">{{ e.start|date:"d" }}</div><div class="text-xs text-slate-400 uppercase">{{ e.start|date:"M" }}</div></div>
+        <div><div class="font-medium text-slate-800">{{ e.title }}</div>
+        <div class="text-xs text-slate-400">{{ e.get_kind_display }} · {{ e.start|date:"H:i" }}{% if e.location %} · <i class="fa-solid fa-location-dot"></i> {{ e.location }}{% endif %}</div>
+        {% if e.description %}<p class="text-sm text-slate-500 mt-1">{{ e.description }}</p>{% endif %}</div>
+      </div>
+      {% empty %}<p class="text-sm text-slate-400">Aucun événement à venir.</p>{% endfor %}
+    </div>
+  </div>
+  <div class="bg-white rounded-xl shadow-card p-6">
+    <h3 class="font-bold text-slate-800 mb-4">Passés</h3>
+    <div class="space-y-2">
+      {% for e in past %}
+      <div class="flex items-center gap-3 text-sm text-slate-500"><span class="text-xs w-16">{{ e.start|date:"d/m/Y" }}</span><span>{{ e.title }}</span></div>
+      {% empty %}<p class="text-sm text-slate-400">—</p>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

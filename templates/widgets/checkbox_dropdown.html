@@ -1,0 +1,67 @@
+{% comment %}Liste déroulante de cases à cocher + ajout d'un nouvel élément.{% endcomment %}
+<div class="msd" data-msd>
+  <button type="button" data-msd-toggle
+          class="w-full flex items-center justify-between rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-left text-slate-700 shadow-sm">
+    <span data-msd-summary class="truncate text-slate-500">Sélectionner…</span>
+    <i class="fa-solid fa-chevron-down text-xs text-slate-400"></i>
+  </button>
+  <div data-msd-panel class="hidden mt-1 rounded-lg border border-slate-200 bg-white shadow-lg max-h-60 overflow-auto p-2 space-y-1">
+    {% for group, options, index in widget.optgroups %}
+      {% for option in options %}
+      <label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 cursor-pointer text-sm">
+        <input type="checkbox" name="{{ option.name }}" value="{{ option.value }}"
+               {% if option.selected %}checked{% endif %}
+               class="h-4 w-4 rounded border-slate-300 text-[#0073DE]" data-msd-cb>
+        <span>{{ option.label }}</span>
+      </label>
+      {% empty %}{% endfor %}
+    {% endfor %}
+    <div data-msd-new-list class="space-y-1"></div>
+    <div class="flex gap-1 border-t border-slate-100 pt-2 mt-1">
+      <input type="text" data-msd-newinput placeholder="{{ widget.placeholder }}"
+             class="flex-1 rounded border border-slate-300 px-2 py-1.5 text-sm">
+      <button type="button" data-msd-add
+              class="px-3 rounded bg-lpm text-white text-sm font-medium">+ Ajouter</button>
+    </div>
+    <input type="hidden" data-msd-newname value="{{ widget.new_field }}">
+  </div>
+</div>
+<script>
+(function(){
+  var root = document.currentScript.previousElementSibling;
+  if(!root || !root.matches('[data-msd]')) { return; }
+  var toggle = root.querySelector('[data-msd-toggle]');
+  var panel = root.querySelector('[data-msd-panel]');
+  var summary = root.querySelector('[data-msd-summary]');
+  var newInput = root.querySelector('[data-msd-newinput]');
+  var addBtn = root.querySelector('[data-msd-add]');
+  var newList = root.querySelector('[data-msd-new-list]');
+  var newName = root.querySelector('[data-msd-newname]').value;
+
+  function refresh(){
+    var n = root.querySelectorAll('[data-msd-cb]:checked').length
+          + newList.querySelectorAll('input[type=checkbox]:checked').length;
+    summary.textContent = n ? (n + ' sélectionné(s)') : 'Sélectionner…';
+    summary.className = n ? 'truncate text-slate-800 font-medium' : 'truncate text-slate-500';
+  }
+  toggle.addEventListener('click', function(){ panel.classList.toggle('hidden'); });
+  root.addEventListener('change', refresh);
+  function addNew(){
+    var v = (newInput.value || '').trim();
+    if(!v){ return; }
+    var label = document.createElement('label');
+    label.className = 'flex items-center gap-2 px-2 py-1.5 rounded bg-emerald-50 text-sm';
+    label.innerHTML = '<input type="checkbox" name="'+newName+'" checked class="h-4 w-4 rounded border-slate-300 text-[#0073DE]">'
+      + '<span></span> <span class="text-[10px] text-emerald-600 ml-auto">nouveau</span>';
+    label.querySelector('span').textContent = v;
+    label.querySelector('input').value = v;
+    newList.appendChild(label);
+    newInput.value = '';
+    refresh();
+  }
+  addBtn.addEventListener('click', addNew);
+  newInput.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); addNew(); } });
+  document.addEventListener('click', function(e){ if(!root.contains(e.target)){ panel.classList.add('hidden'); } });
+  refresh();
+})();
+</script>

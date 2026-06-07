@@ -1,0 +1,23 @@
+<div class="bg-white rounded-xl border border-slate-200 shadow-card p-4 flex items-center gap-4">
+  <div class="text-center w-14 flex-shrink-0">
+    <div class="text-lg font-extrabold text-lpm">{{ p.scheduled_at|date:"d" }}</div>
+    <div class="text-[10px] uppercase text-slate-400">{{ p.scheduled_at|date:"M" }}</div>
+    <div class="text-[10px] text-slate-400">{{ p.scheduled_at|date:"H:i" }}</div>
+  </div>
+  {% if p.media and p.is_image %}<img src="{{ p.media.url }}" class="h-12 w-12 rounded-lg object-cover flex-shrink-0">
+  {% else %}<span class="h-12 w-12 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center flex-shrink-0"><i class="fa-brands {{ p.platform_icon }}"></i></span>{% endif %}
+  <div class="min-w-0 flex-1">
+    <div class="font-medium text-slate-800 truncate">{{ p.title }}</div>
+    <div class="text-xs text-slate-400">{{ p.get_platform_display }}{% if p.brand %} · {{ p.brand.name }}{% endif %}{% if p.campaign %} · {{ p.campaign.name }}{% endif %}</div>
+  </div>
+  <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-{{ p.status_color }}-50 text-{{ p.status_color }}-600 flex-shrink-0">{{ p.get_status_display }}</span>
+  <div class="flex gap-1 flex-shrink-0">
+    {% if p.status == 'DRAFT' and p.author == user %}<a href="{% url 'marketing:post_status' p.pk 'submit' %}" class="px-2.5 py-1 rounded-lg bg-amber-500 text-white text-xs">Soumettre</a>{% endif %}
+    {% if p.status == 'PENDING' and user.is_manager %}
+      <a href="{% url 'marketing:post_status' p.pk 'approve' %}" class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-xs">Valider</a>
+      <a href="{% url 'marketing:post_status' p.pk 'reject' %}" class="px-2.5 py-1 rounded-lg border border-red-300 text-red-600 text-xs">Rejeter</a>
+    {% endif %}
+    {% if p.status == 'APPROVED' and user.is_manager %}<a href="{% url 'marketing:post_status' p.pk 'publish' %}" class="px-2.5 py-1 rounded-lg bg-sky-600 text-white text-xs">Publié</a>{% endif %}
+    <a href="{% url 'marketing:post_edit' p.pk %}" class="px-2 py-1 rounded-lg text-slate-400 hover:bg-slate-100 text-xs"><i class="fa-solid fa-pen"></i></a>
+  </div>
+</div>

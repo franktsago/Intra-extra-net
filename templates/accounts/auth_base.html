@@ -1,0 +1,24 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}LPM Consulting{% endblock %}</title>
+  <link rel="icon" href="{% static 'img/favicon.png' %}">
+  <script src="{% static 'vendor/tailwind.min.js' %}"></script>
+  <style>body{font-family:'Inter',sans-serif}.lpm-gradient{background:linear-gradient(160deg,#0196F2 0%,#0073DE 52%,#0057CA 100%)}
+  input{width:100%;border:1px solid #cbd5e1;border-radius:.5rem;padding:.6rem .75rem;margin-top:.25rem}</style>
+</head>
+<body class="h-full bg-slate-100 flex items-center justify-center p-6">
+  <div class="w-full max-w-md">
+    <div class="flex items-center gap-3 mb-6 justify-center">
+      <img src="{% static 'img/logo.png' %}" class="h-12 w-12 rounded-full">
+      <span class="text-xl font-extrabold text-slate-800">LPM Consulting</span>
+    </div>
+    <div class="bg-white rounded-2xl shadow-xl p-8">
+      {% block card %}{% endblock %}
+    </div>
+    <p class="text-center mt-4 text-sm"><a href="{% url 'accounts:login' %}" class="text-lpm hover:underline">← Retour à la connexion</a></p>
+  </div>
+</body>
+</html>

@@ -1,0 +1,101 @@
+{% extends user.is_external|yesno:"base_extranet.html,base.html" %}
+{% block title %}{{ group.name }} — Participants{% endblock %}
+{% block page_title %}{% if is_admin %}Paramètres du groupe{% else %}Participants{% endif %}{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+  <a href="{% url 'messaging:inbox' %}?conv=g{{ group.pk }}" class="text-sm text-lpm hover:underline">← Retour à la discussion</a>
+
+  <!-- Renommer (admin) -->
+  {% if is_admin %}
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <h3 class="font-bold text-slate-900 mb-4">Informations</h3>
+    <form method="post" class="space-y-3">{% csrf_token %}
+      <input type="hidden" name="action" value="rename">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Nom du groupe</label>
+        <input name="name" value="{{ group.name }}" required class="w-full">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
+        <input name="description" value="{{ group.description }}" class="w-full">
+      </div>
+      <button class="lpm-gradient text-white font-semibold px-5 py-2.5 rounded-lg shadow">Enregistrer</button>
+    </form>
+  </div>
+  {% else %}
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <h3 class="font-bold text-slate-900">{{ group.name }}</h3>
+    {% if group.description %}<p class="text-sm text-slate-500 mt-1">{{ group.description }}</p>{% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Participants (visibles par tous les membres) -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <h3 class="font-bold text-slate-900 mb-4">Participants ({{ members.count }})</h3>
+    <div class="divide-y divide-slate-100">
+      {% for u in members %}
+      <div class="flex items-center gap-3 py-2.5">
+        {% if u.avatar %}<img src="{{ u.avatar.url }}" class="h-9 w-9 rounded-full object-cover flex-shrink-0">
+        {% else %}<span class="h-9 w-9 rounded-full bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center flex-shrink-0">{{ u.display_initials }}</span>{% endif %}
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium text-slate-800 truncate">{{ u.get_full_name|default:u.username }}
+            {% if u == group.created_by %}<span class="text-[10px] bg-lpm/10 text-lpm rounded-full px-1.5 py-0.5">Créateur</span>
+            {% elif u.pk in admin_ids %}<span class="text-[10px] bg-lpm/10 text-lpm rounded-full px-1.5 py-0.5">Admin</span>{% endif %}
+            {% if u.is_external %}<span class="text-[10px] bg-amber-100 text-amber-700 rounded-full px-1.5 py-0.5">Externe</span>{% endif %}
+          </div>
+          <div class="text-xs text-slate-400">{{ u.get_role_display }}</div>
+        </div>
+        {% if is_admin and u != group.created_by %}
+        <div class="flex items-center gap-1 flex-shrink-0">
+          {% if u.pk in admin_ids %}
+          <form method="post">{% csrf_token %}<input type="hidden" name="action" value="demote"><input type="hidden" name="user" value="{{ u.pk }}">
+            <button class="text-lpm hover:text-lpm-dark p-1.5" title="Retirer le rôle d'administrateur"><i class="fa-solid fa-user-shield"></i></button>
+          </form>
+          {% else %}
+          <form method="post">{% csrf_token %}<input type="hidden" name="action" value="promote"><input type="hidden" name="user" value="{{ u.pk }}">
+            <button class="text-slate-400 hover:text-lpm p-1.5" title="Nommer administrateur"><i class="fa-regular fa-user"></i></button>
+          </form>
+          {% endif %}
+          <form method="post" action="{% url 'messaging:group_member_remove' group.pk u.pk %}" onsubmit="return confirm('Retirer {{ u.get_full_name|default:u.username }} du groupe ?');">{% csrf_token %}
+            <button class="text-slate-400 hover:text-red-600 p-1.5" title="Retirer du groupe"><i class="fa-solid fa-user-minus"></i></button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Ajouter des membres (admin) -->
+  {% if is_admin and addable %}
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+    <h3 class="font-bold text-slate-900 mb-1">Ajouter des participants</h3>
+    {% if can_add_clients %}<p class="text-xs text-slate-400 mb-3">En tant que direction, vous pouvez aussi ajouter des clients et partenaires (externes).</p>{% endif %}
+    <form method="post" class="space-y-3">{% csrf_token %}
+      <input type="hidden" name="action" value="add">
+      <div class="max-h-56 overflow-y-auto border border-slate-200 rounded-lg p-3 space-y-1">
+        {% for u in addable %}
+        <label class="flex items-center gap-2 py-1 text-sm text-slate-700">
+          <input type="checkbox" name="members" value="{{ u.pk }}" class="!w-auto">
+          {{ u.get_full_name|default:u.username }} <span class="text-xs text-slate-400">· {{ u.get_role_display }}</span>
+          {% if u.is_external %}<span class="text-[10px] bg-amber-100 text-amber-700 rounded-full px-1.5">Externe</span>{% endif %}
+        </label>
+        {% endfor %}
+      </div>
+      <button class="bg-lpm hover:bg-lpm-dark text-white font-semibold px-5 py-2.5 rounded-lg"><i class="fa-solid fa-user-plus mr-1"></i> Ajouter</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- Zone de danger (admin) -->
+  {% if is_admin %}
+  <div class="bg-white rounded-2xl border border-red-200 shadow-card p-6">
+    <h3 class="font-bold text-red-700 mb-2">Zone de danger</h3>
+    <p class="text-sm text-slate-500 mb-4">La suppression du groupe efface définitivement la discussion et tous ses messages.</p>
+    <form method="post" action="{% url 'messaging:group_delete' group.pk %}" onsubmit="return confirm('Supprimer définitivement ce groupe et tous ses messages ?');">{% csrf_token %}
+      <button class="bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2.5 rounded-lg"><i class="fa-solid fa-trash mr-1"></i> Supprimer la discussion</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

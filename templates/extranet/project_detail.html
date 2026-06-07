@@ -1,0 +1,89 @@
+{% extends user.is_external|yesno:"base_extranet.html,base.html" %}
+{% block title %}{{ project.name }}{% endblock %}
+{% block page_title %}{{ project.name }}{% endblock %}
+{% block content %}
+<a href="{% url 'extranet:home' %}" class="text-sm text-lpm hover:underline">← Mes projets</a>
+<div class="bg-white rounded-xl shadow-card p-6 mt-3 mb-6">
+  <div class="flex items-center justify-between">
+    <div><h1 class="text-xl font-bold text-slate-800">{{ project.name }}</h1>
+    <p class="text-sm text-slate-500">{{ project.reference }} · Chargé de compte : {{ project.internal_lead.get_full_name|default:"—" }}</p></div>
+    <span class="px-3 py-1 rounded-full text-xs font-medium bg-lpm/10 text-lpm">{{ project.get_status_display }}</span>
+  </div>
+  {% if project.description %}<p class="text-sm text-slate-600 mt-3">{{ project.description }}</p>{% endif %}
+  <div class="mt-4"><div class="flex justify-between text-xs text-slate-400 mb-1"><span>Avancement</span><span>{{ project.progress }}%</span></div>
+  <div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full lpm-gradient" style="width: {{ project.progress }}%"></div></div></div>
+  {% if not user.is_external and user.is_manager %}
+  <div class="mt-3 flex items-center gap-4">
+    <a href="{% url 'extranet:edit' project.pk %}" class="text-sm text-lpm hover:underline"><i class="fa-solid fa-pen"></i> Modifier le projet</a>
+    <a href="{% url 'extranet:delete' project.pk %}" class="text-sm text-red-600 hover:underline"><i class="fa-solid fa-trash"></i> Supprimer</a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="grid lg:grid-cols-2 gap-6">
+  <!-- Fichiers -->
+  <div class="bg-white rounded-xl shadow-card p-6">
+    <h3 class="font-bold text-slate-800 mb-4"><i class="fa-solid fa-paperclip"></i> Fichiers partagés</h3>
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      {% for f in files %}
+      <div class="rounded-xl border border-slate-100 overflow-hidden">
+        {% if f.is_image %}
+        <a href="{{ f.file.url }}" target="_blank"><img src="{{ f.file.url }}" class="w-full h-28 object-cover"></a>
+        {% elif f.is_video %}
+        <video src="{{ f.file.url }}" class="w-full h-28 object-cover bg-black" controls preload="metadata"></video>
+        {% else %}
+        <a href="{{ f.file.url }}" target="_blank" class="flex items-center justify-center h-28 bg-slate-50 text-slate-400">
+          <span class="text-center"><i class="fa-solid fa-file-lines text-2xl"></i><div class="text-[10px] uppercase mt-1">{{ f.ext|default:"fichier" }}</div></span>
+        </a>
+        {% endif %}
+        <div class="p-2.5">
+          <div class="text-xs font-medium text-slate-800 truncate">{{ f.title }}
+            {% if f.kind == 'REPORT' %}<span class="text-[9px] bg-emerald-100 text-emerald-700 rounded px-1 py-0.5 font-semibold">Rapport</span>{% endif %}</div>
+          <div class="text-[10px] text-slate-400">{{ f.get_direction_display }} · {{ f.created_at|date:"d/m/Y" }}</div>
+          <div class="flex items-center justify-between mt-1">
+            <span class="text-[10px] px-1.5 py-0.5 rounded-full
+              {% if f.validation == 'APPROVED' %}bg-emerald-50 text-emerald-600{% elif f.validation == 'REJECTED' %}bg-red-50 text-red-600{% else %}bg-slate-100 text-slate-500{% endif %}">{{ f.get_validation_display }}</span>
+            <a href="{{ f.file.url }}" download class="text-[11px] text-lpm hover:underline"><i class="fa-solid fa-download"></i></a>
+          </div>
+          {# Validation par le client des documents qui lui sont transmis #}
+          {% if user.is_external and f.direction == 'TO_CLIENT' and f.validation == 'PENDING' %}
+          <div class="flex gap-1 mt-2">
+            <a href="{% url 'extranet:file_validate' f.pk 'approve' %}" class="flex-1 text-center text-[11px] bg-emerald-600 text-white rounded py-1">Valider</a>
+            <a href="{% url 'extranet:file_validate' f.pk 'reject' %}" class="flex-1 text-center text-[11px] border border-red-300 text-red-600 rounded py-1">Rejeter</a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% empty %}<p class="text-sm text-slate-400 col-span-2">Aucun fichier.</p>{% endfor %}
+    </div>
+    <form method="post" enctype="multipart/form-data" class="border-t pt-4 space-y-2">{% csrf_token %}
+      {{ file_form.title }}
+      {% if not user.is_external %}
+      <label class="text-xs text-slate-500">Type de fichier</label>{{ file_form.kind }}
+      {% endif %}
+      {{ file_form.file }}
+      <button name="upload_file" class="lpm-gradient text-white px-4 py-2 rounded-lg text-sm font-medium">Partager un fichier</button>
+    </form>
+  </div>
+
+  <!-- Messagerie -->
+  <div class="bg-white rounded-xl shadow-card p-6 flex flex-col">
+    <h3 class="font-bold text-slate-800 mb-4"><i class="fa-solid fa-comments"></i> Échanges</h3>
+    <div class="flex-1 space-y-3 mb-4 max-h-80 overflow-y-auto">
+      {% for m in msgs %}
+      <div class="flex gap-2 {% if m.sender == user %}flex-row-reverse{% endif %}">
+        <span class="h-8 w-8 rounded-full lpm-gradient text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{{ m.sender.display_initials }}</span>
+        <div class="rounded-xl px-3 py-2 max-w-[75%] {% if m.sender == user %}bg-lpm text-white{% else %}bg-slate-100 text-slate-700{% endif %}">
+          <div class="text-sm">{{ m.body }}</div>
+          <div class="text-[10px] {% if m.sender == user %}text-white/70{% else %}text-slate-400{% endif %} mt-0.5">{{ m.created_at|date:"d/m H:i" }}</div>
+        </div>
+      </div>
+      {% empty %}<p class="text-sm text-slate-400">Aucun message.</p>{% endfor %}
+    </div>
+    <form method="post" class="border-t pt-4 flex gap-2">{% csrf_token %}
+      <div class="flex-1">{{ msg_form.body }}</div>
+      <button name="send_message" class="lpm-gradient text-white px-4 rounded-lg text-sm font-medium">Envoyer</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

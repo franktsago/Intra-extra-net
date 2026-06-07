@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Supprimer un utilisateur{% endblock %}
+{% block page_title %}Supprimer un utilisateur{% endblock %}
+{% block content %}
+<div class="max-w-lg mx-auto bg-white rounded-2xl border border-slate-200 shadow-card p-6">
+  <div class="flex items-start gap-3">
+    <span class="h-11 w-11 rounded-xl bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-user-xmark text-lg"></i></span>
+    <div>
+      <h2 class="font-bold text-slate-900">Confirmer la suppression</h2>
+      <p class="text-sm text-slate-500 mt-1">Le compte <strong>{{ obj.get_full_name|default:obj.username }}</strong> (@{{ obj.username }}, {{ obj.get_role_display }}) sera <strong>définitivement supprimé</strong>.</p>
+    </div>
+  </div>
+  {% if error %}
+  <div class="mt-4 px-4 py-3 rounded-lg text-sm bg-red-50 border border-red-200 text-red-700"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ error }}</div>
+  {% else %}
+  <div class="mt-4 px-4 py-3 rounded-lg text-sm bg-amber-50 border border-amber-200 text-amber-800">
+    Astuce : pour conserver l'historique, vous pouvez aussi simplement <strong>désactiver</strong> le compte (Modifier → décocher « Actif »).
+  </div>
+  {% endif %}
+  <div class="mt-6 flex gap-3">
+    {% if not error %}
+    <form method="post">{% csrf_token %}
+      <button class="bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow-sm"><i class="fa-solid fa-trash mr-1"></i> Supprimer définitivement</button>
+    </form>
+    {% endif %}
+    <a href="{% url 'accounts:user_list' %}" class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600">Retour</a>
+  </div>
+</div>
+{% endblock %}

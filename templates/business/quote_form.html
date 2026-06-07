@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Devis{% endblock %}
+{% block page_title %}{% if quote %}Modifier {{ quote.number }}{% else %}Nouveau devis{% endif %}{% endblock %}
+{% block content %}
+<form method="post" class="space-y-6 max-w-4xl">{% csrf_token %}
+  <div class="bg-white rounded-xl shadow-card p-6">
+    {% include "includes/form.html" %}
+  </div>
+  <div class="bg-white rounded-xl shadow-card p-6">
+    <h3 class="font-bold text-slate-800 mb-3">Lignes du devis</h3>
+    {% include "business/_lines_formset.html" %}
+  </div>
+  <div class="flex gap-3">
+    <button class="lpm-gradient text-white font-semibold px-5 py-2.5 rounded-lg shadow">Enregistrer</button>
+    <a href="{% url 'business:quote_list' %}" class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600">Annuler</a>
+  </div>
+</form>
+{% endblock %}

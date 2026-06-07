@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Dossier disciplinaire{% endblock %}
+{% block page_title %}Dossier disciplinaire{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <a href="{% url 'disciplinary:list' %}" class="text-sm text-lpm hover:underline">← Dossiers</a>
+  <div class="bg-white rounded-xl shadow-card p-6 mt-3">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-bold text-slate-800">{{ record.employee.full_name }}</h2>
+      <span class="px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">{{ record.get_sanction_type_display }}</span>
+    </div>
+    <div class="grid sm:grid-cols-2 gap-4 mt-5 text-sm">
+      <div><div class="text-slate-400">Statut</div><div class="font-medium text-slate-800">{{ record.get_status_display }}</div></div>
+      <div><div class="text-slate-400">Date des faits</div><div class="font-medium text-slate-800">{{ record.fault_date|date:"d/m/Y"|default:"—" }}</div></div>
+      <div><div class="text-slate-400">Entretien préalable</div><div class="font-medium text-slate-800">{{ record.hearing_date|date:"d/m/Y"|default:"Non programmé" }}</div></div>
+      <div><div class="text-slate-400">Notifiée le</div><div class="font-medium text-slate-800">{{ record.notified_at|date:"d/m/Y"|default:"—" }}</div></div>
+      {% if record.sanction_type == 'SUSPENSION' %}
+      <div><div class="text-slate-400">Durée mise à pied</div><div class="font-medium text-slate-800">{{ record.suspension_days }} jour(s)</div></div>
+      <div><div class="text-slate-400">Début</div><div class="font-medium text-slate-800">{{ record.suspension_start|date:"d/m/Y"|default:"—" }}</div></div>
+      {% endif %}
+    </div>
+    <div class="mt-5 pt-4 border-t text-sm">
+      <div class="text-slate-400">Faits reprochés</div><p class="text-slate-700 mt-1 whitespace-pre-line">{{ record.facts }}</p>
+    </div>
+    {% if record.employee_defense %}
+    <div class="mt-4 text-sm"><div class="text-slate-400">Explications du salarié</div><p class="text-slate-700 mt-1 whitespace-pre-line">{{ record.employee_defense }}</p></div>
+    {% endif %}
+    {% if record.status == 'NOTIFIED' or record.status == 'CLOSED' %}
+    <div class="mt-6 bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between gap-3">
+      <div class="text-sm text-slate-700">
+        <div class="font-semibold"><i class="fa-solid fa-file-contract"></i> Document officiel sur papier en-tête</div>
+        <div class="text-xs text-slate-500">Référence : <strong>{{ record.reference }}</strong></div>
+      </div>
+      <a href="{% url 'disciplinary:pdf' record.pk %}" class="bg-slate-800 hover:bg-slate-900 text-white font-medium px-4 py-2.5 rounded-xl shadow-sm whitespace-nowrap"><i class="fa-solid fa-download mr-1"></i> Télécharger (PDF)</a>
+    </div>
+    {% endif %}
+    <a href="{% url 'disciplinary:edit' record.pk %}" class="inline-block mt-5 lpm-gradient text-white font-semibold px-5 py-2.5 rounded-lg shadow">Modifier</a>
+  </div>
+</div>
+{% endblock %}

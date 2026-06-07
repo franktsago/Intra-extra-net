@@ -1,0 +1,20 @@
+{% extends user.is_external|yesno:"base_extranet.html,base.html" %}
+{% load humanize %}
+{% block title %}Mes factures{% endblock %}
+{% block page_title %}Mes factures{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-slate-900 mb-1">Mes factures</h1>
+<p class="text-slate-500 mb-6">Téléchargez vos factures et réglez en ligne (MTN MoMo / Orange Money).</p>
+<div class="bg-white rounded-2xl border border-slate-200 shadow-card divide-y divide-slate-100">
+  {% for i in invoices %}
+  <a href="{% url 'extranet:client_invoice' i.pk %}" class="flex items-center justify-between px-5 py-4 hover:bg-slate-50">
+    <div><div class="font-semibold text-slate-800">{{ i.title }}</div>
+      <div class="text-xs text-slate-400">{{ i.number }} · échéance {{ i.due_date|date:"d/m/Y"|default:"—" }}</div></div>
+    <div class="text-right">
+      <div class="font-bold text-slate-900">{{ i.total|intcomma }} F</div>
+      <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-{{ i.status_color }}-50 text-{{ i.status_color }}-600">{{ i.get_status_display }}</span>
+    </div>
+  </a>
+  {% empty %}<div class="px-5 py-12 text-center text-slate-400"><i class="fa-regular fa-file-lines text-4xl"></i><p class="mt-3">Aucune facture.</p></div>{% endfor %}
+</div>
+{% endblock %}

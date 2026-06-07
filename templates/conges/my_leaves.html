@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Mes congés{% endblock %}
+{% block page_title %}Mes congés{% endblock %}
+{% block content %}
+{% if not employee %}
+<div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-5">Aucune fiche employé n'est associée à votre compte. Contactez le service RH.</div>
+{% else %}
+<div class="grid sm:grid-cols-3 gap-4 mb-6">
+  <div class="lpm-gradient text-white rounded-xl p-5">
+    <div class="text-white/80 text-sm">Solde disponible</div>
+    <div class="text-3xl font-extrabold mt-1">{{ balance }} <span class="text-lg font-normal">jours</span></div>
+    <div class="text-xs text-white/70 mt-1">jours ouvrables</div>
+  </div>
+  <div class="bg-white rounded-xl shadow-card p-5 sm:col-span-2 flex items-center justify-between">
+    <div><div class="font-semibold text-slate-800">Besoin de poser des congés ?</div>
+    <div class="text-sm text-slate-500">Droit légal : 1,5 jour ouvrable / mois (Code du Travail camerounais).</div></div>
+    <a href="{% url 'conges:create' %}" class="lpm-gradient text-white px-5 py-2.5 rounded-lg font-medium shadow whitespace-nowrap">+ Demander</a>
+  </div>
+</div>
+
+<div class="bg-white rounded-xl shadow-card overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-50 text-slate-500 text-left"><tr>
+      <th class="px-4 py-3">Type</th><th class="px-4 py-3">Période</th><th class="px-4 py-3">Jours</th><th class="px-4 py-3">Statut</th><th></th>
+    </tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for r in requests %}
+      <tr class="hover:bg-slate-50">
+        <td class="px-4 py-3 font-medium text-slate-800">{{ r.leave_type.name }}</td>
+        <td class="px-4 py-3 text-slate-500">{{ r.start_date|date:"d/m/Y" }} → {{ r.end_date|date:"d/m/Y" }}</td>
+        <td class="px-4 py-3">{{ r.days_count }}</td>
+        <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium bg-{{ r.status_color }}-100 text-{{ r.status_color }}-700">{{ r.get_status_display }}</span></td>
+        <td class="px-4 py-3 text-right"><a href="{% url 'conges:detail' r.pk %}" class="text-lpm hover:underline">Détail</a></td>
+      </tr>
+      {% empty %}<tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">Aucune demande.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

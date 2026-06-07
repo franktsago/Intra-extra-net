@@ -1,0 +1,37 @@
+{% extends user.is_external|yesno:"base_extranet.html,base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium {% if audience == 'EXTERNAL' %}bg-violet-50 text-violet-600{% else %}bg-blue-50 text-blue-600{% endif %}">
+    <i class="fa-solid {% if audience == 'EXTERNAL' %}fa-handshake{% else %}fa-building{% endif %}"></i>
+    {% if audience == 'EXTERNAL' %}Notifications extranet{% else %}Notifications intranet{% endif %}
+  </span>
+  <div class="flex items-center gap-4">
+    <a href="{% url 'notifications:mark_all_read' %}" class="text-sm text-lpm hover:underline">Tout marquer comme lu</a>
+    {% if notifs %}
+    <form method="post" action="{% url 'notifications:clear' %}" onsubmit="return confirm('Effacer toutes vos notifications ?');">{% csrf_token %}
+      <button class="text-sm text-red-600 hover:underline"><i class="fa-solid fa-trash mr-1"></i>Tout effacer</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+<div class="bg-white rounded-xl shadow-card divide-y divide-slate-100">
+  {% for n in notifs %}
+  <div class="group flex items-start gap-3 px-5 py-4 hover:bg-slate-50 {% if not n.is_read %}bg-lpm/5{% endif %}">
+    <a href="{% url 'notifications:open' n.pk %}" class="flex items-start gap-3 flex-1 min-w-0">
+      <span class="text-xl {% if n.level == 'SUCCESS' %}text-emerald-500{% elif n.level == 'WARNING' %}text-amber-500{% elif n.level == 'ERROR' %}text-red-500{% else %}text-lpm{% endif %}">{% if n.level == 'SUCCESS' %}<i class="fa-solid fa-circle-check"></i>{% elif n.level == 'WARNING' %}<i class="fa-solid fa-triangle-exclamation"></i>{% elif n.level == 'ERROR' %}<i class="fa-solid fa-circle-exclamation"></i>{% else %}<i class="fa-solid fa-bell"></i>{% endif %}</span>
+      <div class="flex-1 min-w-0">
+        <div class="font-medium text-slate-800">{{ n.title }}</div>
+        <div class="text-sm text-slate-500">{{ n.message }}</div>
+        <div class="text-xs text-slate-400 mt-1">{{ n.created_at|date:"d/m/Y H:i" }}</div>
+      </div>
+      {% if not n.is_read %}<span class="h-2 w-2 rounded-full bg-lpm mt-2"></span>{% endif %}
+    </a>
+    <form method="post" action="{% url 'notifications:delete' n.pk %}" class="opacity-0 group-hover:opacity-100 transition">{% csrf_token %}
+      <button class="p-2 text-slate-300 hover:text-red-600" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+    </form>
+  </div>
+  {% empty %}<div class="px-5 py-10 text-center text-slate-400">Aucune notification.</div>{% endfor %}
+</div>
+{% endblock %}

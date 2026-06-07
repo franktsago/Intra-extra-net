@@ -3,16 +3,19 @@
 > Mémoire persistante. Détail dans **`HANDOVER.md`** + **`CLAUDE.md`** (même dossier).
 > Langue de travail : **français**.
 
-## ⚠️ Session 2026-06-07 — AUCUN travail de code sur ce projet
-La session de cette date portait sur un AUTRE projet (`lpm_consulting`, site vitrine).
-Sur CE projet, **rien n'a été modifié** : seul un **`HANDOVER.md` d'onboarding** a été créé
-(par exploration du code) + ce `MEMORY.md`. Pas de commit (le projet n'est pas sous git).
+## Session 2026-06-07 — onboarding + mise sous git
+La session de cette date portait surtout sur un AUTRE projet (`lpm_consulting`, site vitrine).
+Sur CE projet : création d'un **`HANDOVER.md`** + ce `MEMORY.md` (par exploration), puis
+**mise sous git** : `.gitignore` complété (`.claude/`, `*.bak`), `git init -b main`,
+identité locale (`LPM Consulting` / `dev@lpmconsultinggroup.com`), **commit initial `a256d02`**
+(382 fichiers ; `.venv`/`venv`/`db.sqlite3`/`media/`/`.env` exclus). **Pas de remote / pas de push**
+(aucune URL fournie). Aucun fichier de code applicatif modifié.
 
 ## Identité projet
 - **Intranet + Extranet LPM Consulting Group** (entreprise camerounaise). Django **6.0.5**, UI **française**, charte bleue.
 - Chemin : `C:\Users\Mr T\OneDrive\Desktop\Intra extra lpm`. Venv : **`.venv`** (Python 3.14.5).
 - Lancer : `$env:PYTHONUTF8=1` puis `.\.venv\Scripts\python.exe manage.py runserver`.
-- ⚠️ **Pas sous git.** DB SQLite (~1,3 Mo), `media/` ~10 Mo (non versionnés).
+- Git : branche `main`, commit initial `a256d02`. **Aucun remote** (pas encore poussé). DB SQLite (~1,3 Mo) et `media/` ~10 Mo **non versionnés**.
 
 ## Faits clés (issus de l'exploration)
 - **16 apps** (`config/settings.py::LOCAL_APPS`) : accounts, employees, documents, communication, conges, dashboard, tasks, disciplinary, notifications, messaging, extranet, business, projects, marketing, hr, api. ⚠️ **`CLAUDE.md` dit « 10 apps » = PÉRIMÉ.**
@@ -31,7 +34,7 @@ Sur CE projet, **rien n'a été modifié** : seul un **`HANDOVER.md` d'onboardin
 - `Employee` ≠ `User` (OneToOne, parfois absent) ; logique RH pend de `Employee`.
 
 ## Next actions
-1. (Si reprise) `git init` + commit.
+1. **Pousser sur GitHub** (sur demande, dès qu'une URL de dépôt vide est fournie).
 2. **Phase 3** du cahier des charges : stats/reporting, **API REST externe** (DRF prêt), mobile.
 3. Prod : `DB_ENGINE=postgresql`, `DJANGO_DEBUG=False`, `.env` complet, `collectstatic`.
 

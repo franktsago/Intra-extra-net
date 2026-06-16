@@ -249,3 +249,35 @@ def _est_mineur(employee):
         (today.month, today.day) < (employee.birth_date.month, employee.birth_date.day)
     )
     return age < 18
+
+
+def sync_leave_status(today=None):
+    """Met automatiquement à jour le statut des employés selon leurs congés.
+
+    • Un employé dont un congé approuvé couvre aujourd'hui passe « En congé ».
+    • Un employé « En congé » dont le congé est terminé repasse « En activité ».
+
+    Ne touche jamais les comptes « Suspendu » ou « Sorti des effectifs ».
+    Idempotent : ne modifie que ce qui doit changer. Renvoie (n_en_conge, n_actifs).
+    """
+    from employees.models import Employee
+    today = today or timezone.localdate()
+    on_leave_ids = set(LeaveRequest.objects.filter(
+        status=LeaveRequest.Status.APPROVED,
+        start_date__lte=today, end_date__gte=today,
+    ).values_list("employee_id", flat=True))
+
+    n_leave = n_active = 0
+    # Passe « En congé » les employés actifs concernés aujourd'hui.
+    for emp in Employee.objects.filter(
+            pk__in=on_leave_ids, status=Employee.Status.ACTIVE):
+        emp.status = Employee.Status.LEAVE
+        emp.save(update_fields=["status"])
+        n_leave += 1
+    # Repasse « En activité » ceux marqués « En congé » dont le congé est échu.
+    for emp in Employee.objects.filter(
+            status=Employee.Status.LEAVE).exclude(pk__in=on_leave_ids):
+        emp.status = Employee.Status.ACTIVE
+        emp.save(update_fields=["status"])
+        n_active += 1
+    return n_leave, n_active

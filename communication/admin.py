@@ -1,6 +1,7 @@
 from django.contrib import admin
 
-from .models import Comment, Event, News
+from .models import (Comment, Event, EventParticipant, EventProject, EventReport,
+                     EventSupplier, KeyMessage, News, Newsletter, PressReview)
 
 
 @admin.register(News)
@@ -18,3 +19,10 @@ class EventAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Comment)
+admin.site.register(PressReview)
+admin.site.register(KeyMessage)
+admin.site.register(Newsletter)
+admin.site.register(EventProject)
+admin.site.register(EventSupplier)
+admin.site.register(EventParticipant)
+admin.site.register(EventReport)

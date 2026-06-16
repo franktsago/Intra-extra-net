@@ -11,4 +11,10 @@ urlpatterns = [
     path("<int:pk>/modifier/", views.project_edit, name="edit"),
     path("<int:pk>/phase/<int:phase_id>/<str:status>/", views.phase_set, name="phase_set"),
     path("<int:pk>/media/", views.media_upload, name="media_upload"),
+    path("backlog/", views.ticket_list, name="ticket_list"),
+    path("ticket/nouveau/", views.ticket_edit, name="ticket_create"),
+    path("ticket/<int:pk>/modifier/", views.ticket_edit, name="ticket_edit"),
+    path("benchmarks/", views.benchmark_list, name="benchmark_list"),
+    path("benchmark/nouveau/", views.benchmark_edit, name="benchmark_create"),
+    path("benchmark/<int:pk>/modifier/", views.benchmark_edit, name="benchmark_edit"),
 ]

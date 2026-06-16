@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}{{ item.name }}{% endblock %}
+{% block page_title %}{{ item.name }}{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+  <!-- Fiche article -->
+  <div class="lg:col-span-1 space-y-4">
+    <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-5">
+      {% if item.image %}
+      <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full h-40 object-cover rounded-xl mb-4">
+      {% endif %}
+      <div class="space-y-3 text-sm">
+        <div class="flex justify-between">
+          <span class="text-slate-500">Référence</span>
+          <span class="font-mono font-medium">{{ item.reference }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">Catégorie</span>
+          <span>{{ item.get_category_display }}</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-slate-500">Quantité</span>
+          <span class="text-xl font-bold {% if item.is_low_stock %}text-red-600{% else %}text-lpm{% endif %}">{{ item.quantity }} {{ item.unit }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">Seuil d'alerte</span>
+          <span>{{ item.min_quantity }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">Statut</span>
+          <span class="text-xs px-2 py-1 rounded-full font-medium
+            {% if item.status == 'GOOD' %}bg-emerald-100 text-emerald-700
+            {% elif item.status == 'REPAIR' %}bg-amber-100 text-amber-700
+            {% else %}bg-red-100 text-red-700{% endif %}">
+            {{ item.get_status_display }}
+          </span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">Localisation</span>
+          <span>{{ item.location|default:"—" }}</span>
+        </div>
+        {% if item.supplier %}
+        <div class="flex justify-between">
+          <span class="text-slate-500">Fournisseur</span>
+          <span>{{ item.supplier.name }}</span>
+        </div>
+        {% endif %}
+        {% if item.unit_price %}
+        <div class="flex justify-between">
+          <span class="text-slate-500">Prix unitaire</span>
+          <span>{{ item.unit_price|floatformat:0 }} FCFA</span>
+        </div>
+        {% endif %}
+      </div>
+      {% if user.is_manager %}
+      <a href="{% url 'stock:item_edit' item.pk %}" class="mt-4 w-full flex items-center justify-center gap-2 bg-lpm text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-lpm-dark transition">
+        <i class="fa-solid fa-pen"></i> Modifier l'article
+      </a>
+      {% endif %}
+    </div>
+
+    <!-- Formulaire emprunt -->
+    <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-5">
+      <h3 class="font-semibold text-slate-800 mb-3"><i class="fa-solid fa-hand-holding-box text-lpm mr-2"></i>Demander un emprunt</h3>
+      <form method="post" action="{% url 'stock:borrow_create' item.pk %}">
+        {% csrf_token %}
+        {% include "includes/form.html" with form=borrow_form %}
+        <button type="submit" class="mt-3 w-full bg-lpm text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-lpm-dark transition">
+          Soumettre la demande
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="lg:col-span-2 space-y-6">
+    <!-- Formulaire mouvement -->
+    {% if user.is_manager %}
+    <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-5">
+      <h3 class="font-semibold text-slate-800 mb-3"><i class="fa-solid fa-arrows-up-down text-lpm mr-2"></i>Enregistrer un mouvement</h3>
+      <form method="post" action="{% url 'stock:movement_add' item.pk %}">
+        {% csrf_token %}
+        {% include "includes/form.html" with form=move_form %}
+        <button type="submit" class="mt-3 bg-lpm text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-lpm-dark transition">
+          Enregistrer
+        </button>
+      </form>
+    </div>
+    {% endif %}
+
+    <!-- Derniers mouvements -->
+    <div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100">
+        <h3 class="font-semibold text-slate-800">Derniers mouvements</h3>
+      </div>
+      <div class="divide-y divide-slate-50">
+        {% for mv in movements %}
+        <div class="px-5 py-3 flex items-center justify-between text-sm">
+          <div>
+            <span class="font-medium {% if mv.kind == 'IN' %}text-emerald-600{% elif mv.kind == 'OUT' %}text-red-600{% else %}text-amber-600{% endif %}">
+              {{ mv.get_kind_display }}
+            </span>
+            <span class="text-slate-600 ml-2">{{ mv.quantity }} {{ item.unit }}</span>
+            {% if mv.reason %}<span class="text-slate-400 ml-2">— {{ mv.reason }}</span>{% endif %}
+          </div>
+          <div class="text-xs text-slate-400">{{ mv.performed_by.get_full_name|default:mv.performed_by.username }} · {{ mv.performed_at|date:"d/m/Y H:i" }}</div>
+        </div>
+        {% empty %}
+        <div class="px-5 py-6 text-center text-slate-400 text-sm">Aucun mouvement enregistré.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Emprunts récents -->
+    <div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100">
+        <h3 class="font-semibold text-slate-800">Demandes d'emprunt</h3>
+      </div>
+      <div class="divide-y divide-slate-50">
+        {% for br in borrows %}
+        <div class="px-5 py-3 flex items-center justify-between text-sm">
+          <div>
+            <span class="font-medium text-slate-700">{{ br.requested_by.get_full_name|default:br.requested_by.username }}</span>
+            <span class="text-slate-500 ml-2">{{ br.quantity }} {{ item.unit }}</span>
+            {% if br.purpose %}<span class="text-slate-400 ml-2">— {{ br.purpose }}</span>{% endif %}
+          </div>
+          <span class="text-xs px-2 py-1 rounded-full font-medium
+            {% if br.status == 'PENDING' %}bg-amber-100 text-amber-700
+            {% elif br.status == 'APPROVED' %}bg-emerald-100 text-emerald-700
+            {% elif br.status == 'RETURNED' %}bg-sky-100 text-sky-700
+            {% else %}bg-red-100 text-red-700{% endif %}">
+            {{ br.get_status_display }}
+          </span>
+        </div>
+        {% empty %}
+        <div class="px-5 py-6 text-center text-slate-400 text-sm">Aucune demande d'emprunt.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Maintenance -->
+    {% if maintenance %}
+    <div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="font-semibold text-slate-800"><i class="fa-solid fa-wrench text-orange-500 mr-2"></i>Historique maintenance</h3>
+        {% if user.is_manager %}
+        <a href="{% url 'stock:hub' %}?s=maintenance" class="text-xs text-lpm hover:underline">Voir tout</a>
+        {% endif %}
+      </div>
+      <div class="divide-y divide-slate-50">
+        {% for f in maintenance %}
+        <div class="px-5 py-3 text-sm">
+          <div class="flex items-center justify-between">
+            <span class="font-medium text-slate-700">{{ f.problem|truncatechars:60 }}</span>
+            <span class="text-xs px-2 py-0.5 rounded-full font-medium ml-2 shrink-0
+              {% if f.status == 'PENDING' %}bg-amber-100 text-amber-700
+              {% elif f.status == 'IN_PROGRESS' %}bg-blue-100 text-blue-700
+              {% elif f.status == 'RESOLVED' %}bg-emerald-100 text-emerald-700
+              {% else %}bg-slate-100 text-slate-500{% endif %}">
+              {{ f.get_status_display }}
+            </span>
+          </div>
+          <div class="text-xs text-slate-400 mt-0.5 flex gap-4">
+            <span>{{ f.detected_at|date:"d/m/Y" }}</span>
+            <span class="text-orange-600">{{ f.get_recommended_action_display }}</span>
+            {% if f.estimated_cost %}<span>{{ f.estimated_cost|floatformat:0 }} FCFA</span>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Réconciliations post-événement -->
+    {% if reconciliations %}
+    <div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="font-semibold text-slate-800"><i class="fa-solid fa-calendar-check text-lpm mr-2"></i>Réconciliations post-événement</h3>
+        {% if user.is_manager %}
+        <a href="{% url 'stock:hub' %}?s=recevt" class="text-xs text-lpm hover:underline">Voir tout</a>
+        {% endif %}
+      </div>
+      <div class="divide-y divide-slate-50">
+        {% for r in reconciliations %}
+        <div class="px-5 py-3 text-sm flex items-center justify-between">
+          <div>
+            <span class="font-medium text-slate-700">{{ r.event_name }}</span>
+            <span class="text-slate-400 ml-2 text-xs">{{ r.event_date|date:"d/m/Y" }}</span>
+          </div>
+          <div class="text-right">
+            <div class="text-xs text-slate-500">{{ r.qty_returned }}/{{ r.qty_out }} retourné(s)</div>
+            {% if r.discrepancy > 0 %}<div class="text-xs text-red-600 font-semibold">Écart : -{{ r.discrepancy }}</div>{% endif %}
+            <span class="text-xs px-1.5 py-0.5 rounded font-medium
+              {% if r.return_state == 'GOOD' %}bg-emerald-100 text-emerald-700
+              {% elif r.return_state == 'USED' %}bg-amber-100 text-amber-700
+              {% elif r.return_state == 'DAMAGED' %}bg-orange-100 text-orange-700
+              {% else %}bg-red-100 text-red-700{% endif %}">
+              {{ r.get_return_state_display }}
+            </span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+</div>
+{% endblock %}

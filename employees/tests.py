@@ -67,6 +67,106 @@ class MatriculeAutoTest(TestCase):
         self.assertNotIn("matricule", EmployeeForm().fields)
 
 
+class EmployeeEditAppliesTest(TestCase):
+    """L'édition d'une fiche dans l'annuaire répercute l'identité sur le compte (item 1)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.rh = User.objects.create_user("rh_an", password="x", role=Role.RH)
+        cls.target = User.objects.create_user(
+            "j.dupont", password="x", role=Role.EMPLOYE,
+            first_name="Jean", last_name="Dupont", email="old@lpm.cm", phone="+237 600000000")
+        from employees.models import Employee
+        cls.emp = Employee.objects.get(user=cls.target)
+
+    def test_edit_updates_linked_user(self):
+        self.client.force_login(self.rh)
+        r = self.client.post(reverse("employees:edit", args=[self.emp.pk]), {
+            "first_name": "Jean-Pierre", "last_name": "DUPONT",
+            "email": "new@lpm.cm", "phone": "+237 655112233",
+            "gender": "M", "hire_date": "2024-01-01",
+            "contract_type": "CDI", "status": "ACTIVE", "city": "Douala",
+            "emergency_contact": "Marie", "emergency_contact_phone": "+237 699112233",
+        })
+        self.assertEqual(r.status_code, 302)
+        self.target.refresh_from_db()
+        self.assertEqual(self.target.first_name, "Jean-Pierre")
+        self.assertEqual(self.target.last_name, "DUPONT")
+        self.assertEqual(self.target.email, "new@lpm.cm")
+        self.assertEqual(self.target.phone, "+237 655112233")
+
+    def test_form_exposes_identity_initial(self):
+        from employees.forms import EmployeeForm
+        form = EmployeeForm(instance=self.emp, viewer=self.rh)
+        self.assertEqual(form.fields["first_name"].initial, "Jean")
+        self.assertEqual(form.fields["email"].initial, "old@lpm.cm")
+
+
+class ActiveSyncTest(TestCase):
+    """Désactiver un compte le sort des effectifs et le masque partout (item 2)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.rh = User.objects.create_user("rh_act", password="x", role=Role.RH)
+        cls.target = User.objects.create_user(
+            "p.parti", password="x", role=Role.EMPLOYE,
+            first_name="Paul", last_name="Parti", email="p@lpm.cm")
+        from employees.models import Employee
+        cls.emp = Employee.objects.get(user=cls.target)
+
+    def test_deactivation_terminates_employee(self):
+        from employees.models import Employee
+        self.client.force_login(self.rh)
+        # is_active non coché (absent du POST) → compte désactivé.
+        r = self.client.post(reverse("accounts:user_edit", args=[self.target.pk]), {
+            "first_name": "Paul", "last_name": "Parti", "email": "p@lpm.cm",
+            "role": Role.EMPLOYE, "phone": "", "organization": ""})
+        self.assertEqual(r.status_code, 302)
+        self.target.refresh_from_db()
+        self.emp.refresh_from_db()
+        self.assertFalse(self.target.is_active)
+        self.assertEqual(self.emp.status, Employee.Status.TERMINATED)
+
+    def test_inactive_hidden_from_directory(self):
+        self.target.is_active = False
+        self.target.save(update_fields=["is_active"])
+        self.client.force_login(self.rh)
+        r = self.client.get(reverse("employees:list"))
+        self.assertNotContains(r, "Paul")
+        # …mais visible avec le filtre explicite.
+        r2 = self.client.get(reverse("employees:list") + "?inactifs=1")
+        self.assertContains(r2, "Paul")
+
+    def test_reactivation_restores_active(self):
+        from employees.models import Employee
+        self.emp.status = Employee.Status.TERMINATED
+        self.emp.save(update_fields=["status"])
+        self.target.is_active = False
+        self.target.save(update_fields=["is_active"])
+        self.client.force_login(self.rh)
+        self.client.post(reverse("accounts:user_edit", args=[self.target.pk]), {
+            "first_name": "Paul", "last_name": "Parti", "email": "p@lpm.cm",
+            "role": Role.EMPLOYE, "phone": "", "organization": "", "is_active": "on"})
+        self.emp.refresh_from_db()
+        self.assertEqual(self.emp.status, Employee.Status.ACTIVE)
+
+
+class ContractTypeInUserListTest(TestCase):
+    """Le type de contrat figure dans la liste des utilisateurs (item 3)."""
+
+    def test_contract_type_shown(self):
+        rh = User.objects.create_user("rh_ct", password="x", role=Role.RH)
+        u = User.objects.create_user("c.dd", password="x", role=Role.EMPLOYE,
+                                     first_name="Cyril", last_name="DD")
+        from employees.models import Employee
+        emp = Employee.objects.get(user=u)
+        emp.contract_type = Employee.Contract.CDD
+        emp.save(update_fields=["contract_type"])
+        self.client.force_login(rh)
+        r = self.client.get(reverse("accounts:user_list"))
+        self.assertContains(r, "CDD")
+
+
 class HRDocumentsTest(TestCase):
     """RH/CEO/admin téléchargent attestations + contrat ; les autres non."""
 

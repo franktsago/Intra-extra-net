@@ -4,6 +4,32 @@
 {% block content %}
 <div class="max-w-3xl mx-auto">
   <a href="{% url 'communication:list' %}" class="text-sm text-lpm hover:underline">← Toutes les actualités</a>
+
+  {% if not article.is_visible %}
+  <div class="mt-3 rounded-xl p-4 flex items-start gap-3 text-sm
+    {% if article.mod_status == 'PENDING' %}bg-amber-50 border border-amber-200 text-amber-800
+    {% else %}bg-red-50 border border-red-200 text-red-800{% endif %}">
+    <i class="fa-solid {% if article.mod_status == 'PENDING' %}fa-clock{% else %}fa-circle-xmark{% endif %} mt-0.5"></i>
+    <div class="flex-1">
+      {% if article.mod_status == 'PENDING' %}
+      <strong>En attente de validation.</strong> Cette actualité n'est pas encore visible par le personnel.
+      {% else %}
+      <strong>Actualité refusée.</strong>{% if article.reject_reason %} Motif : {{ article.reject_reason }}{% endif %}
+      {% endif %}
+      {% if can_moderate and article.mod_status == 'PENDING' %}
+      <div class="flex items-center gap-2 mt-3">
+        <form method="post" action="{% url 'communication:approve' article.pk %}">{% csrf_token %}
+          <button class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium"><i class="fa-solid fa-check mr-1"></i>Valider & publier</button>
+        </form>
+        <form method="post" action="{% url 'communication:reject' article.pk %}" onsubmit="return confirm('Refuser ?')">{% csrf_token %}
+          <button class="bg-white border border-red-300 text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg text-xs font-medium"><i class="fa-solid fa-xmark mr-1"></i>Refuser</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
   <article class="bg-white rounded-xl shadow-card overflow-hidden mt-3">
     {% if article.image %}<img src="{{ article.image.url }}" class="w-full max-h-80 object-cover">{% endif %}
     <div class="p-6 sm:p-8">

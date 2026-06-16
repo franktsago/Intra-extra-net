@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}RSE — Tableau de bord{% endblock %}
+{% block page_title %}Responsabilité Sociale & Environnementale{% endblock %}
+
+{% block content %}
+<!-- KPI rapide -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white rounded-2xl shadow-card p-5 border border-slate-100">
+    <div class="text-2xl font-bold text-emerald-500">{{ active_count }}</div>
+    <div class="text-sm text-slate-500 mt-1">Initiatives actives</div>
+  </div>
+  <div class="bg-white rounded-2xl shadow-card p-5 border border-slate-100">
+    <div class="text-2xl font-bold text-lpm">{{ by_cat|length }}</div>
+    <div class="text-sm text-slate-500 mt-1">Catégories d'indicateurs</div>
+  </div>
+  <div class="bg-white rounded-2xl shadow-card p-5 border border-slate-100">
+    <div class="text-2xl font-bold text-slate-700">{{ reports|length }}</div>
+    <div class="text-sm text-slate-500 mt-1">Rapports publiés</div>
+  </div>
+  <div class="bg-white rounded-2xl shadow-card p-5 border border-slate-100">
+    <div class="text-2xl font-bold text-amber-500">{{ resources|length }}</div>
+    <div class="text-sm text-slate-500 mt-1">Ressources disponibles</div>
+  </div>
+</div>
+
+<!-- Navigation modules -->
+<div class="flex flex-wrap gap-3 mb-6">
+  <a href="{% url 'rse:initiatives' %}" class="inline-flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-50 transition">
+    <i class="fa-solid fa-seedling text-emerald-500"></i> Initiatives
+  </a>
+  <a href="{% url 'rse:reports' %}" class="inline-flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-50 transition">
+    <i class="fa-solid fa-file-lines text-lpm"></i> Rapports
+  </a>
+  <a href="{% url 'rse:resources' %}" class="inline-flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-50 transition">
+    <i class="fa-solid fa-graduation-cap text-amber-500"></i> Sensibilisation
+  </a>
+  <a href="{% url 'rse:suppliers' %}" class="inline-flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-50 transition">
+    <i class="fa-solid fa-handshake text-slate-500"></i> Fournisseurs RSE
+  </a>
+  {% if user.is_manager %}
+  <a href="{% url 'rse:initiative_create' %}" class="inline-flex items-center gap-2 bg-lpm text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-lpm-dark transition">
+    <i class="fa-solid fa-plus"></i> Nouvelle initiative
+  </a>
+  {% endif %}
+</div>
+
+<!-- Indicateurs par catégorie -->
+{% if by_cat %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  {% for cat, inds in by_cat.items %}
+  <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-5">
+    <h3 class="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+      <i class="fa-solid fa-leaf text-emerald-500"></i> {{ cat }}
+    </h3>
+    <div class="space-y-3">
+      {% for ind in inds %}
+      <div>
+        <div class="flex justify-between text-sm mb-1">
+          <span class="text-slate-700">{{ ind.name }}</span>
+          <span class="font-semibold text-slate-800">{{ ind.value }} {{ ind.unit }}{% if ind.target %} / {{ ind.target }}{% endif %}</span>
+        </div>
+        {% if ind.target %}
+        <div class="w-full bg-slate-100 rounded-full h-1.5">
+          <div class="bg-lpm h-1.5 rounded-full" style="width: {{ ind.progress_pct }}%"></div>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="bg-white rounded-2xl shadow-card border border-slate-100 p-8 text-center text-slate-400 mb-6">
+  <i class="fa-solid fa-leaf text-4xl mb-3 text-emerald-200"></i>
+  <p>Aucun indicateur RSE renseigné.</p>
+</div>
+{% endif %}
+
+<!-- Initiatives récentes -->
+<div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
+  <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
+    <h3 class="font-semibold text-slate-800">Initiatives récentes</h3>
+    <a href="{% url 'rse:initiatives' %}" class="text-sm text-lpm hover:underline">Voir toutes</a>
+  </div>
+  <div class="divide-y divide-slate-50">
+    {% for ini in initiatives %}
+    <div class="px-5 py-3 flex items-center justify-between">
+      <div>
+        <div class="font-medium text-slate-800 text-sm">{{ ini.title }}</div>
+        <div class="text-xs text-slate-400 mt-0.5">{{ ini.get_category_display }}{% if ini.responsible %} · {{ ini.responsible.get_full_name|default:ini.responsible.username }}{% endif %}</div>
+      </div>
+      <span class="text-xs px-2 py-1 rounded-full font-medium
+        {% if ini.status == 'ACTIVE' %}bg-emerald-100 text-emerald-700
+        {% elif ini.status == 'PLANNED' %}bg-blue-100 text-blue-700
+        {% elif ini.status == 'DONE' %}bg-slate-100 text-slate-600
+        {% else %}bg-red-100 text-red-700{% endif %}">
+        {{ ini.get_status_display }}
+      </span>
+    </div>
+    {% empty %}
+    <div class="px-5 py-6 text-center text-slate-400 text-sm">Aucune initiative.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

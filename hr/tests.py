@@ -9,6 +9,68 @@ from employees.models import Employee
 from hr.models import Attendance, ensure_absences
 
 
+class HireDateContractSyncTest(TestCase):
+    """Date d'embauche ↔ date de début du contrat actif restent égales (items 1 & 2)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from datetime import date
+        cls.rh = User.objects.create_user("rh_sync", password="x", role=Role.RH)
+        cls.u = User.objects.create_user("e.sync", password="x", role=Role.EMPLOYE,
+                                         first_name="Eva", last_name="SYNC", email="e@lpm.cm")
+        cls.emp = Employee.objects.get(user=cls.u)
+        cls.emp.hire_date = date(2023, 3, 1)
+        cls.emp.save(update_fields=["hire_date"])
+
+    def test_contract_save_updates_hire_date(self):
+        from datetime import date
+        from hr.models import Contract
+        from hr.forms import ContractForm
+        form = ContractForm(data={
+            "employee": self.emp.pk, "type": "CDI", "start_date": "2022-09-15",
+            "salary": "300000", "probation_months": "0", "pay_day": "30",
+            "nationality": "Camerounaise", "is_active": "on",
+            "transport_allowance": "0", "housing_allowance": "0",
+            "performance_allowance": "0",
+        }, viewer=self.rh)
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        self.emp.refresh_from_db()
+        self.assertEqual(self.emp.hire_date, date(2022, 9, 15))
+
+    def test_employee_edit_updates_active_contract(self):
+        from datetime import date
+        from hr.models import Contract
+        contract = Contract.objects.create(
+            employee=self.emp, type=Contract.Type.CDI,
+            start_date=date(2023, 3, 1), is_active=True, salary=300000)
+        self.client.force_login(self.rh)
+        r = self.client.post(reverse("employees:edit", args=[self.emp.pk]), {
+            "gender": "F", "hire_date": "2021-01-04",
+            "first_name": "Eva", "last_name": "SYNC", "email": "e@lpm.cm", "phone": "",
+            "contract_type": "CDI", "status": "ACTIVE", "city": "Douala",
+            "emergency_contact": "X", "emergency_contact_phone": "+237 699000000",
+        })
+        self.assertEqual(r.status_code, 302)
+        self.emp.refresh_from_db()
+        contract.refresh_from_db()
+        self.assertEqual(self.emp.hire_date, date(2021, 1, 4))
+        self.assertEqual(contract.start_date, date(2021, 1, 4))  # contrat aligné
+
+    def test_hire_date_persists_on_edit(self):
+        """Item 1 : la date d'embauche saisie est bien conservée après modification."""
+        from datetime import date
+        self.client.force_login(self.rh)
+        self.client.post(reverse("employees:edit", args=[self.emp.pk]), {
+            "gender": "F", "hire_date": "2020-06-30",
+            "first_name": "Eva", "last_name": "SYNC", "email": "e@lpm.cm", "phone": "",
+            "contract_type": "CDI", "status": "ACTIVE", "city": "Douala",
+            "emergency_contact": "X", "emergency_contact_phone": "+237 699000000",
+        })
+        self.emp.refresh_from_db()
+        self.assertEqual(self.emp.hire_date, date(2020, 6, 30))
+
+
 class PointageAccessTest(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -64,6 +126,24 @@ class AbsenceGenerationTest(TestCase):
         tomorrow = timezone.localdate() + timedelta(days=1)
         ensure_absences(tomorrow)
         self.assertEqual(Attendance.objects.filter(date=tomorrow).count(), 0)
+
+    def test_on_leave_employee_shown_in_pointage(self):
+        """Un employé en congé reste visible dans la feuille de présence, marqué
+        « En congé » — il n'est pas masqué."""
+        from conges.models import LeaveRequest, LeaveType
+        yesterday = timezone.localdate() - timedelta(days=1)
+        emp = Employee.objects.get(user=self.emp)
+        # Congé approuvé couvrant hier + statut « En congé ».
+        lt = LeaveType.objects.create(name="Congé annuel", code="ANN")
+        LeaveRequest.objects.create(
+            employee=emp, leave_type=lt,
+            start_date=yesterday - timedelta(days=1), end_date=yesterday + timedelta(days=1),
+            status=LeaveRequest.Status.APPROVED)
+        emp.status = Employee.Status.LEAVE
+        emp.save(update_fields=["status"])
+        ensure_absences(yesterday)
+        rec = Attendance.objects.get(employee=emp, date=yesterday)
+        self.assertEqual(rec.status, Attendance.Status.LEAVE)  # visible « En congé »
 
 
 class EvaluationTeamTest(TestCase):
@@ -384,6 +464,44 @@ class TempContractNotifyTest(TestCase):
         self.assertEqual(notify_ending_contracts(today), 1)
         self.assertTrue(Notification.objects.filter(
             recipient=rh, title__icontains="mission temporaire").exists())
+
+
+class OnboardingAccessTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.rh = User.objects.create_user("rh_onb", password="x", role=Role.RH)
+        cls.emp = User.objects.create_user("emp_onb", password="x", role=Role.EMPLOYE)
+
+    def test_rh_can_access_onboarding_list(self):
+        self.client.force_login(self.rh)
+        self.assertEqual(self.client.get(reverse("hr:onboarding")).status_code, 200)
+
+    def test_employee_blocked_from_onboarding_list(self):
+        self.client.force_login(self.emp)
+        self.assertEqual(self.client.get(reverse("hr:onboarding")).status_code, 403)
+
+    def test_rh_can_access_onboarding_create(self):
+        self.client.force_login(self.rh)
+        self.assertEqual(self.client.get(reverse("hr:onboarding_create")).status_code, 200)
+
+    def test_employee_blocked_from_onboarding_create(self):
+        self.client.force_login(self.emp)
+        self.assertEqual(self.client.get(reverse("hr:onboarding_create")).status_code, 403)
+
+
+class StatsRHTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.rh = User.objects.create_user("rh_stats", password="x", role=Role.RH)
+        cls.manager = User.objects.create_user("mgr_stats", password="x", role=Role.MANAGER)
+
+    def test_stats_200_pour_rh(self):
+        self.client.force_login(self.rh)
+        self.assertEqual(self.client.get(reverse("hr:stats")).status_code, 200)
+
+    def test_stats_403_pour_manager(self):
+        self.client.force_login(self.manager)
+        self.assertEqual(self.client.get(reverse("hr:stats")).status_code, 403)
 
 
 class EndingContractIdempotentTest(TestCase):

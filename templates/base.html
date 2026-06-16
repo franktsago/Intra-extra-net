@@ -27,6 +27,21 @@
     .nav-link:hover { background:#f1f5f9; color:#0f172a; }
     .nav-link.active { background:#0073DE; color:#fff; box-shadow:0 6px 14px rgba(0,115,222,.25); }
     .nav-link.active i { color:#fff !important; }
+    /* Rubriques repliables (listes déroulantes) */
+    .nav-group > summary { list-style:none; cursor:pointer; }
+    .nav-group > summary::-webkit-details-marker { display:none; }
+    .nav-group-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:.55rem .75rem; margin-top:.35rem; border-radius:.75rem;
+      font-size:12px; font-weight:700; letter-spacing:.03em; text-transform:uppercase;
+      color:#334155; background:#f1f5f9; transition:background .15s,color .15s;
+    }
+    .nav-group-header:hover { background:#e2e8f0; color:#0f172a; }
+    .nav-group[open] > summary .nav-group-header { color:#0073DE; background:#e8f1fd; }
+    .nav-group-header .grp-ico { color:#0073DE; width:1.1rem; text-align:center; }
+    .nav-chevron { font-size:10px; color:#94a3b8; transition:transform .2s; }
+    .nav-group[open] > summary .nav-chevron { transform:rotate(180deg); }
+    .nav-group-body { margin-top:.15rem; }
     ::-webkit-scrollbar{width:7px;height:7px}::-webkit-scrollbar-thumb{background:#dbe2ea;border-radius:8px}
   </style>
   {% block head %}{% endblock %}
@@ -48,68 +63,183 @@
     </div>
 
     <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-0.5 text-[14px] font-medium">
+
+      {# ══ ACCUEIL ══════════════════════════════════════════════════════════ #}
       {% url 'dashboard:home' as u_dash %}
       <a href="{{ u_dash }}" class="nav-link {% if request.path == u_dash %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-house fa-fw text-slate-400"></i> Tableau de bord</a>
-      <a href="{% url 'communication:list' %}" class="nav-link {% if '/actualites' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-newspaper fa-fw text-slate-400"></i> Actualités</a>
-      {% if user.is_rh %}<a href="{% url 'notifications:broadcast' %}" class="nav-link {% if '/notifications/diffuser' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-bullhorn fa-fw text-slate-400"></i> Diffuser une annonce</a>{% endif %}
-      <a href="{% url 'messaging:inbox' %}" class="nav-link {% if '/messagerie' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-comments fa-fw text-slate-400"></i> Messagerie{% with total=unread_messages|add:unread_chat %}{% if total %}<span class="ml-auto bg-lpm text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{{ total }}</span>{% endif %}{% endwith %}</a>
-      <a href="{% url 'documents:list' %}" class="nav-link {% if '/documents' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-folder-open fa-fw text-slate-400"></i> Documents</a>
-      <a href="{% url 'tasks:board' %}" class="nav-link {% if '/taches' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-list-check fa-fw text-slate-400"></i> Tâches</a>
-      <a href="{% url 'communication:calendar' %}" class="nav-link {% if '/calendrier' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-calendar-days fa-fw text-slate-400"></i> Calendrier</a>
-      <a href="{% url 'conges:my' %}" class="nav-link {% if '/conges' in request.path and '/validation' not in request.path and '/jours-feries' not in request.path and '/absences' not in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-umbrella-beach fa-fw text-slate-400"></i> Mes congés</a>
-      <a href="{% url 'conges:absences' %}" class="nav-link {% if '/conges/absences' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-user-clock fa-fw text-slate-400"></i> Absences & missions</a>
-      {% if user.must_clock %}<a href="{% url 'hr:pointage' %}" class="nav-link {% if '/rh/pointage' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-fingerprint fa-fw text-slate-400"></i> Pointage</a>{% endif %}
-      <a href="{% url 'employees:list' %}" class="nav-link {% if '/employes' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-users fa-fw text-slate-400"></i> Annuaire</a>
 
-      <p class="px-3 pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Projets</p>
-      <a href="{% url 'projects:list' %}" class="nav-link {% if request.path == '/projets/' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-diagram-project fa-fw text-slate-400"></i> Projets</a>
-      <a href="{% url 'projects:list' %}?kind=EVENT" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-calendar-star fa-fw text-slate-400"></i> Événements</a>
-      <a href="{% url 'marketing:campaign_list' %}" class="nav-link {% if '/marketing' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-bullhorn fa-fw text-slate-400"></i> Marketing</a>
+      {# ══ QUOTIDIEN — tous les internes ════════════════════════════════════ #}
+      <details class="nav-group" data-key="quotidien" open>
+        <summary><div class="nav-group-header"><span><i class="fa-solid fa-bolt grp-ico"></i> Quotidien</span><i class="fa-solid fa-chevron-down nav-chevron"></i></div></summary>
+        <div class="nav-group-body space-y-0.5">
+          <a href="{% url 'documents:list' %}" class="nav-link {% if '/documents' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-folder-open fa-fw text-slate-400"></i> Documents</a>
+          <a href="{% url 'tasks:board' %}" class="nav-link {% if '/taches' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-list-check fa-fw text-slate-400"></i> Tâches</a>
+          <a href="{% url 'communication:calendar' %}" class="nav-link {% if '/calendrier' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-calendar-days fa-fw text-slate-400"></i> Calendrier</a>
+          <a href="{% url 'messaging:inbox' %}" class="nav-link {% if '/messagerie' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-comments fa-fw text-slate-400"></i> Messagerie{% with total=unread_messages|add:unread_chat %}{% if total %}<span class="ml-auto bg-lpm text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{{ total }}</span>{% endif %}{% endwith %}</a>
+          <a href="{% url 'conges:my' %}" class="nav-link {% if '/conges' in request.path and '/validation' not in request.path and '/jours-feries' not in request.path and '/absences' not in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-umbrella-beach fa-fw text-slate-400"></i> Mes congés</a>
+          {% if user.must_clock %}<a href="{% url 'hr:pointage' %}" class="nav-link {% if '/rh/pointage' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-fingerprint fa-fw text-slate-400"></i> Pointage</a>{% endif %}
+          <a href="{% url 'employees:list' %}" class="nav-link {% if '/employes' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-users fa-fw text-slate-400"></i> Annuaire</a>
+          <a href="{% url 'communication:list' %}" class="nav-link {% if '/actualites' in request.path and '/presse' not in request.path and '/messages-cles' not in request.path and '/newsletter' not in request.path and '/evenements' not in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-newspaper fa-fw text-slate-400"></i> Actualités</a>
+        </div>
+      </details>
+
+      {# ══ MAGASIN — tous les internes (consultation + emprunts) ════════════ #}
+      <details class="nav-group" data-key="magasin">
+        <summary><div class="nav-group-header"><span><i class="fa-solid fa-warehouse grp-ico"></i> Magasin</span><i class="fa-solid fa-chevron-down nav-chevron"></i></div></summary>
+        <div class="nav-group-body space-y-0.5">
+          {% if user.is_manager %}
+          <a href="{% url 'stock:hub' %}?s=dashboard" class="nav-link {% if '/stock/' in request.path and 's=dashboard' in request.get_full_path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-chart-pie fa-fw text-slate-400"></i> Tableau de bord</a>
+          {% endif %}
+          <a href="{% url 'stock:hub' %}" class="nav-link {% if '/stock/' in request.path and '/emprunts' not in request.path and '/commandes' not in request.path and 's=dashboard' not in request.get_full_path and 's=mouvements' not in request.get_full_path and 's=recevt' not in request.get_full_path and 's=maintenance' not in request.get_full_path and 's=alertes' not in request.get_full_path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-boxes-stacked fa-fw text-slate-400"></i> Inventaire</a>
+          {% if user.is_manager %}
+          <a href="{% url 'stock:hub' %}?s=mouvements" class="nav-link {% if 's=mouvements' in request.get_full_path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-arrow-right-arrow-left fa-fw text-slate-400"></i> Mouvements</a>
+          <a href="{% url 'stock:hub' %}?s=recevt" class="nav-link {% if 's=recevt' in request.get_full_path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-calendar-check fa-fw text-slate-400"></i> Post-Événement</a>
+          <a href="{% url 'stock:hub' %}?s=maintenance" class="nav-link {% if 's=maintenance' in request.get_full_path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-screwdriver-wrench fa-fw text-slate-400"></i> Maintenance</a>
+          <a href="{% url 'stock:hub' %}?s=alertes" class="nav-link {% if 's=alertes' in request.get_full_path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-bell fa-fw text-slate-400"></i> Alertes</a>
+          <a href="{% url 'stock:borrow_list' %}" class="nav-link {% if '/stock/emprunts' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-hand-holding-box fa-fw text-slate-400"></i> Emprunts</a>
+          <a href="{% url 'stock:order_list' %}" class="nav-link {% if '/stock/commandes' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-truck fa-fw text-slate-400"></i> Commandes</a>
+          {% endif %}
+        </div>
+      </details>
+
+      {# ══ RSE — ressources pour tous, pilotage pour managers ════════════════ #}
+      <details class="nav-group" data-key="rse">
+        <summary><div class="nav-group-header"><span><i class="fa-solid fa-leaf grp-ico"></i> RSE</span><i class="fa-solid fa-chevron-down nav-chevron"></i></div></summary>
+        <div class="nav-group-body space-y-0.5">
+          <a href="{% url 'rse:resources' %}" class="nav-link {% if '/rse/sensibilisation' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-book-open fa-fw text-slate-400"></i> Sensibilisation</a>
+          <a href="{% url 'rse:initiatives' %}" class="nav-link {% if '/rse/initiatives' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-seedling fa-fw text-slate-400"></i> Initiatives</a>
+          {% if user.is_manager %}
+          <a href="{% url 'rse:dashboard' %}" class="nav-link {% if request.path == '/rse/' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-chart-pie fa-fw text-slate-400"></i> Tableau de bord RSE</a>
+          <a href="{% url 'rse:reports' %}" class="nav-link {% if '/rse/rapports' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-file-chart-column fa-fw text-slate-400"></i> Rapports RSE</a>
+          <a href="{% url 'rse:suppliers' %}" class="nav-link {% if '/rse/fournisseurs' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-handshake fa-fw text-slate-400"></i> Fournisseurs RSE</a>
+          {% endif %}
+        </div>
+      </details>
+
+      {# ══ PROJETS — rattachés aux départements (chacun gère les siens) ══════ #}
+      <details class="nav-group" data-key="projets">
+        <summary><div class="nav-group-header"><span><i class="fa-solid fa-diagram-project grp-ico"></i> Projets</span><i class="fa-solid fa-chevron-down nav-chevron"></i></div></summary>
+        <div class="nav-group-body space-y-0.5">
+          <a href="{% url 'projects:list' %}" class="nav-link {% if '/projets' in request.path and '/backlog' not in request.path and '/benchmarks' not in request.path and '/ticket' not in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-folder-tree fa-fw text-slate-400"></i> {% if user.is_rh %}Tous les départements{% else %}Mes projets{% endif %}</a>
+        </div>
+      </details>
+
+      {# ══ DIGITAL & IT — backlog technique & veille (ouverts à tous) ════════ #}
+      <details class="nav-group" data-key="digital">
+        <summary><div class="nav-group-header"><span><i class="fa-solid fa-laptop-code grp-ico"></i> Digital & IT</span><i class="fa-solid fa-chevron-down nav-chevron"></i></div></summary>
+        <div class="nav-group-body space-y-0.5">
+          <a href="{% url 'projects:ticket_list' %}" class="nav-link {% if '/projets/backlog' in request.path or '/projets/ticket' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-bug fa-fw text-slate-400"></i> Backlog & Tickets</a>
+          <a href="{% url 'projects:benchmark_list' %}" class="nav-link {% if '/projets/benchmarks' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-binoculars fa-fw text-slate-400"></i> Benchmarks & Veille</a>
+        </div>
+      </details>
+
+      {# ══ MARKETING — managers uniquement ══════════════════════════════════ #}
       {% if user.is_manager %}
-      <a href="{% url 'extranet:home' %}" class="nav-link {% if request.path == '/extranet/' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-handshake fa-fw text-slate-400"></i> Extranet</a>
-      <a href="{% url 'extranet:creatives' %}" class="nav-link {% if '/extranet/creations' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-palette fa-fw text-slate-400"></i> Créations graphiques</a>
-      <a href="{% url 'extranet:requests' %}" class="nav-link {% if '/extranet/demandes' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-lightbulb fa-fw text-slate-400"></i> Demandes clients{% if pending_requests %}<span class="ml-auto bg-amber-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{{ pending_requests }}</span>{% endif %}</a>
-      <a href="{% url 'extranet:tickets' %}" class="nav-link {% if '/extranet/reclamations' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-headset fa-fw text-slate-400"></i> Réclamations{% if open_tickets_count %}<span class="ml-auto bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{{ open_tickets_count }}</span>{% endif %}</a>
+      <details class="nav-group" data-key="marketing">
+        <summary><div class="nav-group-header"><span><i class="fa-solid fa-bullhorn grp-ico"></i> Marketing</span><i class="fa-solid fa-chevron-down nav-chevron"></i></div></summary>
+        <div class="nav-group-body space-y-0.5">
+          <a href="{% url 'marketing:campaign_list' %}" class="nav-link {% if '/marketing/campagnes' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-bullhorn fa-fw text-slate-400"></i> Campagnes</a>
+          <a href="{% url 'marketing:kpi_dashboard' %}" class="nav-link {% if '/marketing/kpi' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-chart-mixed fa-fw text-slate-400"></i> KPI Marketing</a>
+          <a href="{% url 'marketing:lead_list' %}" class="nav-link {% if '/marketing/leads' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-user-magnet fa-fw text-slate-400"></i> Leads</a>
+          <a href="{% url 'marketing:calendar' %}" class="nav-link {% if '/marketing/calendrier' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-calendar-check fa-fw text-slate-400"></i> Calendrier éditorial</a>
+          <a href="{% url 'marketing:library' %}" class="nav-link {% if '/marketing/mediatheque' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-photo-film fa-fw text-slate-400"></i> Médiathèque</a>
+        </div>
+      </details>
+      <details class="nav-group" data-key="marketing-digital">
+        <summary><div class="nav-group-header"><span><i class="fa-solid fa-rocket grp-ico"></i> Marketing Digital</span><i class="fa-solid fa-chevron-down nav-chevron"></i></div></summary>
+        <div class="nav-group-body space-y-0.5">
+          <a href="{% url 'marketing:digital_hub' %}" class="nav-link {% if '/marketing/digital' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-rocket fa-fw text-slate-400"></i> Hub Digital</a>
+          <a href="{% url 'marketing:seo_list' %}" class="nav-link {% if '/marketing/seo' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-magnifying-glass-chart fa-fw text-slate-400"></i> SEO / Mots-clés</a>
+          <a href="{% url 'marketing:ads_list' %}" class="nav-link {% if '/marketing/ads' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-rectangle-ad fa-fw text-slate-400"></i> Annonces payantes</a>
+          <a href="{% url 'marketing:email_list' %}" class="nav-link {% if '/marketing/email' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-envelope-open-text fa-fw text-slate-400"></i> Emailing</a>
+          <a href="{% url 'marketing:abtest_list' %}" class="nav-link {% if '/marketing/ab-test' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-flask-vial fa-fw text-slate-400"></i> Tests A/B</a>
+        </div>
+      </details>
       {% endif %}
 
+      {# ══ COMMUNICATION — managers uniquement ══════════════════════════════ #}
       {% if user.is_manager %}
-      <p class="px-3 pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Ressources Humaines</p>
-      <a href="{% url 'hr:hub' %}" class="nav-link {% if request.path == '/rh/' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-people-roof fa-fw text-slate-400"></i> Espace RH</a>
-      {% if user.can_validate_leave %}
-      <a href="{% url 'conges:queue' %}" class="nav-link {% if '/conges/validation' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-clipboard-check fa-fw text-slate-400"></i> Validation congés</a>
-      {% endif %}
-      <a href="{% url 'hr:attendance' %}" class="nav-link {% if '/rh/presences' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-clock fa-fw text-slate-400"></i> Présences {% if not user.is_rh %}<span class="text-[10px] text-slate-400">(équipe)</span>{% endif %}</a>
-      {% if user.is_rh %}
-      <a href="{% url 'hr:missions' %}" class="nav-link {% if '/rh/missions' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-plane-departure fa-fw text-slate-400"></i> Missions</a>
-      <a href="{% url 'hr:contracts' %}" class="nav-link {% if '/rh/contrats' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-file-contract fa-fw text-slate-400"></i> Contrats</a>
-      {% endif %}
-      <a href="{% url 'hr:openings' %}" class="nav-link {% if '/rh/recrutement' in request.path or '/rh/candidat' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-user-plus fa-fw text-slate-400"></i> Recrutement</a>
-      <a href="{% url 'hr:evaluations' %}" class="nav-link {% if '/rh/evaluations' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-chart-simple fa-fw text-slate-400"></i> Évaluations</a>
-      {% if user.is_rh %}
-      <a href="{% url 'disciplinary:list' %}" class="nav-link {% if '/discipline' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-scale-balanced fa-fw text-slate-400"></i> Discipline</a>
-      <a href="{% url 'conges:holidays' %}" class="nav-link {% if '/jours-feries' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-flag fa-fw text-slate-400"></i> Jours fériés</a>
-      <a href="{% url 'hr:birthdays' %}" class="nav-link {% if '/rh/anniversaires' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-cake-candles fa-fw text-slate-400"></i> Anniversaires</a>
-      {% endif %}
+      <details class="nav-group" data-key="communication">
+        <summary><div class="nav-group-header"><span><i class="fa-solid fa-tower-broadcast grp-ico"></i> Communication</span><i class="fa-solid fa-chevron-down nav-chevron"></i></div></summary>
+        <div class="nav-group-body space-y-0.5">
+          {% if user.is_rh %}<a href="{% url 'notifications:broadcast' %}" class="nav-link {% if '/notifications/diffuser' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-broadcast-tower fa-fw text-slate-400"></i> Diffuser annonce</a>{% endif %}
+          <a href="{% url 'communication:press_list' %}" class="nav-link {% if '/actualites/presse' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-satellite-dish fa-fw text-slate-400"></i> Revue de presse</a>
+          <a href="{% url 'communication:key_messages' %}" class="nav-link {% if '/actualites/messages-cles' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-message-lines fa-fw text-slate-400"></i> Messages clés</a>
+          <a href="{% url 'communication:newsletter_list' %}" class="nav-link {% if '/actualites/newsletter' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-envelopes-bulk fa-fw text-slate-400"></i> Newsletter</a>
+        </div>
+      </details>
+      <details class="nav-group" data-key="evenementiel">
+        <summary><div class="nav-group-header"><span><i class="fa-solid fa-calendar-star grp-ico"></i> Événementiel</span><i class="fa-solid fa-chevron-down nav-chevron"></i></div></summary>
+        <div class="nav-group-body space-y-0.5">
+          <a href="{% url 'communication:event_projects' %}" class="nav-link {% if '/actualites/evenements' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-calendar-star fa-fw text-slate-400"></i> Projets événements</a>
+        </div>
+      </details>
       {% endif %}
 
+      {# ══ EXTRANET CLIENTS — managers uniquement ════════════════════════════ #}
       {% if user.is_manager %}
-      <p class="px-3 pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Commercial & Finance</p>
-      {% if user.is_ceo %}
-      <a href="{% url 'business:executive' %}" class="nav-link {% if '/commercial/direction' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-chart-line fa-fw text-slate-400"></i> Direction Générale</a>
-      {% endif %}
-      <a href="{% url 'business:client_list' %}" class="nav-link {% if '/commercial/clients' in request.path or '/commercial/pipeline' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-user-tie fa-fw text-slate-400"></i> Clients / CRM</a>
-      <a href="{% url 'business:quote_list' %}" class="nav-link {% if '/commercial/devis' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-file-signature fa-fw text-slate-400"></i> Devis</a>
-      <a href="{% url 'business:invoice_list' %}" class="nav-link {% if '/commercial/factures' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-file-invoice-dollar fa-fw text-slate-400"></i> Factures</a>
+      <details class="nav-group" data-key="extranet">
+        <summary><div class="nav-group-header"><span><i class="fa-solid fa-earth-africa grp-ico"></i> Extranet clients</span><i class="fa-solid fa-chevron-down nav-chevron"></i></div></summary>
+        <div class="nav-group-body space-y-0.5">
+          <a href="{% url 'extranet:home' %}" class="nav-link {% if request.path == '/extranet/' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-earth-africa fa-fw text-slate-400"></i> Portail extranet</a>
+          <a href="{% url 'extranet:creatives' %}" class="nav-link {% if '/extranet/creations' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-palette fa-fw text-slate-400"></i> Créations graphiques</a>
+          <a href="{% url 'extranet:requests' %}" class="nav-link {% if '/extranet/demandes' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-lightbulb fa-fw text-slate-400"></i> Demandes clients{% if pending_requests %}<span class="ml-auto bg-amber-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{{ pending_requests }}</span>{% endif %}</a>
+          <a href="{% url 'extranet:tickets' %}" class="nav-link {% if '/extranet/reclamations' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-headset fa-fw text-slate-400"></i> Réclamations{% if open_tickets_count %}<span class="ml-auto bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{{ open_tickets_count }}</span>{% endif %}</a>
+        </div>
+      </details>
       {% endif %}
 
+      {# ══ DIRECTION / RH — managers et RH uniquement ═══════════════════════ #}
+      {% if user.is_manager %}
+      <details class="nav-group" data-key="direction-rh">
+        <summary><div class="nav-group-header"><span><i class="fa-solid fa-people-roof grp-ico"></i> Direction / RH</span><i class="fa-solid fa-chevron-down nav-chevron"></i></div></summary>
+        <div class="nav-group-body space-y-0.5">
+          <a href="{% url 'conges:absences' %}" class="nav-link {% if '/conges/absences' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-user-clock fa-fw text-slate-400"></i> Absences & missions</a>
+          {% if user.can_validate_leave %}<a href="{% url 'conges:queue' %}" class="nav-link {% if '/conges/validation' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-clipboard-check fa-fw text-slate-400"></i> Validation congés</a>{% endif %}
+          <a href="{% url 'hr:attendance' %}" class="nav-link {% if '/rh/presences' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-clock fa-fw text-slate-400"></i> Présences{% if not user.is_rh %} <span class="text-[10px] text-slate-400">(équipe)</span>{% endif %}</a>
+          <a href="{% url 'hr:openings' %}" class="nav-link {% if '/rh/recrutement' in request.path or '/rh/candidat' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-user-plus fa-fw text-slate-400"></i> Recrutement</a>
+          <a href="{% url 'hr:evaluations' %}" class="nav-link {% if '/rh/evaluations' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-chart-simple fa-fw text-slate-400"></i> Évaluations</a>
+          {% if user.is_rh %}
+          <a href="{% url 'hr:hub' %}" class="nav-link {% if request.path == '/rh/' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-people-roof fa-fw text-slate-400"></i> Espace RH complet</a>
+          <a href="{% url 'hr:onboarding' %}" class="nav-link {% if '/rh/onboarding' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-person-walking-arrow-right fa-fw text-slate-400"></i> Onboarding</a>
+          <a href="{% url 'hr:missions' %}" class="nav-link {% if '/rh/missions' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-plane-departure fa-fw text-slate-400"></i> Missions</a>
+          <a href="{% url 'hr:contracts' %}" class="nav-link {% if '/rh/contrats' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-file-contract fa-fw text-slate-400"></i> Contrats</a>
+          <a href="{% url 'disciplinary:list' %}" class="nav-link {% if '/discipline' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-scale-balanced fa-fw text-slate-400"></i> Discipline</a>
+          <a href="{% url 'hr:stats' %}" class="nav-link {% if '/rh/statistiques' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-chart-bar fa-fw text-slate-400"></i> Statistiques RH</a>
+          <a href="{% url 'conges:holidays' %}" class="nav-link {% if '/jours-feries' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-flag fa-fw text-slate-400"></i> Jours fériés</a>
+          <a href="{% url 'hr:birthdays' %}" class="nav-link {% if '/rh/anniversaires' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-cake-candles fa-fw text-slate-400"></i> Anniversaires</a>
+          {% endif %}
+        </div>
+      </details>
+      {% endif %}
+
+      {# ══ COMMERCIAL & FINANCE — managers uniquement ════════════════════════ #}
+      {% if user.is_manager %}
+      <details class="nav-group" data-key="commercial">
+        <summary><div class="nav-group-header"><span><i class="fa-solid fa-sack-dollar grp-ico"></i> Commercial & Finance</span><i class="fa-solid fa-chevron-down nav-chevron"></i></div></summary>
+        <div class="nav-group-body space-y-0.5">
+          {% if user.is_ceo %}<a href="{% url 'business:executive' %}" class="nav-link {% if '/commercial/direction' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-chart-line fa-fw text-slate-400"></i> Direction Générale</a>{% endif %}
+          <a href="{% url 'business:client_list' %}" class="nav-link {% if '/commercial/clients' in request.path or '/commercial/pipeline' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-user-tie fa-fw text-slate-400"></i> Clients / CRM</a>
+          <a href="{% url 'business:quote_list' %}" class="nav-link {% if '/commercial/devis' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-file-signature fa-fw text-slate-400"></i> Devis</a>
+          <a href="{% url 'business:invoice_list' %}" class="nav-link {% if '/commercial/factures' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-file-invoice-dollar fa-fw text-slate-400"></i> Factures</a>
+        </div>
+      </details>
+      {% endif %}
+
+      {# ══ ADMINISTRATION — RH / Admin uniquement ════════════════════════════ #}
       {% if user.is_rh %}
-      <p class="px-3 pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Administration</p>
-      <a href="{% url 'accounts:user_list' %}" class="nav-link {% if '/utilisateurs' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-users-gear fa-fw text-slate-400"></i> Utilisateurs</a>
-      {% if user.is_admin_lpm %}
-      <a href="{% url 'accounts:activity_log' %}" class="nav-link {% if '/journal' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-clock-rotate-left fa-fw text-slate-400"></i> Journal d'activité</a>
-      <a href="/admin/" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-gear fa-fw text-slate-400"></i> Paramètres</a>
+      <details class="nav-group" data-key="administration">
+        <summary><div class="nav-group-header"><span><i class="fa-solid fa-users-gear grp-ico"></i> Administration</span><i class="fa-solid fa-chevron-down nav-chevron"></i></div></summary>
+        <div class="nav-group-body space-y-0.5">
+          <a href="{% url 'accounts:user_list' %}" class="nav-link {% if '/utilisateurs' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-users-gear fa-fw text-slate-400"></i> Utilisateurs</a>
+          {% if user.is_admin_lpm %}
+          <a href="{% url 'accounts:activity_log' %}" class="nav-link {% if '/journal' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-clock-rotate-left fa-fw text-slate-400"></i> Journal d'activité</a>
+          <a href="/admin/" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-gear fa-fw text-slate-400"></i> Paramètres</a>
+          {% endif %}
+        </div>
+      </details>
       {% endif %}
-      {% endif %}
+
     </nav>
 
     <div class="p-3 border-t border-slate-100">
@@ -199,6 +329,20 @@
     document.getElementById('sidebar').classList.toggle('-translate-x-full');
     document.getElementById('overlay').classList.toggle('hidden');
   }
+  // Rubriques repliables : mémorise l'état et ouvre celle de la page active.
+  (function(){
+    var groups = document.querySelectorAll('details.nav-group');
+    groups.forEach(function(d){
+      var k = 'navgrp:' + (d.dataset.key || '');
+      var v = localStorage.getItem(k);
+      if (v === 'open') d.open = true; else if (v === 'closed') d.open = false;
+      d.addEventListener('toggle', function(){
+        localStorage.setItem(k, d.open ? 'open' : 'closed');
+      });
+    });
+    var active = document.querySelector('.nav-link.active');
+    if (active){ var p = active.closest('details.nav-group'); if (p) p.open = true; }
+  })();
   if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(function(){}); }
 </script>
 {% block scripts %}{% endblock %}

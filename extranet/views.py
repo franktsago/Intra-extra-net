@@ -138,6 +138,8 @@ def project_detail(request, pk):
     allowed = (user.is_manager or project.client_id == user.id
                or project.internal_lead_id == user.id)
     if not allowed:
+        if user.is_external:
+            return redirect("extranet:home")
         raise PermissionDenied("Vous n'avez pas accès à cet espace projet.")
 
     file_form = ProjectFileForm()
@@ -367,6 +369,8 @@ def ticket_detail(request, pk):
     ticket = get_object_or_404(Ticket.objects.select_related("client", "project", "assigned_to"), pk=pk)
     user = request.user
     if not (user.is_manager or ticket.client_id == user.id):
+        if user.is_external:
+            return redirect("extranet:tickets")
         raise PermissionDenied("Ce ticket ne vous est pas accessible.")
     reply_form = TicketReplyForm()
     if request.method == "POST":
@@ -506,6 +510,8 @@ def creative_detail(request, pk):
     creative = get_object_or_404(Creative.objects.select_related("project"), pk=pk)
     user = request.user
     if not (user.is_manager or creative.project.client_id == user.id):
+        if user.is_external:
+            return redirect("extranet:creatives")
         raise PermissionDenied("Cette création ne vous est pas accessible.")
     current = creative.current_version
     if request.method == "POST":

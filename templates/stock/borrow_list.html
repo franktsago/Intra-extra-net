@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Emprunts{% endblock %}
+{% block page_title %}Demandes d'emprunt{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
+          <th class="px-4 py-3 text-left">Article</th>
+          <th class="px-4 py-3 text-left">Demandeur</th>
+          <th class="px-4 py-3 text-center">Qté</th>
+          <th class="px-4 py-3 text-left">Motif</th>
+          <th class="px-4 py-3 text-left">Période</th>
+          <th class="px-4 py-3 text-left">Statut</th>
+          <th class="px-4 py-3 text-left">Date demande</th>
+          <th class="px-4 py-3 text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-50">
+        {% for br in borrows %}
+        <tr class="hover:bg-slate-50 transition">
+          <td class="px-4 py-3 font-medium text-slate-800">
+            <a href="{% url 'stock:item_detail' br.item.pk %}" class="hover:text-lpm">{{ br.item.name }}</a>
+          </td>
+          <td class="px-4 py-3 text-slate-600">{{ br.requested_by.get_full_name|default:br.requested_by.username }}</td>
+          <td class="px-4 py-3 text-center">{{ br.quantity }}</td>
+          <td class="px-4 py-3 text-slate-500 text-xs">{{ br.purpose|default:"—"|truncatechars:40 }}</td>
+          <td class="px-4 py-3 text-xs text-slate-500">
+            {% if br.start_date %}{{ br.start_date|date:"d/m/Y" }}{% endif %}
+            {% if br.end_date %} → {{ br.end_date|date:"d/m/Y" }}{% endif %}
+            {% if not br.start_date and not br.end_date %}—{% endif %}
+          </td>
+          <td class="px-4 py-3">
+            <span class="text-xs px-2 py-1 rounded-full font-medium
+              {% if br.status == 'PENDING' %}bg-amber-100 text-amber-700
+              {% elif br.status == 'APPROVED' %}bg-emerald-100 text-emerald-700
+              {% elif br.status == 'RETURNED' %}bg-sky-100 text-sky-700
+              {% else %}bg-red-100 text-red-700{% endif %}">
+              {{ br.get_status_display }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-xs text-slate-400">{{ br.requested_at|date:"d/m/Y" }}</td>
+          <td class="px-4 py-3">
+            {% if br.status == 'PENDING' %}
+            <div class="flex items-center justify-center gap-1">
+              <form method="post" action="{% url 'stock:borrow_decide' br.pk 'approve' %}">{% csrf_token %}
+                <button type="submit" class="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-lg hover:bg-emerald-200 transition" title="Approuver">
+                  <i class="fa-solid fa-check"></i>
+                </button>
+              </form>
+              <form method="post" action="{% url 'stock:borrow_decide' br.pk 'reject' %}">{% csrf_token %}
+                <button type="submit" class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-lg hover:bg-red-200 transition" title="Refuser">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </form>
+            </div>
+            {% elif br.status == 'APPROVED' %}
+            <form method="post" action="{% url 'stock:borrow_decide' br.pk 'return' %}">{% csrf_token %}
+              <button type="submit" class="text-xs bg-sky-100 text-sky-700 px-2 py-1 rounded-lg hover:bg-sky-200 transition">
+                Retour
+              </button>
+            </form>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="px-4 py-8 text-center text-slate-400">Aucune demande d'emprunt.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

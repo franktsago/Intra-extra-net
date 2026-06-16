@@ -10,6 +10,7 @@
   <div class="flex items-start justify-between flex-wrap gap-3">
     <div>
       <span class="text-xs font-medium px-2 py-0.5 rounded-full {% if project.kind == 'EVENT' %}bg-violet-50 text-violet-600{% else %}bg-blue-50 text-blue-600{% endif %}">{{ project.get_kind_display }}</span>
+      {% if project.department %}<span class="text-xs font-medium px-2 py-0.5 rounded-full bg-lpm/10 text-lpm ml-1"><i class="fa-solid fa-sitemap text-[10px]"></i> {{ project.department.name }}</span>{% endif %}
       <h1 class="text-xl font-bold text-slate-900 mt-2">{{ project.name }}</h1>
       <p class="text-sm text-slate-500">{{ project.code }}{% if project.client %} · {% if user.is_manager %}<a href="{% url 'business:client_detail' project.client.pk %}" class="text-lpm hover:underline">{{ project.client.name }}</a>{% else %}{{ project.client.name }}{% endif %}{% endif %}</p>
     </div>

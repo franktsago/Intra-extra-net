@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Sensibilisation RSE{% endblock %}
+{% block page_title %}Ressources de sensibilisation RSE{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  {% for res in resources %}
+  <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-5">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="text-xs px-2 py-1 rounded-full font-medium bg-lpm/10 text-lpm">{{ res.get_kind_display }}</span>
+    </div>
+    <div class="font-semibold text-slate-800 mb-2">{{ res.title }}</div>
+    <p class="text-sm text-slate-500 mb-4">{{ res.content|truncatechars:150 }}</p>
+    {% if res.file %}
+    <a href="{{ res.file.url }}" target="_blank" class="text-xs text-lpm hover:underline">
+      <i class="fa-solid fa-download mr-1"></i>Télécharger
+    </a>
+    {% endif %}
+  </div>
+  {% empty %}
+  <div class="col-span-3 bg-white rounded-2xl shadow-card border border-slate-100 p-8 text-center text-slate-400">
+    Aucune ressource disponible.
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

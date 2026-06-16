@@ -257,12 +257,14 @@
           }
         }).catch(function () {});
     }
-    setInterval(poll, 3000);
+    poll();                  // 1er rafraîchissement immédiat
+    setInterval(poll, 1500); // puis toutes les 1,5 s → quasi temps réel
 
     if (form) {
       var input = form.querySelector('[data-input]'), lastPing = 0;
       if (input) input.addEventListener('input', function () {
-        var now = Date.now(); if (now - lastPing < 2500) return; lastPing = now;
+        // Signale la saisie sans attendre : ping immédiat puis limité à ~1,2 s.
+        var now = Date.now(); if (now - lastPing < 1200) return; lastPing = now;
         fetch('/messagerie/ecrit/' + kind + '/' + pk + '/', { method: 'POST', headers: { 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' } }).catch(function () {});
       });
     }

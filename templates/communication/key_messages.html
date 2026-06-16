@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Messages clés{% endblock %}
+{% block page_title %}Messages clés & Éléments de langage{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-4">
+  {% if user.is_manager %}
+  <a href="{% url 'communication:key_message_create' %}" class="inline-flex items-center gap-2 bg-lpm text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-lpm-dark transition">
+    <i class="fa-solid fa-plus"></i> Nouveau message clé
+  </a>
+  {% else %}<div></div>{% endif %}
+</div>
+
+{% for cat, messages in by_cat.items %}
+<div class="mb-6">
+  <h2 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-3">{{ cat }}</h2>
+  <div class="space-y-3">
+    {% for km in messages %}
+    <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-5">
+      <div class="flex items-start justify-between mb-2">
+        <div class="font-semibold text-slate-800">{{ km.title }}</div>
+        <div class="flex items-center gap-2">
+          {% if km.audience %}<span class="text-xs text-slate-400">{{ km.audience }}</span>{% endif %}
+          {% if user.is_manager %}
+          <a href="{% url 'communication:key_message_edit' km.pk %}" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><i class="fa-solid fa-pen text-xs"></i></a>
+          {% endif %}
+        </div>
+      </div>
+      <p class="text-sm text-slate-600 whitespace-pre-line">{{ km.content }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% empty %}
+<div class="bg-white rounded-2xl shadow-card border border-slate-100 p-8 text-center text-slate-400">
+  Aucun message clé enregistré.
+</div>
+{% endfor %}
+{% endblock %}

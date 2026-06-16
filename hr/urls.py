@@ -6,6 +6,7 @@ app_name = "hr"
 
 urlpatterns = [
     path("", views.hub, name="hub"),
+    path("statistiques/", views.stats, name="stats"),
     # Contrats
     path("contrats/", views.contract_list, name="contracts"),
     path("contrats/nouveau/", views.contract_edit, name="contract_create"),
@@ -38,4 +39,8 @@ urlpatterns = [
     path("evaluations/<int:pk>/", views.evaluation_detail, name="evaluation_detail"),
     path("evaluations/<int:pk>/modifier/", views.evaluation_edit, name="evaluation_edit"),
     path("evaluations/<int:pk>/statut/<str:status>/", views.evaluation_status, name="evaluation_status"),
+    # Onboarding
+    path("onboarding/", views.onboarding_list, name="onboarding"),
+    path("onboarding/nouveau/", views.onboarding_plan_edit, name="onboarding_create"),
+    path("onboarding/<int:pk>/modifier/", views.onboarding_plan_edit, name="onboarding_edit"),
 ]

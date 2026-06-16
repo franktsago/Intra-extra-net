@@ -42,14 +42,28 @@ def log_activity(request, action, description="", user=None):
     )
 
 
+def _redirect_external(request):
+    """Redirige un utilisateur externe vers son espace sans afficher d'erreur."""
+    from django.shortcuts import redirect
+    if request.user.is_authenticated and not request.user.is_internal:
+        return redirect("extranet:home")
+    raise PermissionDenied("Accès réservé.")
+
+
 def role_required(*roles):
-    """Décorateur : restreint une vue aux rôles indiqués (l'admin passe toujours)."""
+    """Décorateur : restreint une vue aux rôles indiqués (l'admin passe toujours).
+
+    Un utilisateur externe est redirigé vers l'extranet sans page d'erreur.
+    Un interne sans le bon rôle reçoit un 403.
+    """
 
     def decorator(view_func):
         @wraps(view_func)
         @login_required
         def _wrapped(request, *args, **kwargs):
             u = request.user
+            if not u.is_internal and not u.is_superuser:
+                return _redirect_external(request)
             if u.effective_role in roles or u.is_admin_lpm:
                 return view_func(request, *args, **kwargs)
             raise PermissionDenied("Accès réservé : vous n'avez pas les droits nécessaires.")
@@ -60,13 +74,17 @@ def role_required(*roles):
 
 
 def internal_required(view_func):
-    """Réserve une vue aux utilisateurs internes (intranet)."""
+    """Réserve une vue aux utilisateurs internes (intranet).
+
+    Un utilisateur externe est redirigé vers son espace extranet sans page d'erreur.
+    """
 
     @wraps(view_func)
     @login_required
     def _wrapped(request, *args, **kwargs):
-        if request.user.is_internal or request.user.is_superuser:
+        u = request.user
+        if u.is_internal or u.is_superuser:
             return view_func(request, *args, **kwargs)
-        raise PermissionDenied("Espace réservé aux collaborateurs internes.")
+        return _redirect_external(request)
 
     return _wrapped

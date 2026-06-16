@@ -26,6 +26,73 @@ mgr_required = role_required(Role.MANAGER, Role.RH, Role.CEO, Role.ADMIN)
 
 
 @rh_required
+def stats(request):
+    """Tableau de bord statistiques RH — effectifs, absences, congés, genre."""
+    from django.db.models import Avg, Count, Q
+    from conges.models import LeaveRequest, solde_conges
+
+    today = timezone.localdate()
+    month_start = today.replace(day=1)
+
+    from employees.models import WORKFORCE_STATUSES
+    # Effectif = personnel présent dans l'organisation (en activité OU en congé).
+    active_emps = Employee.objects.filter(status__in=WORKFORCE_STATUSES).select_related("user")
+    total = active_emps.count()
+
+    # — Effectifs par département —
+    from employees.models import Department
+    depts = (Department.objects.annotate(nb=Count("employees", filter=Q(employees__status__in=WORKFORCE_STATUSES)))
+             .order_by("-nb"))
+
+    # — Effectifs par type de contrat —
+    from hr.models import Contract
+    par_contrat = (Contract.objects.filter(is_active=True)
+                   .values("type").annotate(nb=Count("id")).order_by("-nb"))
+    contrat_labels = {t: l for t, l in Contract.Type.choices}
+
+    # — Taux d'absence du mois en cours —
+    total_jours_pointage = Attendance.objects.filter(
+        date__gte=month_start, date__lte=today,
+        employee__status=Employee.Status.ACTIVE,
+    ).count()
+    jours_absents = Attendance.objects.filter(
+        date__gte=month_start, date__lte=today,
+        employee__status=Employee.Status.ACTIVE,
+        status=Attendance.Status.ABSENT,
+    ).count()
+    taux_absence = round(jours_absents / total_jours_pointage * 100, 1) if total_jours_pointage else 0
+
+    # — Solde de congés moyen —
+    soldes = [solde_conges(e) for e in active_emps]
+    solde_moyen = round(sum(soldes) / len(soldes), 1) if soldes else 0
+
+    # — Répartition H/F —
+    from employees.models import Employee as Emp
+    nb_h = active_emps.filter(gender="M").count()
+    nb_f = active_emps.filter(gender="F").count()
+    nb_autre = total - nb_h - nb_f
+
+    ctx = {
+        "total": total,
+        "depts": depts,
+        "par_contrat": [
+            {"label": contrat_labels.get(r["type"], r["type"]), "nb": r["nb"]}
+            for r in par_contrat
+        ],
+        "taux_absence": taux_absence,
+        "jours_absents": jours_absents,
+        "total_jours_pointage": total_jours_pointage,
+        "solde_moyen": solde_moyen,
+        "nb_h": nb_h,
+        "nb_f": nb_f,
+        "nb_autre": nb_autre,
+        "mois_label": month_start.strftime("%B %Y"),
+        "max_dept": depts.first().nb if depts.filter(nb__gt=0).exists() else 1,
+    }
+    return render(request, "hr/stats.html", ctx)
+
+
+@rh_required
 def set_office(request):
     """Calibre le lieu de pointage depuis la position GPS de l'utilisateur (sur site)."""
     if request.method == "POST":
@@ -54,7 +121,8 @@ def _emp(user):
 def hub(request):
     today = timezone.localdate()
     ctx = {
-        "nb_employes": Employee.objects.filter(status=Employee.Status.ACTIVE).count(),
+        "nb_employes": Employee.objects.filter(
+            status__in=[Employee.Status.ACTIVE, Employee.Status.LEAVE]).count(),
         "nb_contrats": Contract.objects.filter(is_active=True).count(),
         "presents_today": Attendance.objects.filter(date=today, status="PRESENT").count(),
         "openings": JobOpening.objects.filter(status=JobOpening.Status.OPEN).count(),
@@ -569,3 +637,33 @@ def evaluation_status(request, pk, status):
         ev.save(update_fields=["status"])
         messages.success(request, "Statut mis à jour.")
     return redirect("hr:evaluation_detail", pk=pk)
+
+
+# ---------------------------------------------------------------------------
+# Onboarding
+# ---------------------------------------------------------------------------
+@rh_required
+def onboarding_list(request):
+    from .models import OnboardingPlan, OnboardingProgress
+    plans = OnboardingPlan.objects.prefetch_related("steps").all()
+    in_progress = OnboardingProgress.objects.select_related("employee__user", "plan").order_by("-started_at")[:10]
+    return render(request, "hr/onboarding_list.html", {"plans": plans, "in_progress": in_progress})
+
+
+@rh_required
+def onboarding_plan_edit(request, pk=None):
+    from .models import OnboardingPlan
+    from .forms import OnboardingPlanForm
+    obj = get_object_or_404(OnboardingPlan, pk=pk) if pk else None
+    if request.method == "POST":
+        form = OnboardingPlanForm(request.POST, instance=obj)
+        if form.is_valid():
+            p = form.save(commit=False)
+            if not obj:
+                p.created_by = request.user
+            p.save()
+            messages.success(request, "Plan d'intégration enregistré.")
+            return redirect("hr:onboarding")
+    else:
+        form = OnboardingPlanForm(instance=obj)
+    return render(request, "hr/onboarding_form.html", {"form": form, "obj": obj})

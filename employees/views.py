@@ -16,9 +16,15 @@ from .models import Department, Employee
 def employee_list(request):
     q = request.GET.get("q", "").strip()
     dept = request.GET.get("dept", "")
+    # Inclure les comptes désactivés / sortis des effectifs (masqués par défaut).
+    show_inactive = request.GET.get("inactifs") == "1"
     employees = (Employee.objects.select_related("user")
                  .prefetch_related("departments", "positions"))
     employees = hide_superadmin(employees, request.user, user_field="user")
+    if not show_inactive:
+        # Un employé désactivé (compte inactif ou sorti des effectifs) n'apparaît plus.
+        employees = employees.filter(user__is_active=True).exclude(
+            status=Employee.Status.TERMINATED)
     if q:
         employees = employees.filter(
             Q(user__first_name__icontains=q) | Q(user__last_name__icontains=q)
@@ -30,7 +36,7 @@ def employee_list(request):
     employees = employees.distinct()
     page = Paginator(employees, 12).get_page(request.GET.get("page"))
     return render(request, "employees/list.html", {
-        "page_obj": page, "q": q, "dept": dept,
+        "page_obj": page, "q": q, "dept": dept, "show_inactive": show_inactive,
         "departments": Department.objects.all(),
     })
 
@@ -131,7 +137,9 @@ def org_chart(request):
     """Organigramme : départements et leurs effectifs."""
     from django.db.models import Prefetch
     visible_emps = hide_superadmin(
-        Employee.objects.select_related("user").prefetch_related("positions"),
+        Employee.objects.filter(user__is_active=True)
+        .exclude(status=Employee.Status.TERMINATED)
+        .select_related("user").prefetch_related("positions"),
         request.user, user_field="user")
     departments = Department.objects.select_related("manager").prefetch_related(
         Prefetch("employees", queryset=visible_emps)

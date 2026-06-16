@@ -197,11 +197,14 @@ def leave_cancel(request, pk):
 
 def _finalize_approved(leave, request):
     from notifications.models import notify_internal_staff
+    from .models import sync_leave_status
     leave.status = LeaveRequest.Status.APPROVED
     leave.decided_at = timezone.now()
     if not leave.reference:
         leave.reference = f"CONGE-{timezone.localdate():%Y}-{leave.pk:04d}"
     leave.save()
+    # Si le congé couvre déjà aujourd'hui, l'employé passe « En congé » immédiatement.
+    sync_leave_status()
     notify(leave.employee.user, "Congé approuvé",
            f"Votre congé du {leave.start_date:%d/%m} au {leave.end_date:%d/%m} est validé. "
            "La note de congé (PDF) est téléchargeable.",

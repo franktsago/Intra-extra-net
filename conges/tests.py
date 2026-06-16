@@ -42,6 +42,59 @@ class HolidayNotificationTest(TestCase):
         self.assertEqual(self.client.get(reverse("conges:holidays")).status_code, 200)
 
 
+class LeaveStatusSyncTest(TestCase):
+    """Statut « En congé » automatique pendant le congé, retour « En activité » après (item 3)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.u = User.objects.create_user("g.conge", password="x", role=Role.EMPLOYE)
+        cls.emp = Employee.objects.get(user=cls.u)
+        cls.ltype = LeaveType.objects.create(name="Congé annuel", code="ANN", deducts_balance=True)
+
+    def _leave(self, start, end, status=LeaveRequest.Status.APPROVED):
+        return LeaveRequest.objects.create(
+            employee=self.emp, leave_type=self.ltype,
+            start_date=start, end_date=end, status=status)
+
+    def test_current_leave_sets_status_leave(self):
+        from conges.models import sync_leave_status
+        today = timezone.localdate()
+        self._leave(today - timedelta(days=1), today + timedelta(days=3))
+        sync_leave_status(today)
+        self.emp.refresh_from_db()
+        self.assertEqual(self.emp.status, Employee.Status.LEAVE)
+
+    def test_status_returns_active_after_leave(self):
+        from conges.models import sync_leave_status
+        today = timezone.localdate()
+        # Congé terminé hier ; l'employé est resté marqué « En congé ».
+        self._leave(today - timedelta(days=10), today - timedelta(days=1))
+        self.emp.status = Employee.Status.LEAVE
+        self.emp.save(update_fields=["status"])
+        sync_leave_status(today)
+        self.emp.refresh_from_db()
+        self.assertEqual(self.emp.status, Employee.Status.ACTIVE)
+
+    def test_pending_leave_does_not_change_status(self):
+        from conges.models import sync_leave_status
+        today = timezone.localdate()
+        self._leave(today, today + timedelta(days=2), status=LeaveRequest.Status.PENDING)
+        sync_leave_status(today)
+        self.emp.refresh_from_db()
+        self.assertEqual(self.emp.status, Employee.Status.ACTIVE)
+
+    def test_terminated_not_touched(self):
+        from conges.models import sync_leave_status
+        today = timezone.localdate()
+        self.emp.status = Employee.Status.TERMINATED
+        self.emp.save(update_fields=["status"])
+        self._leave(today, today + timedelta(days=2))
+        sync_leave_status(today)
+        self.emp.refresh_from_db()
+        # Un compte sorti des effectifs n'est pas réactivé par le congé.
+        self.assertEqual(self.emp.status, Employee.Status.TERMINATED)
+
+
 class LeaveRequestRolesTest(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -155,10 +208,10 @@ class AbsencesVisibilityTest(TestCase):
         self.assertIn("MISSION", body)     # personne en mission visible
         self.assertIn("Yaoundé", body)
 
-    def test_external_cannot_access(self):
+    def test_external_redirige_vers_extranet(self):
         cli = User.objects.create_user("cliabs", password="x", role=Role.CLIENT)
         self.client.force_login(cli)
-        self.assertEqual(self.client.get(reverse("conges:absences")).status_code, 403)
+        self.assertEqual(self.client.get(reverse("conges:absences")).status_code, 302)
 
 
 class LeaveDeleteAbsencesTest(TestCase):

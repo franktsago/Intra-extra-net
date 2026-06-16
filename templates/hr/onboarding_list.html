@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Onboarding{% endblock %}
+{% block page_title %}Plans d'intégration (Onboarding){% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-4">
+  <a href="{% url 'hr:onboarding_create' %}" class="inline-flex items-center gap-2 bg-lpm text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-lpm-dark transition">
+    <i class="fa-solid fa-plus"></i> Nouveau plan d'intégration
+  </a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <!-- Plans -->
+  <div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
+    <div class="px-5 py-4 border-b border-slate-100 font-semibold text-slate-800">Plans d'intégration</div>
+    <div class="divide-y divide-slate-50">
+      {% for plan in plans %}
+      <div class="px-5 py-3 flex items-center justify-between">
+        <div>
+          <div class="font-medium text-slate-800 text-sm">{{ plan.name }}</div>
+          {% if plan.role_target %}<div class="text-xs text-slate-400 mt-0.5">Rôle : {{ plan.role_target }}</div>{% endif %}
+          <div class="text-xs text-slate-400">{{ plan.steps.count }} étape{{ plan.steps.count|pluralize }}</div>
+        </div>
+        <a href="{% url 'hr:onboarding_edit' plan.pk %}" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><i class="fa-solid fa-pen text-xs"></i></a>
+      </div>
+      {% empty %}
+      <div class="px-5 py-6 text-center text-slate-400 text-sm">Aucun plan d'intégration.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Suivis en cours -->
+  <div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
+    <div class="px-5 py-4 border-b border-slate-100 font-semibold text-slate-800">Intégrations en cours</div>
+    <div class="divide-y divide-slate-50">
+      {% for prog in in_progress %}
+      <div class="px-5 py-3">
+        <div class="flex items-center justify-between mb-1">
+          <span class="font-medium text-slate-800 text-sm">{{ prog.employee.full_name }}</span>
+          <span class="text-xs text-slate-500">{{ prog.plan.name }}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="flex-1 bg-slate-100 rounded-full h-1.5">
+            <div class="bg-lpm h-1.5 rounded-full" style="width: {{ prog.completion_rate }}%"></div>
+          </div>
+          <span class="text-xs text-slate-600 font-medium">{{ prog.completion_rate }}%</span>
+        </div>
+        <div class="text-xs text-slate-400 mt-0.5">Démarré le {{ prog.started_at|date:"d/m/Y" }}</div>
+      </div>
+      {% empty %}
+      <div class="px-5 py-6 text-center text-slate-400 text-sm">Aucune intégration en cours.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

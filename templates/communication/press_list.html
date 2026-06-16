@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Revue de presse{% endblock %}
+{% block page_title %}Revue de presse{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap gap-3 mb-4">
+  <a href="{% url 'communication:press_create' %}" class="inline-flex items-center gap-2 bg-lpm text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-lpm-dark transition">
+    <i class="fa-solid fa-plus"></i> Ajouter un article
+  </a>
+  <form method="get" class="flex gap-2">
+    <select name="tone" class="rounded-xl border border-slate-200 px-3 py-2 text-sm">
+      <option value="">Toutes les tonalités</option>
+      {% for v, l in tones %}<option value="{{ v }}" {% if tone == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-sm hover:bg-slate-200 transition">Filtrer</button>
+  </form>
+</div>
+
+<div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
+          <th class="px-4 py-3 text-left">Titre</th>
+          <th class="px-4 py-3 text-left">Source</th>
+          <th class="px-4 py-3 text-left">Type</th>
+          <th class="px-4 py-3 text-left">Tonalité</th>
+          <th class="px-4 py-3 text-left">Date</th>
+          <th class="px-4 py-3 text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-50">
+        {% for rev in reviews %}
+        <tr class="hover:bg-slate-50 transition">
+          <td class="px-4 py-3 font-medium text-slate-800">
+            {% if rev.url %}<a href="{{ rev.url }}" target="_blank" class="hover:text-lpm">{{ rev.title }}</a>{% else %}{{ rev.title }}{% endif %}
+          </td>
+          <td class="px-4 py-3 text-slate-600">{{ rev.source }}</td>
+          <td class="px-4 py-3 text-slate-500 text-xs">{{ rev.get_media_type_display }}</td>
+          <td class="px-4 py-3">
+            <span class="text-xs px-2 py-1 rounded-full font-medium
+              {% if rev.tone == 'POSITIVE' %}bg-emerald-100 text-emerald-700
+              {% elif rev.tone == 'NEGATIVE' %}bg-red-100 text-red-700
+              {% else %}bg-slate-100 text-slate-600{% endif %}">
+              {{ rev.get_tone_display }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-xs text-slate-400">{{ rev.published_at|date:"d/m/Y" }}</td>
+          <td class="px-4 py-3 text-center">
+            <a href="{% url 'communication:press_edit' rev.pk %}" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"><i class="fa-solid fa-pen text-xs"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Aucun article de presse.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

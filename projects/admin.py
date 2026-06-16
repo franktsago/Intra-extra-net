@@ -1,6 +1,9 @@
 from django.contrib import admin
 
-from .models import Phase, Project, ProjectMedia
+from .models import Benchmark, Phase, Project, ProjectMedia, Ticket
+
+admin.site.register(Ticket)
+admin.site.register(Benchmark)
 
 
 class PhaseInline(admin.TabularInline):

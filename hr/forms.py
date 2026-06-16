@@ -5,6 +5,7 @@ from accounts.utils import hide_superadmin
 
 from .models import (
     Candidate, Contract, Evaluation, Interview, JobOpening, Mission, Objective,
+    OnboardingPlan,
 )
 
 
@@ -40,6 +41,19 @@ class ContractForm(StyledFormMixin, forms.ModelForm):
                      "work_location", "duties", "work_schedule", "other_allowances",
                      "place_signed", "file"):
             self.fields[name].required = False
+        self.fields["start_date"].help_text = (
+            "Égale à la date d'embauche de l'employé : la modifier met à jour la fiche.")
+
+    def save(self, commit=True):
+        contract = super().save(commit=commit)
+        # La date de début d'un contrat actif aligne la date d'embauche de la fiche
+        # employé (item 2) : les deux valeurs restent cohérentes partout.
+        if commit and contract.is_active and contract.employee_id and contract.start_date:
+            emp = contract.employee
+            if emp.hire_date != contract.start_date:
+                emp.hire_date = contract.start_date
+                emp.save(update_fields=["hire_date"])
+        return contract
 
 
 class JobOpeningForm(StyledFormMixin, forms.ModelForm):
@@ -119,3 +133,10 @@ class MissionForm(StyledFormMixin, forms.ModelForm):
 ObjectiveFormSet = forms.inlineformset_factory(
     Evaluation, Objective, fields=["label", "kpi", "weight", "rating", "comment"],
     extra=4, can_delete=True)
+
+
+class OnboardingPlanForm(StyledFormMixin, forms.ModelForm):
+    class Meta:
+        model = OnboardingPlan
+        fields = ["name", "description", "role_target"]
+        widgets = {"description": forms.Textarea(attrs={"rows": 4})}

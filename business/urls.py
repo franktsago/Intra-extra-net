@@ -1,10 +1,12 @@
 from django.urls import path
+from django.views.generic import RedirectView
 
 from . import views
 
 app_name = "business"
 
 urlpatterns = [
+    path("", RedirectView.as_view(pattern_name="business:client_list", permanent=False)),
     path("direction/", views.executive, name="executive"),
 
     # CRM

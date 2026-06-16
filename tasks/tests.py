@@ -9,12 +9,17 @@ from tasks.models import Task
 class TaskValidationWorkflowTest(TestCase):
     @classmethod
     def setUpTestData(cls):
+        from employees.models import Department
+        cls.dep = Department.objects.create(name="Marketing", code="MKT")
         cls.mgr = User.objects.create_user("mgr", password="x", role=Role.MANAGER)
         cls.emp = User.objects.create_user("emp", password="x", role=Role.EMPLOYE)
         # Le signal accounts.signals crée automatiquement la fiche Employee.
         emp_emp = Employee.objects.get(user=cls.emp)
         emp_emp.manager = Employee.objects.get(user=cls.mgr)
         emp_emp.save()
+        # Cloisonnement par département : manager et employé dans le même département.
+        Employee.objects.get(user=cls.mgr).departments.set([cls.dep])
+        emp_emp.departments.set([cls.dep])
 
     def test_employee_creates_pending_task_then_manager_approves(self):
         self.client.force_login(self.emp)
@@ -93,23 +98,74 @@ class TaskValidationWorkflowTest(TestCase):
 class TaskTeamAssignmentTest(TestCase):
     @classmethod
     def setUpTestData(cls):
+        from employees.models import Department
+        cls.dep = Department.objects.create(name="Marketing", code="MKT")
         cls.mgr = User.objects.create_user("mgr2", password="x", role=Role.MANAGER)
         cls.member = User.objects.create_user("member", password="x", role=Role.EMPLOYE)
         cls.outsider = User.objects.create_user("outsider", password="x", role=Role.EMPLOYE)
         cls.rh = User.objects.create_user("rh", password="x", role=Role.RH)
-        emp = Employee.objects.get(user=cls.member)
-        emp.manager = Employee.objects.get(user=cls.mgr)
-        emp.save()
+        # Manager et membre dans le même département ; l'« outsider » dans un autre.
+        Employee.objects.get(user=cls.mgr).departments.set([cls.dep])
+        Employee.objects.get(user=cls.member).departments.set([cls.dep])
+        other = Department.objects.create(name="Finance", code="FIN")
+        Employee.objects.get(user=cls.outsider).departments.set([other])
 
-    def test_manager_assigns_only_to_team(self):
+    def test_manager_assigns_only_to_department(self):
         from tasks.forms import TaskForm
         ids = set(TaskForm(viewer=self.mgr).fields["assigned_to"].queryset.values_list("id", flat=True))
-        self.assertIn(self.member.id, ids)     # son équipe
-        self.assertIn(self.mgr.id, ids)        # lui-même
-        self.assertNotIn(self.outsider.id, ids)  # hors équipe
+        self.assertIn(self.member.id, ids)       # membre de son département
+        self.assertIn(self.mgr.id, ids)          # lui-même
+        self.assertNotIn(self.outsider.id, ids)  # autre département
 
     def test_rh_can_assign_to_anyone(self):
         from tasks.forms import TaskForm
         ids = set(TaskForm(viewer=self.rh).fields["assigned_to"].queryset.values_list("id", flat=True))
         self.assertIn(self.outsider.id, ids)
         self.assertIn(self.member.id, ids)
+
+
+class TaskDepartmentScopeTest(TestCase):
+    """Cloisonnement des tâches par département : chacun ne voit que le sien (item)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from employees.models import Department
+        cls.mkt = Department.objects.create(name="Marketing", code="MKT")
+        cls.ops = Department.objects.create(name="Événementiel", code="OPS")
+        cls.mgr = User.objects.create_user("mgr_dep", password="x", role=Role.MANAGER)
+        cls.member = User.objects.create_user("mem_dep", password="x", role=Role.EMPLOYE)
+        cls.other = User.objects.create_user("oth_dep", password="x", role=Role.EMPLOYE)
+        cls.rh = User.objects.create_user("rh_dep", password="x", role=Role.RH)
+        Employee.objects.get(user=cls.mgr).departments.set([cls.mkt])
+        Employee.objects.get(user=cls.member).departments.set([cls.mkt])
+        Employee.objects.get(user=cls.other).departments.set([cls.ops])
+        # Tâche du département Marketing (assignée au membre) et tâche Événementiel.
+        cls.t_mkt = Task.objects.create(title="TacheMKT", assigned_to=cls.member,
+                                        created_by=cls.mgr, is_approved=True)
+        cls.t_ops = Task.objects.create(title="TacheOPS", assigned_to=cls.other,
+                                        created_by=cls.other, is_approved=True)
+
+    def test_member_sees_department_tasks(self):
+        # L'équipe voit les tâches de son département, comme son manager.
+        self.client.force_login(self.member)
+        r = self.client.get(reverse("tasks:board") + "?scope=all")
+        self.assertContains(r, "TacheMKT")
+        self.assertNotContains(r, "TacheOPS")
+
+    def test_manager_sees_only_own_department(self):
+        self.client.force_login(self.mgr)
+        r = self.client.get(reverse("tasks:board") + "?scope=all")
+        self.assertContains(r, "TacheMKT")
+        self.assertNotContains(r, "TacheOPS")
+
+    def test_other_department_isolated(self):
+        self.client.force_login(self.other)
+        r = self.client.get(reverse("tasks:board") + "?scope=all")
+        self.assertContains(r, "TacheOPS")
+        self.assertNotContains(r, "TacheMKT")
+
+    def test_rh_sees_all(self):
+        self.client.force_login(self.rh)
+        r = self.client.get(reverse("tasks:board") + "?scope=all")
+        self.assertContains(r, "TacheMKT")
+        self.assertContains(r, "TacheOPS")

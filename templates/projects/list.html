@@ -5,10 +5,19 @@
 {% block content %}
 <div class="flex flex-wrap items-center gap-3 mb-5">
   <div class="inline-flex rounded-lg border border-slate-200 bg-white overflow-hidden text-sm">
-    <a href="{% url 'projects:list' %}" class="px-4 py-2 {% if not kind %}lpm-gradient text-white{% else %}text-slate-600{% endif %}">Tous</a>
-    <a href="?kind=CAMPAIGN" class="px-4 py-2 {% if kind == 'CAMPAIGN' %}lpm-gradient text-white{% else %}text-slate-600{% endif %}">Campagnes</a>
-    <a href="?kind=EVENT" class="px-4 py-2 {% if kind == 'EVENT' %}lpm-gradient text-white{% else %}text-slate-600{% endif %}">Événements</a>
+    <a href="{% url 'projects:list' %}{% if dept %}?dept={{ dept }}{% endif %}" class="px-4 py-2 {% if not kind %}lpm-gradient text-white{% else %}text-slate-600{% endif %}">Tous</a>
+    <a href="?kind=CAMPAIGN{% if dept %}&dept={{ dept }}{% endif %}" class="px-4 py-2 {% if kind == 'CAMPAIGN' %}lpm-gradient text-white{% else %}text-slate-600{% endif %}">Campagnes</a>
+    <a href="?kind=EVENT{% if dept %}&dept={{ dept }}{% endif %}" class="px-4 py-2 {% if kind == 'EVENT' %}lpm-gradient text-white{% else %}text-slate-600{% endif %}">Événements</a>
   </div>
+  {% if cross and departments %}
+  <form method="get" class="flex items-center gap-2">
+    {% if kind %}<input type="hidden" name="kind" value="{{ kind }}">{% endif %}
+    <select name="dept" onchange="this.form.submit()" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+      <option value="">Tous les départements</option>
+      {% for d in departments %}<option value="{{ d.id }}" {% if dept == d.id|stringformat:'s' %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
+    </select>
+  </form>
+  {% endif %}
   {% if user.is_manager %}<a href="{% url 'projects:create' %}" class="ml-auto bg-lpm hover:bg-lpm-dark text-white px-4 py-2 rounded-lg font-medium shadow-sm"><i class="fa-solid fa-plus mr-1"></i> Projet</a>{% endif %}
 </div>
 
@@ -22,6 +31,7 @@
     </div>
     <h3 class="font-bold text-slate-800 mt-3">{{ p.name }}</h3>
     <p class="text-xs text-slate-400">{{ p.code }}{% if p.client %} · {{ p.client.name }}{% endif %}</p>
+    {% if p.department %}<p class="text-xs mt-1"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-lpm/10 text-lpm font-medium"><i class="fa-solid fa-sitemap text-[10px]"></i> {{ p.department.name }}</span></p>{% endif %}
     {% if p.kind == 'EVENT' and p.event_date %}<p class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-calendar-days"></i> {{ p.event_date|date:"d/m/Y" }}{% if p.location %} · {{ p.location }}{% endif %}</p>{% endif %}
     <div class="mt-4">
       <div class="flex justify-between text-xs text-slate-400 mb-1"><span>Avancement</span><span>{{ p.progress }}%</span></div>

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Validation des actualités{% endblock %}
+{% block page_title %}Actualités à valider{% endblock %}
+{% block content %}
+<div class="max-w-4xl">
+  <a href="{% url 'communication:list' %}" class="text-sm text-slate-500 hover:text-lpm"><i class="fa-solid fa-arrow-left mr-1"></i> Retour aux actualités</a>
+
+  <div class="mt-4 space-y-4">
+    {% for a in pending %}
+    <div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
+      <div class="p-5">
+        <div class="flex items-start gap-4">
+          {% if a.image %}<img src="{{ a.image.url }}" class="h-20 w-28 object-cover rounded-lg shrink-0">{% endif %}
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="px-2 py-0.5 rounded-full text-xs font-medium {% if a.category == 'ALERT' %}bg-red-100 text-red-700{% elif a.category == 'RH' %}bg-violet-100 text-violet-700{% elif a.category == 'EVENT' %}bg-amber-100 text-amber-700{% else %}bg-lpm/10 text-lpm{% endif %}">{{ a.get_category_display }}</span>
+              {% if a.is_pinned %}<span class="text-xs text-amber-500"><i class="fa-solid fa-thumbtack"></i> Épinglé</span>{% endif %}
+              <span class="ml-auto text-xs text-amber-600 font-medium"><i class="fa-solid fa-clock"></i> En attente</span>
+            </div>
+            <a href="{% url 'communication:detail' a.slug %}" class="font-bold text-slate-800 hover:text-lpm">{{ a.title }}</a>
+            <p class="text-sm text-slate-500 mt-1 line-clamp-2">{{ a.summary|default:a.content|truncatewords:30 }}</p>
+            <p class="text-xs text-slate-400 mt-2">Proposée par <strong>{{ a.author.get_full_name|default:a.author.username }}</strong> · {{ a.created_at|date:"d/m/Y H:i" }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="px-5 py-3 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center gap-3">
+        <a href="{% url 'communication:detail' a.slug %}" class="text-sm text-slate-600 hover:text-lpm"><i class="fa-solid fa-eye mr-1"></i> Aperçu</a>
+        <form method="post" action="{% url 'communication:approve' a.pk %}" class="ml-auto">{% csrf_token %}
+          <button class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition"><i class="fa-solid fa-check mr-1"></i> Valider & publier</button>
+        </form>
+        <form method="post" action="{% url 'communication:reject' a.pk %}" class="flex items-center gap-2"
+              onsubmit="return confirm('Refuser cette actualité ?')">{% csrf_token %}
+          <input name="reason" placeholder="Motif (optionnel)" class="rounded-lg border border-slate-300 px-3 py-2 text-sm w-44">
+          <button class="bg-white border border-red-300 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-medium transition"><i class="fa-solid fa-xmark mr-1"></i> Refuser</button>
+        </form>
+      </div>
+    </div>
+    {% empty %}
+    <div class="bg-white rounded-2xl shadow-card border border-slate-100 py-16 text-center">
+      <i class="fa-solid fa-circle-check text-4xl text-emerald-300 mb-3"></i>
+      <p class="font-semibold text-slate-600">Aucune actualité en attente</p>
+      <p class="text-sm text-slate-400 mt-1">Toutes les actualités proposées ont été traitées.</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

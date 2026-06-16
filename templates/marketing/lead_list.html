@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Leads / Prospects{% endblock %}
+{% block page_title %}Leads / Prospects{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap gap-3 mb-4">
+  {% if user.is_manager %}
+  <a href="{% url 'marketing:lead_create' %}" class="inline-flex items-center gap-2 bg-lpm text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-lpm-dark transition">
+    <i class="fa-solid fa-plus"></i> Nouveau lead
+  </a>
+  {% endif %}
+  <form method="get" class="flex gap-2">
+    <select name="status" class="rounded-xl border border-slate-200 px-3 py-2 text-sm">
+      <option value="">Tous les statuts</option>
+      {% for v, l in statuses %}<option value="{{ v }}" {% if status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+    </select>
+    <select name="source" class="rounded-xl border border-slate-200 px-3 py-2 text-sm">
+      <option value="">Toutes les sources</option>
+      {% for v, l in sources %}<option value="{{ v }}" {% if source == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-sm hover:bg-slate-200 transition">Filtrer</button>
+  </form>
+</div>
+
+<div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
+          <th class="px-4 py-3 text-left">Nom</th>
+          <th class="px-4 py-3 text-left">Entreprise</th>
+          <th class="px-4 py-3 text-left">Contact</th>
+          <th class="px-4 py-3 text-left">Source</th>
+          <th class="px-4 py-3 text-left">Statut</th>
+          <th class="px-4 py-3 text-left">Campagne</th>
+          <th class="px-4 py-3 text-left">Créé le</th>
+          {% if user.is_manager %}<th class="px-4 py-3 text-center">Actions</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-50">
+        {% for lead in leads %}
+        <tr class="hover:bg-slate-50 transition">
+          <td class="px-4 py-3 font-medium text-slate-800">{{ lead.full_name }}</td>
+          <td class="px-4 py-3 text-slate-600">{{ lead.company|default:"—" }}</td>
+          <td class="px-4 py-3 text-slate-500 text-xs">
+            {% if lead.email %}<div>{{ lead.email }}</div>{% endif %}
+            {% if lead.phone %}<div>{{ lead.phone }}</div>{% endif %}
+          </td>
+          <td class="px-4 py-3 text-slate-600">{{ lead.get_source_display }}</td>
+          <td class="px-4 py-3">
+            <span class="text-xs px-2 py-1 rounded-full font-medium
+              {% if lead.status == 'NEW' %}bg-blue-100 text-blue-700
+              {% elif lead.status == 'CONTACTED' %}bg-amber-100 text-amber-700
+              {% elif lead.status == 'QUALIFIED' %}bg-lpm/10 text-lpm
+              {% elif lead.status == 'CONVERTED' %}bg-emerald-100 text-emerald-700
+              {% else %}bg-red-100 text-red-700{% endif %}">
+              {{ lead.get_status_display }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-slate-500 text-xs">{{ lead.campaign.name|default:"—" }}</td>
+          <td class="px-4 py-3 text-xs text-slate-400">{{ lead.created_at|date:"d/m/Y" }}</td>
+          {% if user.is_manager %}
+          <td class="px-4 py-3 text-center">
+            <a href="{% url 'marketing:lead_edit' lead.pk %}" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"><i class="fa-solid fa-pen text-xs"></i></a>
+          </td>
+          {% endif %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="px-4 py-8 text-center text-slate-400">Aucun lead. <a href="{% url 'marketing:lead_create' %}" class="text-lpm hover:underline">Créer le premier</a></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

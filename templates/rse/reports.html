@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Rapports RSE{% endblock %}
+{% block page_title %}Rapports RSE annuels{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-4">
+  {% if user.is_manager %}
+  <a href="{% url 'rse:report_create' %}" class="inline-flex items-center gap-2 bg-lpm text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-lpm-dark transition">
+    <i class="fa-solid fa-plus"></i> Nouveau rapport
+  </a>
+  {% else %}<div></div>{% endif %}
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  {% for report in reports %}
+  <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-5">
+    <div class="flex items-start justify-between mb-3">
+      <div>
+        <div class="text-2xl font-bold text-lpm">{{ report.year }}</div>
+        <div class="font-semibold text-slate-800 mt-1">{{ report.title }}</div>
+      </div>
+      {% if report.published %}
+      <span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-medium">Publié</span>
+      {% else %}
+      <span class="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-full font-medium">Brouillon</span>
+      {% endif %}
+    </div>
+    <p class="text-sm text-slate-500 mb-4 line-clamp-2">{{ report.content|truncatechars:120 }}</p>
+    <div class="flex gap-2">
+      {% if report.document %}
+      <a href="{{ report.document.url }}" target="_blank" class="flex-1 text-center text-xs bg-lpm text-white px-3 py-2 rounded-lg hover:bg-lpm-dark transition">
+        <i class="fa-solid fa-download mr-1"></i>Télécharger
+      </a>
+      {% endif %}
+      {% if user.is_manager %}
+      <a href="{% url 'rse:report_edit' report.pk %}" class="text-xs bg-slate-100 text-slate-600 px-3 py-2 rounded-lg hover:bg-slate-200 transition">
+        <i class="fa-solid fa-pen"></i>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-span-3 bg-white rounded-2xl shadow-card border border-slate-100 p-8 text-center text-slate-400">
+    Aucun rapport RSE disponible.
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

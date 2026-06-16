@@ -1,0 +1,667 @@
+{% extends "base.html" %}
+{% block title %}Magasin LPM{% endblock %}
+{% block page_title %}Magasin — LPM Consulting{% endblock %}
+
+{% block content %}
+
+{# KPI BANNER #}
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+  <div class="bg-white rounded-2xl border border-slate-100 shadow-card p-4 flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0"><i class="fa-solid fa-boxes-stacked text-blue-500"></i></div>
+    <div><p class="text-xs text-slate-400">Articles</p><p class="text-xl font-extrabold text-slate-800">{{ total_items }}</p></div>
+  </div>
+  <div class="bg-white rounded-2xl border border-slate-100 shadow-card p-4 flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0"><i class="fa-solid fa-cubes text-indigo-500"></i></div>
+    <div><p class="text-xs text-slate-400">Qté totale</p><p class="text-xl font-extrabold text-slate-800">{{ total_qty }}</p></div>
+  </div>
+  <div class="bg-white rounded-2xl border border-slate-100 shadow-card p-4 flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0"><i class="fa-solid fa-circle-check text-emerald-500"></i></div>
+    <div><p class="text-xs text-slate-400">Bon état</p><p class="text-xl font-extrabold text-slate-800">{{ bon_pct }}<span class="text-sm font-medium">%</span></p></div>
+  </div>
+  <div class="bg-white rounded-2xl border border-slate-100 shadow-card p-4 flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl {% if low_stock_items %}bg-amber-50{% else %}bg-slate-50{% endif %} flex items-center justify-center shrink-0"><i class="fa-solid fa-triangle-exclamation {% if low_stock_items %}text-amber-500{% else %}text-slate-300{% endif %}"></i></div>
+    <div><p class="text-xs text-slate-400">Stock bas</p><p class="text-xl font-extrabold {% if low_stock_items %}text-amber-600{% else %}text-slate-800{% endif %}">{{ low_stock_items|length }}</p></div>
+  </div>
+  <div class="bg-white rounded-2xl border border-slate-100 shadow-card p-4 flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl {% if open_maintenance %}bg-orange-50{% else %}bg-slate-50{% endif %} flex items-center justify-center shrink-0"><i class="fa-solid fa-wrench {% if open_maintenance %}text-orange-500{% else %}text-slate-300{% endif %}"></i></div>
+    <div><p class="text-xs text-slate-400">Maintenance</p><p class="text-xl font-extrabold {% if open_maintenance %}text-orange-600{% else %}text-slate-800{% endif %}">{{ open_maintenance }}</p></div>
+  </div>
+  <div class="bg-white rounded-2xl border border-slate-100 shadow-card p-4 flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl {% if hs_count %}bg-red-50{% else %}bg-slate-50{% endif %} flex items-center justify-center shrink-0"><i class="fa-solid fa-xmark-circle {% if hs_count %}text-red-500{% else %}text-slate-300{% endif %}"></i></div>
+    <div><p class="text-xs text-slate-400">Hors service</p><p class="text-xl font-extrabold {% if hs_count %}text-red-600{% else %}text-slate-800{% endif %}">{{ hs_count }}</p></div>
+  </div>
+</div>
+
+{# CARD PRINCIPALE #}
+<div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
+
+  {# ONGLETS DE NAVIGATION #}
+  <div class="border-b border-slate-100 overflow-x-auto">
+    <nav class="flex min-w-max">
+      {% if user.is_manager %}
+      <a href="?s=dashboard" class="flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition whitespace-nowrap {% if active_tab == 'dashboard' %}border-lpm text-lpm{% else %}border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-200{% endif %}">
+        <i class="fa-solid fa-chart-pie text-xs"></i> Tableau de bord
+      </a>
+      {% endif %}
+      <a href="?s=inventaire" class="flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition whitespace-nowrap {% if active_tab == 'inventaire' %}border-lpm text-lpm{% else %}border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-200{% endif %}">
+        <i class="fa-solid fa-boxes-stacked text-xs"></i> Inventaire
+      </a>
+      <a href="?s=mouvements" class="flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition whitespace-nowrap {% if active_tab == 'mouvements' %}border-lpm text-lpm{% else %}border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-200{% endif %}">
+        <i class="fa-solid fa-arrow-right-arrow-left text-xs"></i> Mouvements
+      </a>
+      {% if user.is_manager %}
+      <a href="?s=recevt" class="flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition whitespace-nowrap {% if active_tab == 'recevt' %}border-lpm text-lpm{% else %}border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-200{% endif %}">
+        <i class="fa-solid fa-calendar-check text-xs"></i> Post-Événement
+      </a>
+      <a href="?s=maintenance" class="flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition whitespace-nowrap {% if active_tab == 'maintenance' %}border-lpm text-lpm{% else %}border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-200{% endif %}">
+        <i class="fa-solid fa-screwdriver-wrench text-xs"></i> Maintenance{% if open_maintenance %}<span class="ml-1 bg-orange-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{{ open_maintenance }}</span>{% endif %}
+      </a>
+      <a href="?s=alertes" class="flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition whitespace-nowrap {% if active_tab == 'alertes' %}border-lpm text-lpm{% else %}border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-200{% endif %}">
+        <i class="fa-solid fa-bell text-xs"></i> Alertes{% if low_stock_items or hs_count %}<span class="ml-1 bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{{ low_stock_items|length|add:hs_count }}</span>{% endif %}
+      </a>
+      {% endif %}
+      <div class="ml-auto flex items-center pr-3 gap-2">
+        <a href="{% url 'stock:borrow_list' %}" class="text-xs text-slate-500 hover:text-lpm px-3 py-2 rounded-lg hover:bg-slate-50 flex items-center gap-1.5">
+          <i class="fa-solid fa-hand-holding-box"></i> Emprunts{% if pending_borrows %}<span class="bg-amber-500 text-white text-[10px] font-bold rounded-full px-1.5">{{ pending_borrows }}</span>{% endif %}
+        </a>
+        <a href="{% url 'stock:order_list' %}" class="text-xs text-slate-500 hover:text-lpm px-3 py-2 rounded-lg hover:bg-slate-50 flex items-center gap-1.5">
+          <i class="fa-solid fa-truck"></i> Commandes
+        </a>
+      </div>
+    </nav>
+  </div>
+
+  <div class="p-5">
+
+  {# ==================================================================== #}
+  {# ONGLET TABLEAU DE BORD                                                #}
+  {# ==================================================================== #}
+  {% if active_tab == "dashboard" %}
+
+  {# Ligne 1 : valeur totale + 2 alertes rapides #}
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    <div class="sm:col-span-1 bg-gradient-to-br from-lpm to-lpm-dark rounded-2xl p-5 text-white flex items-center gap-4">
+      <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+        <i class="fa-solid fa-sack-dollar text-xl"></i>
+      </div>
+      <div>
+        <p class="text-white/70 text-xs font-medium uppercase tracking-wider">Valeur stock estimée</p>
+        <p class="text-2xl font-extrabold mt-0.5">{{ total_valeur|floatformat:0 }} <span class="text-base font-semibold">FCFA</span></p>
+        <p class="text-white/60 text-xs mt-0.5">{{ total_items }} article(s) · {{ total_qty }} unités</p>
+      </div>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-center gap-4">
+      <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
+        <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xl"></i>
+      </div>
+      <div>
+        <p class="text-amber-600 text-xs font-medium uppercase tracking-wider">Stocks en alerte</p>
+        <p class="text-2xl font-extrabold text-amber-700 mt-0.5">{{ low_stock_items|length }}</p>
+        <p class="text-amber-500 text-xs mt-0.5">article(s) sous le seuil minimum</p>
+      </div>
+    </div>
+    <div class="{% if hs_count %}bg-red-50 border border-red-200{% else %}bg-emerald-50 border border-emerald-200{% endif %} rounded-2xl p-5 flex items-center gap-4">
+      <div class="w-12 h-12 {% if hs_count %}bg-red-100{% else %}bg-emerald-100{% endif %} rounded-xl flex items-center justify-center shrink-0">
+        <i class="fa-solid fa-{% if hs_count %}xmark-circle text-red{% else %}circle-check text-emerald{% endif %}-500 text-xl"></i>
+      </div>
+      <div>
+        <p class="{% if hs_count %}text-red-600{% else %}text-emerald-600{% endif %} text-xs font-medium uppercase tracking-wider">Hors service / Maintenance</p>
+        <p class="text-2xl font-extrabold {% if hs_count %}text-red-700{% else %}text-emerald-700{% endif %} mt-0.5">{{ hs_count }} <span class="text-base font-semibold">HS</span> · {{ open_maintenance }} <span class="text-base font-semibold">en cours</span></p>
+        <p class="{% if hs_count %}text-red-400{% else %}text-emerald-400{% endif %} text-xs mt-0.5">fiches de maintenance actives</p>
+      </div>
+    </div>
+  </div>
+
+  {# Ligne 2 : répartition catégorie + état #}
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+
+    {# Répartition par catégorie #}
+    <div class="bg-white border border-slate-100 rounded-2xl p-5">
+      <h3 class="font-bold text-slate-800 text-sm mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-layer-group text-lpm"></i> Répartition par catégorie
+      </h3>
+      <div class="space-y-3">
+        {% for cat in cat_stats %}
+        {% with colors="EVENEMENT:bg-violet-500 TECHNIQUE:bg-blue-500 IT:bg-sky-500 MOBILIER:bg-teal-500 CONSOMMABLE:bg-amber-500 BUREAUTIQUE:bg-orange-500 EQUIPMENT:bg-indigo-500 OTHER:bg-slate-400" %}
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="font-medium text-slate-700">{{ cat.label }}</span>
+            <span class="text-slate-400">{{ cat.count }} art. · {{ cat.qty }} unités{% if cat.valeur %} · {{ cat.valeur|floatformat:0 }} FCFA{% endif %}</span>
+          </div>
+          <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div class="h-full rounded-full transition-all
+              {% if cat.value == 'EVENEMENT' %}bg-violet-500
+              {% elif cat.value == 'TECHNIQUE' %}bg-blue-500
+              {% elif cat.value == 'IT' %}bg-sky-500
+              {% elif cat.value == 'MOBILIER' %}bg-teal-500
+              {% elif cat.value == 'CONSOMMABLE' %}bg-amber-500
+              {% elif cat.value == 'BUREAUTIQUE' %}bg-orange-500
+              {% elif cat.value == 'EQUIPMENT' %}bg-indigo-500
+              {% else %}bg-slate-400{% endif %}"
+              style="width: {{ cat.pct }}%"></div>
+          </div>
+        </div>
+        {% endwith %}
+        {% empty %}
+        <p class="text-slate-400 text-sm">Aucune donnée.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# Répartition par état #}
+    <div class="bg-white border border-slate-100 rounded-2xl p-5">
+      <h3 class="font-bold text-slate-800 text-sm mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-clipboard-check text-lpm"></i> Répartition par état
+      </h3>
+      <div class="space-y-3 mb-5">
+        {% for st in status_stats %}
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="font-medium text-slate-700">{{ st.label }}</span>
+            <span class="text-slate-400">{{ st.count }} article(s) — {{ st.pct }}%</span>
+          </div>
+          <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div class="h-full rounded-full
+              {% if st.value == 'NEW' %}bg-emerald-500
+              {% elif st.value == 'GOOD' %}bg-blue-500
+              {% elif st.value == 'USED' %}bg-amber-400
+              {% elif st.value == 'REPAIR' %}bg-orange-500
+              {% else %}bg-red-500{% endif %}"
+              style="width: {{ st.pct }}%"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {# légende couleur #}
+      <div class="flex flex-wrap gap-2 pt-3 border-t border-slate-50">
+        {% for st in status_stats %}
+        <span class="inline-flex items-center gap-1.5 text-xs text-slate-500">
+          <span class="w-2.5 h-2.5 rounded-full
+            {% if st.value == 'NEW' %}bg-emerald-500
+            {% elif st.value == 'GOOD' %}bg-blue-500
+            {% elif st.value == 'USED' %}bg-amber-400
+            {% elif st.value == 'REPAIR' %}bg-orange-500
+            {% else %}bg-red-500{% endif %}"></span>
+          {{ st.label }}
+        </span>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+  {# Ligne 3 : Top valeur + derniers mouvements #}
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+
+    {# Top 5 articles par valeur #}
+    <div class="bg-white border border-slate-100 rounded-2xl p-5">
+      <h3 class="font-bold text-slate-800 text-sm mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-ranking-star text-lpm"></i> Top 5 — articles par valeur
+      </h3>
+      {% if top_valeur %}
+      <div class="space-y-3">
+        {% for item in top_valeur %}
+        <div class="flex items-center gap-3">
+          <span class="w-6 h-6 rounded-full bg-lpm/10 text-lpm text-xs font-bold flex items-center justify-center shrink-0">{{ forloop.counter }}</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-2">
+              <a href="{% url 'stock:item_detail' item.pk %}" class="text-sm font-medium text-slate-700 hover:text-lpm truncate">{{ item.name }}</a>
+              <span class="text-xs font-bold text-slate-800 shrink-0">{{ item.quantity|add:0 }}×{{ item.estimated_value|floatformat:0 }} FCFA</span>
+            </div>
+            <p class="text-xs text-slate-400">{{ item.get_category_display }} · {{ item.mat_id|default:item.reference }}</p>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-slate-400 text-sm">Aucune valeur estimée renseignée.</p>
+      {% endif %}
+    </div>
+
+    {# Derniers mouvements #}
+    <div class="bg-white border border-slate-100 rounded-2xl p-5">
+      <h3 class="font-bold text-slate-800 text-sm mb-4 flex items-center justify-between gap-2">
+        <span><i class="fa-solid fa-clock-rotate-left text-lpm mr-1"></i> Derniers mouvements</span>
+        <a href="?s=mouvements" class="text-xs text-lpm hover:underline">Tout voir</a>
+      </h3>
+      <div class="space-y-2">
+        {% for mv in recent_mvts %}
+        <div class="flex items-center gap-3 text-sm">
+          <span class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold
+            {% if mv.kind == 'IN' or mv.kind == 'RETURN' %}bg-emerald-100 text-emerald-700
+            {% elif mv.kind == 'OUT' or mv.kind == 'BORROW' %}bg-blue-100 text-blue-700
+            {% else %}bg-slate-100 text-slate-500{% endif %}">
+            {% if mv.kind == 'IN' or mv.kind == 'RETURN' %}<i class="fa-solid fa-arrow-down"></i>
+            {% elif mv.kind == 'OUT' or mv.kind == 'BORROW' %}<i class="fa-solid fa-arrow-up"></i>
+            {% else %}<i class="fa-solid fa-arrows-up-down"></i>{% endif %}
+          </span>
+          <div class="flex-1 min-w-0">
+            <p class="text-slate-700 truncate"><span class="font-medium">{{ mv.get_kind_display }}</span> · {{ mv.item.name|truncatechars:30 }}</p>
+            <p class="text-xs text-slate-400">{{ mv.performed_at|date:"d/m/Y H:i" }}{% if mv.reason %} · {{ mv.reason|truncatechars:30 }}{% endif %}</p>
+          </div>
+          <span class="font-bold text-slate-600 shrink-0">×{{ mv.quantity }}</span>
+        </div>
+        {% empty %}
+        <p class="text-slate-400 text-sm">Aucun mouvement.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+  {# Ligne 4 : articles en alerte stock bas #}
+  {% if low_stock_items %}
+  <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+    <h3 class="font-bold text-amber-800 text-sm mb-3 flex items-center gap-2">
+      <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Articles à réapprovisionner ({{ low_stock_items|length }})
+    </h3>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {% for item in low_stock_items %}
+      <div class="bg-white rounded-xl border border-amber-200 px-4 py-3 flex items-center justify-between">
+        <div>
+          <p class="text-sm font-semibold text-slate-800">{{ item.name|truncatechars:30 }}</p>
+          <p class="text-xs text-slate-400">{{ item.mat_id|default:"—" }} · {{ item.get_category_display }}</p>
+        </div>
+        <div class="text-right shrink-0 ml-3">
+          <p class="text-xl font-extrabold text-amber-600">{{ item.quantity }}</p>
+          <p class="text-xs text-slate-400">seuil : {{ item.min_quantity }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% if user.is_manager %}
+    <div class="mt-3">
+      <a href="{% url 'stock:order_create' %}" class="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition">
+        <i class="fa-solid fa-truck"></i> Créer un bon de commande
+      </a>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# ==================================================================== #}
+  {# ONGLET INVENTAIRE                                                     #}
+  {# ==================================================================== #}
+  {% elif active_tab == "inventaire" %}
+
+  <div class="flex flex-wrap items-center gap-3 mb-4">
+    <form method="get" class="flex flex-wrap gap-2 flex-1">
+      <input type="hidden" name="s" value="inventaire">
+      <select name="cat" class="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-lpm/30 focus:border-lpm">
+        <option value="">Toutes catégories</option>
+        {% for v,l in categories %}
+        <option value="{{ v }}" {% if cat_filter == v %}selected{% endif %}>{{ l }}</option>
+        {% endfor %}
+      </select>
+      <select name="etat" class="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-lpm/30 focus:border-lpm">
+        <option value="">Tous les états</option>
+        {% for v,l in statuses %}
+        <option value="{{ v }}" {% if state_filter == v %}selected{% endif %}>{{ l }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-sm hover:bg-slate-200 transition">Filtrer</button>
+      {% if cat_filter or state_filter %}<a href="?s=inventaire" class="text-xs text-slate-400 hover:text-slate-700 px-3 py-2">Réinitialiser</a>{% endif %}
+    </form>
+    {% if user.is_manager %}
+    <a href="{% url 'stock:item_create' %}" class="inline-flex items-center gap-2 lpm-gradient text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm hover:opacity-90 transition">
+      <i class="fa-solid fa-plus"></i> Nouvel article
+    </a>
+    {% endif %}
+  </div>
+
+  {% if low_stock_items and not cat_filter and not state_filter %}
+  <div class="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-3">
+    <i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5"></i>
+    <div class="text-sm text-amber-800">
+      <strong>{{ low_stock_items|length }} article(s) en stock bas :</strong>
+      {% for i in low_stock_items %}<span class="font-medium">{{ i.name }}</span> ({{ i.quantity }}/{{ i.min_quantity }}){% if not forloop.last %}, {% endif %}{% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="overflow-x-auto -mx-5 px-5">
+    <table class="w-full text-sm min-w-[800px]">
+      <thead>
+        <tr class="text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
+          <th class="px-4 py-3 text-left">ID Mat.</th>
+          <th class="px-4 py-3 text-left">Désignation</th>
+          <th class="px-4 py-3 text-left">Catégorie</th>
+          <th class="px-4 py-3 text-left">Marque / Modèle</th>
+          <th class="px-4 py-3 text-left">N° Série</th>
+          <th class="px-4 py-3 text-center">Qté</th>
+          <th class="px-4 py-3 text-left">État</th>
+          <th class="px-4 py-3 text-left">Localisation</th>
+          <th class="px-4 py-3 text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-50">
+        {% for item in items %}
+        <tr class="hover:bg-slate-50 transition">
+          <td class="px-4 py-3 font-mono text-xs text-slate-500">{{ item.mat_id|default:"—" }}</td>
+          <td class="px-4 py-3">
+            <a href="{% url 'stock:item_detail' item.pk %}" class="font-medium text-slate-800 hover:text-lpm transition">{{ item.name }}</a>
+            {% if item.is_low_stock %}<span class="ml-1 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold">⚠ stock bas</span>{% endif %}
+          </td>
+          <td class="px-4 py-3 text-xs text-slate-500">{{ item.get_category_display }}</td>
+          <td class="px-4 py-3 text-xs text-slate-400">{{ item.brand_model|default:"—" }}</td>
+          <td class="px-4 py-3 font-mono text-xs text-slate-400">{{ item.serial_number|default:"—" }}</td>
+          <td class="px-4 py-3 text-center font-bold {% if item.is_low_stock %}text-amber-600{% else %}text-slate-700{% endif %}">
+            {{ item.quantity }}
+          </td>
+          <td class="px-4 py-3">
+            <span class="inline-flex items-center text-xs px-2 py-0.5 rounded-full font-medium
+              {% if item.status == 'NEW' %}bg-emerald-100 text-emerald-700
+              {% elif item.status == 'GOOD' %}bg-blue-100 text-blue-700
+              {% elif item.status == 'USED' %}bg-amber-100 text-amber-700
+              {% elif item.status == 'REPAIR' %}bg-orange-100 text-orange-700
+              {% else %}bg-red-100 text-red-700{% endif %}">
+              {{ item.get_status_display }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-xs text-slate-400">{{ item.location|default:"—" }}</td>
+          <td class="px-4 py-3 text-center">
+            <div class="flex items-center justify-center gap-1">
+              <a href="{% url 'stock:item_detail' item.pk %}" class="p-1.5 rounded-lg hover:bg-lpm/10 text-lpm" title="Voir détail"><i class="fa-solid fa-eye text-xs"></i></a>
+              {% if user.is_manager %}
+              <a href="{% url 'stock:item_edit' item.pk %}" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400" title="Modifier"><i class="fa-solid fa-pen text-xs"></i></a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9" class="px-4 py-12 text-center text-slate-400">Aucun article dans l'inventaire.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# ==================================================================== #}
+  {# ONGLET MOUVEMENTS                                                     #}
+  {# ==================================================================== #}
+  {% elif active_tab == "mouvements" %}
+
+  <div class="flex flex-wrap items-center gap-3 mb-4">
+    <form method="get" class="flex gap-2 flex-1">
+      <input type="hidden" name="s" value="mouvements">
+      <select name="type" class="rounded-xl border border-slate-200 px-3 py-2 text-sm">
+        <option value="">Tous les types</option>
+        {% for v,l in kinds %}<option value="{{ v }}" {% if kind_filter == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+      </select>
+      <button type="submit" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-sm hover:bg-slate-200">Filtrer</button>
+    </form>
+  </div>
+
+  <div class="overflow-x-auto -mx-5 px-5">
+    <table class="w-full text-sm min-w-[1000px]">
+      <thead>
+        <tr class="text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
+          <th class="px-3 py-3 text-left">Réf.</th>
+          <th class="px-3 py-3 text-left">Date</th>
+          <th class="px-3 py-3 text-left">Type</th>
+          <th class="px-3 py-3 text-left">Matériel</th>
+          <th class="px-3 py-3 text-center">Qté</th>
+          <th class="px-3 py-3 text-left">Motif</th>
+          <th class="px-3 py-3 text-left">Destination</th>
+          <th class="px-3 py-3 text-left">Provenance</th>
+          <th class="px-3 py-3 text-left">État dép.</th>
+          <th class="px-3 py-3 text-left">État ret.</th>
+          <th class="px-3 py-3 text-left">Responsable</th>
+          <th class="px-3 py-3 text-left">Statut</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-50">
+        {% for mv in mouvements %}
+        <tr class="hover:bg-slate-50 transition">
+          <td class="px-3 py-2.5 font-mono text-xs text-slate-500">{{ mv.mvt_reference|default:"—" }}</td>
+          <td class="px-3 py-2.5 text-xs text-slate-500 whitespace-nowrap">{{ mv.performed_at|date:"d/m/Y" }}</td>
+          <td class="px-3 py-2.5">
+            <span class="text-xs px-2 py-0.5 rounded-full font-medium
+              {% if mv.kind == 'IN' or mv.kind == 'RETURN' %}bg-emerald-100 text-emerald-700
+              {% elif mv.kind == 'OUT' or mv.kind == 'BORROW' %}bg-blue-100 text-blue-700
+              {% else %}bg-slate-100 text-slate-600{% endif %}">
+              {{ mv.get_kind_display }}
+            </span>
+          </td>
+          <td class="px-3 py-2.5 font-medium text-slate-800">
+            <a href="{% url 'stock:item_detail' mv.item_id %}" class="hover:text-lpm">{{ mv.item.name|truncatechars:35 }}</a>
+          </td>
+          <td class="px-3 py-2.5 text-center font-semibold text-slate-700">{{ mv.quantity }}</td>
+          <td class="px-3 py-2.5 text-xs text-slate-500">{{ mv.reason|default:"—"|truncatechars:30 }}</td>
+          <td class="px-3 py-2.5 text-xs text-slate-400">{{ mv.destination|default:"—"|truncatechars:25 }}</td>
+          <td class="px-3 py-2.5 text-xs text-slate-400">{{ mv.origin|default:"—"|truncatechars:25 }}</td>
+          <td class="px-3 py-2.5 text-xs text-slate-400">{{ mv.departure_state|default:"—" }}</td>
+          <td class="px-3 py-2.5 text-xs text-slate-400">{{ mv.return_state|default:"—" }}</td>
+          <td class="px-3 py-2.5 text-xs text-slate-500">{{ mv.store_manager.get_full_name|default:"—" }}</td>
+          <td class="px-3 py-2.5">
+            <span class="text-xs px-1.5 py-0.5 rounded font-medium
+              {% if mv.movement_status == 'VALIDATED' %}bg-emerald-100 text-emerald-700
+              {% elif mv.movement_status == 'PENDING' %}bg-amber-100 text-amber-700
+              {% else %}bg-red-100 text-red-700{% endif %}">
+              {{ mv.get_movement_status_display }}
+            </span>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="12" class="px-4 py-12 text-center text-slate-400">Aucun mouvement enregistré.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# ==================================================================== #}
+  {# ONGLET RECONCILIATION POST-EVENEMENT                                  #}
+  {# ==================================================================== #}
+  {% elif active_tab == "recevt" %}
+
+  {% if user.is_manager %}
+  <div class="mb-5 bg-slate-50 border border-slate-200 rounded-xl p-4">
+    <h4 class="font-semibold text-slate-700 mb-3 flex items-center gap-2 text-sm">
+      <i class="fa-solid fa-plus text-lpm"></i> Nouvelle réconciliation post-événement
+    </h4>
+    <form method="post" action="{% url 'stock:reconciliation_create' %}">{% csrf_token %}
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        {% for field in recon_form %}
+        <div class="{% if field.field.widget.attrs.rows %}col-span-full sm:col-span-2{% endif %}">
+          <label class="block text-xs font-medium text-slate-600 mb-1">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<p class="text-xs text-red-500 mt-0.5">{{ field.errors|join:" " }}</p>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <button type="submit" class="mt-3 lpm-gradient text-white px-5 py-2 rounded-xl text-sm font-medium hover:opacity-90 transition">
+        <i class="fa-solid fa-save mr-1.5"></i> Enregistrer
+      </button>
+    </form>
+  </div>
+  {% endif %}
+
+  <div class="overflow-x-auto -mx-5 px-5">
+    <table class="w-full text-sm min-w-[900px]">
+      <thead>
+        <tr class="text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
+          <th class="px-4 py-3 text-left">Événement</th>
+          <th class="px-4 py-3 text-left">Date</th>
+          <th class="px-4 py-3 text-left">Matériel</th>
+          <th class="px-4 py-3 text-center">Qté sortie</th>
+          <th class="px-4 py-3 text-center">Qté revenue</th>
+          <th class="px-4 py-3 text-center">Écart</th>
+          <th class="px-4 py-3 text-left">État retour</th>
+          <th class="px-4 py-3 text-left">Action</th>
+          <th class="px-4 py-3 text-left">Responsable</th>
+          <th class="px-4 py-3 text-left">Commentaires</th>
+          {% if user.is_manager %}<th class="px-4 py-3 text-center">Actions</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-50">
+        {% for r in reconciliations %}
+        <tr class="hover:bg-slate-50 transition">
+          <td class="px-4 py-3 font-medium text-slate-800">{{ r.event_name }}</td>
+          <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{{ r.event_date|date:"d/m/Y" }}</td>
+          <td class="px-4 py-3 text-sm">
+            <a href="{% url 'stock:item_detail' r.item_id %}" class="text-slate-700 hover:text-lpm">{{ r.item.name }}</a>
+          </td>
+          <td class="px-4 py-3 text-center font-semibold text-slate-700">{{ r.qty_out }}</td>
+          <td class="px-4 py-3 text-center font-semibold text-slate-700">{{ r.qty_returned }}</td>
+          <td class="px-4 py-3 text-center">
+            <span class="font-bold text-sm {% if r.discrepancy > 0 %}text-red-600{% else %}text-emerald-600{% endif %}">
+              {% if r.discrepancy > 0 %}-{{ r.discrepancy }}{% else %}0{% endif %}
+            </span>
+          </td>
+          <td class="px-4 py-3">
+            <span class="text-xs px-2 py-0.5 rounded-full font-medium
+              {% if r.return_state == 'GOOD' %}bg-emerald-100 text-emerald-700
+              {% elif r.return_state == 'USED' %}bg-amber-100 text-amber-700
+              {% elif r.return_state == 'DAMAGED' %}bg-orange-100 text-orange-700
+              {% else %}bg-red-100 text-red-700{% endif %}">
+              {{ r.get_return_state_display }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-xs text-slate-500">{{ r.get_action_display }}</td>
+          <td class="px-4 py-3 text-xs text-slate-400">{{ r.responsible.get_full_name|default:"—" }}</td>
+          <td class="px-4 py-3 text-xs text-slate-400">{{ r.comments|truncatechars:40|default:"—" }}</td>
+          {% if user.is_manager %}
+          <td class="px-4 py-3 text-center">
+            <div class="flex items-center justify-center gap-1">
+              <a href="{% url 'stock:reconciliation_edit' r.pk %}" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition"><i class="fa-solid fa-pen text-xs"></i></a>
+              <form method="post" action="{% url 'stock:reconciliation_delete' r.pk %}" class="inline" onsubmit="return confirm('Supprimer cette fiche ?')">{% csrf_token %}
+                <button type="submit" class="p-1.5 rounded-lg hover:bg-red-50 text-red-400 transition"><i class="fa-solid fa-trash text-xs"></i></button>
+              </form>
+            </div>
+          </td>
+          {% endif %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="{% if user.is_manager %}11{% else %}10{% endif %}" class="px-4 py-12 text-center text-slate-400">Aucune fiche de réconciliation.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# ==================================================================== #}
+  {# ONGLET MAINTENANCE                                                    #}
+  {# ==================================================================== #}
+  {% elif active_tab == "maintenance" %}
+
+  {% if user.is_manager %}
+  <div class="mb-5 bg-slate-50 border border-slate-200 rounded-xl p-4">
+    <h4 class="font-semibold text-slate-700 mb-3 flex items-center gap-2 text-sm">
+      <i class="fa-solid fa-wrench text-orange-500"></i> Signaler une panne / anomalie
+    </h4>
+    <form method="post" action="{% url 'stock:maintenance_create' %}">{% csrf_token %}
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        {% for field in maintenance_form %}
+        <div class="{% if field.field.widget.attrs.rows %}col-span-full sm:col-span-2{% endif %}">
+          <label class="block text-xs font-medium text-slate-600 mb-1">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<p class="text-xs text-red-500 mt-0.5">{{ field.errors|join:" " }}</p>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <button type="submit" class="mt-3 bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-xl text-sm font-medium transition">
+        <i class="fa-solid fa-triangle-exclamation mr-1.5"></i> Signaler
+      </button>
+    </form>
+  </div>
+  {% endif %}
+
+  <div class="flex gap-2 mb-4">
+    <form method="get" class="flex gap-2">
+      <input type="hidden" name="s" value="maintenance">
+      <select name="statut" class="rounded-xl border border-slate-200 px-3 py-2 text-sm">
+        <option value="">Tous les statuts</option>
+        {% for v,l in maintenance_statuses %}<option value="{{ v }}" {% if status_filter == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+      </select>
+      <button type="submit" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-sm hover:bg-slate-200">Filtrer</button>
+    </form>
+  </div>
+
+  <div class="space-y-3">
+    {% for fiche in fiches %}
+    <div class="bg-white border border-slate-100 rounded-xl p-4 flex items-start gap-4 hover:border-slate-200 transition">
+      <div class="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center
+        {% if fiche.status == 'PENDING' %}bg-amber-50{% elif fiche.status == 'IN_PROGRESS' %}bg-blue-50{% elif fiche.status == 'RESOLVED' %}bg-emerald-50{% else %}bg-slate-50{% endif %}">
+        <i class="fa-solid fa-wrench
+          {% if fiche.status == 'PENDING' %}text-amber-500{% elif fiche.status == 'IN_PROGRESS' %}text-blue-500{% elif fiche.status == 'RESOLVED' %}text-emerald-500{% else %}text-slate-300{% endif %}"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <a href="{% url 'stock:item_detail' fiche.item_id %}" class="font-semibold text-slate-800 hover:text-lpm">{{ fiche.item.name }}</a>
+          {% if fiche.item.mat_id %}<span class="font-mono text-xs text-slate-400">{{ fiche.item.mat_id }}</span>{% endif %}
+          <span class="text-xs px-2 py-0.5 rounded-full font-medium
+            {% if fiche.status == 'PENDING' %}bg-amber-100 text-amber-700
+            {% elif fiche.status == 'IN_PROGRESS' %}bg-blue-100 text-blue-700
+            {% elif fiche.status == 'RESOLVED' %}bg-emerald-100 text-emerald-700
+            {% else %}bg-slate-100 text-slate-500{% endif %}">
+            {{ fiche.get_status_display }}
+          </span>
+        </div>
+        <p class="text-sm text-slate-600 mt-1">{{ fiche.problem }}</p>
+        <div class="text-xs text-slate-400 mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span><i class="fa-regular fa-calendar mr-1"></i>{{ fiche.detected_at|date:"d/m/Y" }}</span>
+          <span><i class="fa-solid fa-user mr-1"></i>{{ fiche.responsible.get_full_name|default:"—" }}</span>
+          <span class="text-orange-600 font-medium"><i class="fa-solid fa-screwdriver-wrench mr-1"></i>{{ fiche.get_recommended_action_display }}</span>
+          {% if fiche.estimated_cost %}<span class="text-slate-600"><i class="fa-solid fa-coins mr-1"></i>{{ fiche.estimated_cost|floatformat:0 }} FCFA</span>{% endif %}
+        </div>
+        {% if fiche.comments %}<p class="text-xs text-slate-400 italic mt-1">{{ fiche.comments }}</p>{% endif %}
+      </div>
+      {% if user.is_manager %}
+      <div class="flex flex-col gap-1 shrink-0">
+        <a href="{% url 'stock:maintenance_edit' fiche.pk %}" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 text-sm" title="Modifier"><i class="fa-solid fa-pen"></i></a>
+        {% if fiche.status == 'PENDING' or fiche.status == 'IN_PROGRESS' %}
+        <form method="post" action="{% url 'stock:maintenance_resolve' fiche.pk %}">{% csrf_token %}
+          <input type="hidden" name="status" value="RESOLVED">
+          <button type="submit" class="p-1.5 rounded-lg hover:bg-emerald-50 text-emerald-500 text-sm w-full" title="Marquer résolu"><i class="fa-solid fa-check"></i></button>
+        </form>
+        <form method="post" action="{% url 'stock:maintenance_resolve' fiche.pk %}">{% csrf_token %}
+          <input type="hidden" name="status" value="SCRAPPED">
+          <button type="submit" class="p-1.5 rounded-lg hover:bg-red-50 text-red-400 text-sm w-full" title="Mise au rebut"><i class="fa-solid fa-trash-can"></i></button>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% empty %}
+    <div class="bg-white border border-slate-100 rounded-xl p-12 text-center text-slate-400">
+      <i class="fa-solid fa-circle-check text-3xl text-emerald-300 mb-2"></i>
+      <p>Aucune fiche de maintenance en cours.</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  {# ==================================================================== #}
+  {# ONGLET ALERTES                                                        #}
+  {# ==================================================================== #}
+  {% elif active_tab == "alertes" %}
+
+  {% if alertes %}
+  <div class="space-y-3">
+    {% for alerte in alertes %}
+    <div class="flex items-start gap-4 p-4 rounded-xl border
+      {% if alerte.level == 'high' %}bg-red-50 border-red-200{% elif alerte.level == 'medium' %}bg-amber-50 border-amber-200{% else %}bg-blue-50 border-blue-200{% endif %}">
+      <i class="fa-solid fa-{% if alerte.level == 'high' %}circle-exclamation text-red-500{% elif alerte.level == 'medium' %}triangle-exclamation text-amber-500{% else %}circle-info text-blue-500{% endif %} text-lg mt-0.5"></i>
+      <div class="flex-1">
+        <div class="font-semibold text-sm text-slate-800">{{ alerte.type }}</div>
+        <p class="text-sm text-slate-600 mt-0.5">{{ alerte.desc }}</p>
+        <p class="text-xs text-slate-400 mt-1"><i class="fa-solid fa-bolt mr-1"></i>{{ alerte.action }}</p>
+      </div>
+      <span class="text-xs px-2 py-0.5 rounded-full font-semibold shrink-0
+        {% if alerte.level == 'high' %}bg-red-100 text-red-700{% elif alerte.level == 'medium' %}bg-amber-100 text-amber-700{% else %}bg-blue-100 text-blue-700{% endif %}">
+        {% if alerte.level == 'high' %}Élevé{% elif alerte.level == 'medium' %}Moyen{% else %}Faible{% endif %}
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="py-20 text-center">
+    <i class="fa-solid fa-circle-check text-5xl text-emerald-400 mb-4"></i>
+    <p class="font-semibold text-slate-600 text-lg">Aucune alerte active</p>
+    <p class="text-slate-400 text-sm mt-1">Tout est en ordre dans le magasin.</p>
+  </div>
+  {% endif %}
+
+  {% endif %}{# fin if active_tab #}
+
+  </div>{# /p-5 #}
+</div>{# /card principale #}
+
+{% endblock %}

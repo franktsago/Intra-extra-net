@@ -100,7 +100,8 @@ def user_list(request):
     q = request.GET.get("q", "").strip()
     scope = request.GET.get("scope", "")
     # Le compte super-admin reste masqué pour les autres (RH/CEO).
-    users = hide_superadmin(User.objects.all(), request.user)
+    # select_related sur la fiche employé → affichage du type de contrat.
+    users = hide_superadmin(User.objects.select_related("employee"), request.user)
     if q:
         users = users.filter(
             Q(username__icontains=q) | Q(first_name__icontains=q)

@@ -118,6 +118,8 @@ LOCAL_APPS = [
     "marketing",
     "hr",
     "api",
+    "rse",
+    "stock",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -217,6 +219,9 @@ LANGUAGE_CODE = "fr"
 TIME_ZONE = "Africa/Douala"
 USE_I18N = True
 USE_TZ = True
+# Formats personnalisés : valeur ISO en tête de DATE_INPUT_FORMATS pour que les
+# champs <input type="date"> réaffichent correctement les dates enregistrées.
+FORMAT_MODULE_PATH = ["config.formats"]
 
 CURRENCY = "FCFA"  # Franc CFA (XAF)
 

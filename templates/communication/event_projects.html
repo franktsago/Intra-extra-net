@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Projets événements{% endblock %}
+{% block page_title %}Projets événementiels{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-4">
+  {% if user.is_manager %}
+  <a href="{% url 'communication:event_project_create' %}" class="inline-flex items-center gap-2 bg-lpm text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-lpm-dark transition">
+    <i class="fa-solid fa-plus"></i> Nouveau projet événement
+  </a>
+  {% else %}<div></div>{% endif %}
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  {% for ep in event_projects %}
+  <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-5">
+    <div class="flex items-start justify-between mb-2">
+      <div class="font-semibold text-slate-800">{{ ep.name }}</div>
+      <span class="text-xs px-2 py-1 rounded-full font-medium
+        {% if ep.status == 'ACTIVE' %}bg-blue-100 text-blue-700
+        {% elif ep.status == 'DONE' %}bg-emerald-100 text-emerald-700
+        {% elif ep.status == 'PLANNED' %}bg-amber-100 text-amber-700
+        {% else %}bg-red-100 text-red-700{% endif %}">
+        {{ ep.get_status_display }}
+      </span>
+    </div>
+    {% if ep.date %}<div class="text-xs text-slate-400 mb-1"><i class="fa-solid fa-calendar mr-1"></i>{{ ep.date|date:"d/m/Y" }}</div>{% endif %}
+    {% if ep.location %}<div class="text-xs text-slate-400 mb-1"><i class="fa-solid fa-location-dot mr-1"></i>{{ ep.location }}</div>{% endif %}
+    {% if ep.responsible %}<div class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-user mr-1"></i>{{ ep.responsible.get_full_name|default:ep.responsible.username }}</div>{% endif %}
+    <div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-50">
+      <div class="text-xs text-slate-500">Budget : {{ ep.budget|floatformat:0 }} FCFA</div>
+      <a href="{% url 'communication:event_project_detail' ep.pk %}" class="text-xs text-lpm hover:underline font-medium">Détail →</a>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-span-3 bg-white rounded-2xl shadow-card border border-slate-100 p-8 text-center text-slate-400">
+    Aucun projet événementiel.
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

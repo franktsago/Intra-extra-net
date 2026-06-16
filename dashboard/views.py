@@ -76,15 +76,17 @@ def home(request):
         status__in=[Task.Status.DONE, Task.Status.CANCELLED]
     )
     from notifications.models import Notification
+    visible_news = News.objects.filter(
+        is_published=True, mod_status=News.ModStatus.APPROVED)
     context = {
-        "news": News.objects.filter(is_published=True)[:5],
-        "pinned": News.objects.filter(is_published=True, is_pinned=True).first(),
+        "news": visible_news[:5],
+        "pinned": visible_news.filter(is_pinned=True).first(),
         "events": Event.objects.filter(start__date__gte=today).order_by("start")[:5],
         "my_tasks": open_tasks[:6],
         # Compteurs des cartes statistiques
         "count_tasks": open_tasks.count(),
         "count_docs": Document.objects.filter(is_archived=False).count(),
-        "count_news": News.objects.filter(is_published=True).count(),
+        "count_news": visible_news.count(),
         "count_notifs": Notification.objects.filter(recipient=user, is_read=False).count(),
     }
 
@@ -98,9 +100,10 @@ def home(request):
     # Statistiques globales (responsables, RH, CEO, admin).
     if user.is_manager:
         context["stats"] = {
-            "employees": Employee.objects.filter(status=Employee.Status.ACTIVE).count(),
+            "employees": Employee.objects.filter(
+                status__in=[Employee.Status.ACTIVE, Employee.Status.LEAVE]).count(),
             "documents": Document.objects.filter(is_archived=False).count(),
-            "news": News.objects.filter(is_published=True).count(),
+            "news": visible_news.count(),
             "pending_leaves": LeaveRequest.objects.filter(status=LeaveRequest.Status.PENDING).count(),
         }
         # Anniversaires imminents (≤ 3 jours) : RH/CEO/admin → tout le personnel ;

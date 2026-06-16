@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Tests A/B{% endblock %}
+{% block page_title %}Tests A/B{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-4">
+  {% if user.is_manager %}
+  <a href="{% url 'marketing:abtest_create' %}" class="inline-flex items-center gap-2 bg-lpm text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-lpm-dark transition">
+    <i class="fa-solid fa-plus"></i> Nouveau test A/B
+  </a>
+  {% else %}<div></div>{% endif %}
+</div>
+
+<div class="space-y-4">
+  {% for ab in abtests %}
+  <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-5">
+    <div class="flex items-start justify-between mb-3">
+      <div>
+        <div class="font-semibold text-slate-800">{{ ab.name }}</div>
+        <div class="text-sm text-slate-500 mt-0.5">Métrique : {{ ab.metric }}</div>
+      </div>
+      <div class="flex items-center gap-2">
+        {% if ab.winner %}<span class="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">Gagnant : {{ ab.winner }}</span>{% endif %}
+        <span class="text-xs px-2 py-1 rounded-full font-medium
+          {% if ab.status == 'RUNNING' %}bg-blue-100 text-blue-700
+          {% elif ab.status == 'DONE' %}bg-emerald-100 text-emerald-700
+          {% else %}bg-slate-100 text-slate-600{% endif %}">
+          {{ ab.get_status_display }}
+        </span>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3 mb-3 text-sm">
+      <div class="bg-slate-50 rounded-xl p-3">
+        <div class="font-medium text-slate-600 mb-1">Variante A</div>
+        <div class="text-slate-700">{{ ab.variant_a|truncatechars:100 }}</div>
+      </div>
+      <div class="bg-slate-50 rounded-xl p-3">
+        <div class="font-medium text-slate-600 mb-1">Variante B</div>
+        <div class="text-slate-700">{{ ab.variant_b|truncatechars:100 }}</div>
+      </div>
+    </div>
+    {% if ab.result %}<p class="text-sm text-slate-500 mb-3">{{ ab.result|truncatechars:150 }}</p>{% endif %}
+    {% if user.is_manager %}
+    <a href="{% url 'marketing:abtest_edit' ab.pk %}" class="text-xs text-lpm hover:underline"><i class="fa-solid fa-pen mr-1"></i>Modifier</a>
+    {% endif %}
+  </div>
+  {% empty %}
+  <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-8 text-center text-slate-400">
+    Aucun test A/B enregistré.
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

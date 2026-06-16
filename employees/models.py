@@ -35,7 +35,8 @@ class Department(models.Model):
 
     @property
     def headcount(self):
-        return self.employees.filter(status=Employee.Status.ACTIVE).count()
+        # Effectif = personnel présent dans l'organisation (au travail OU en congé).
+        return self.employees.filter(status__in=WORKFORCE_STATUSES).count()
 
 
 def _next_birthday(birth_date, today):
@@ -91,6 +92,10 @@ class Employee(models.Model):
         LEAVE = "LEAVE", "En congé"
         SUSPENDED = "SUSPENDED", "Suspendu"
         TERMINATED = "TERMINATED", "Sorti des effectifs"
+
+    # Statuts comptés dans l'effectif : présent dans l'organisation, qu'il soit au
+    # travail ou en congé. Un congé ne fait pas disparaître l'employé des effectifs
+    # ni du pointage (il y figure « En congé »), il le sort seulement des présents.
 
     class Contract(models.TextChoices):
         CDI = "CDI", "CDI — Contrat à durée indéterminée"
@@ -213,6 +218,10 @@ class Employee(models.Model):
         return (today.year - self.hire_date.year) * 12 + (today.month - self.hire_date.month)
 
 
+# Statuts « dans l'effectif » : au travail ou en congé (pas suspendu/sorti).
+WORKFORCE_STATUSES = (Employee.Status.ACTIVE, Employee.Status.LEAVE)
+
+
 def generate_matricule():
     """Prochain matricule en séquence croissante (ex. LPM0001, LPM0002…).
 
@@ -246,3 +255,33 @@ def attach_new_relations(employee, dept_names=(), position_titles=()):
             pos = Position.objects.filter(title__iexact=title).first() \
                 or Position.objects.create(title=title)
             employee.positions.add(pos)
+
+
+# --------------------------------------------------------------------------- #
+# Cloisonnement par département (projets, tâches…) : chaque département gère son
+# périmètre. Un responsable comme son équipe ne voient que leur département ;
+# seuls RH/CEO/admin ont la vision d'ensemble.
+# --------------------------------------------------------------------------- #
+def department_ids_for(user):
+    """Départements auxquels l'utilisateur appartient (fiche) ou qu'il dirige."""
+    ids = set()
+    emp = Employee.objects.filter(user=user).first()
+    if emp:
+        ids.update(emp.departments.values_list("id", flat=True))
+    ids.update(Department.objects.filter(manager=user).values_list("id", flat=True))
+    return ids
+
+
+def department_colleagues_ids(user):
+    """IDs des utilisateurs partageant au moins un département avec `user` (+ lui-même).
+
+    Si l'utilisateur n'a aucun département, renvoie uniquement son propre id.
+    """
+    dept_ids = department_ids_for(user)
+    ids = {user.id}
+    if dept_ids:
+        ids.update(
+            Employee.objects.filter(departments__in=dept_ids)
+            .values_list("user_id", flat=True)
+        )
+    return ids

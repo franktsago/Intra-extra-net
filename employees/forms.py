@@ -8,6 +8,12 @@ from .widgets import CheckboxDropdown
 
 
 class EmployeeForm(StyledFormMixin, forms.ModelForm):
+    # Informations du compte utilisateur lié, éditables directement depuis l'annuaire.
+    first_name = forms.CharField(label="Prénom", max_length=150, required=False)
+    last_name = forms.CharField(label="Nom", max_length=150, required=False)
+    email = forms.EmailField(label="Email", required=False)
+    phone = forms.CharField(label="Téléphone", max_length=30, required=False)
+
     class Meta:
         model = Employee
         fields = [
@@ -24,6 +30,12 @@ class EmployeeForm(StyledFormMixin, forms.ModelForm):
             "positions": CheckboxDropdown(new_field="new_positions",
                                           placeholder="Nouveau poste…"),
         }
+    # Identité (compte) en tête, avant les champs RH.
+    field_order = ["user", "first_name", "last_name", "email", "phone", "gender",
+                   "birth_date", "departments", "positions", "manager", "hire_date",
+                   "contract_type", "status", "cnps_number", "address", "city",
+                   "emergency_contact", "emergency_contact_phone",
+                   "emergency_contact2", "emergency_contact2_phone"]
 
     def __init__(self, *args, viewer=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -39,9 +51,35 @@ class EmployeeForm(StyledFormMixin, forms.ModelForm):
         if self.instance and self.instance.pk:
             # On ne change pas le compte lié d'une fiche existante.
             self.fields["user"].disabled = True
+            # Pré-remplit l'identité depuis le compte lié.
+            u = self.instance.user
+            self.fields["first_name"].initial = u.first_name
+            self.fields["last_name"].initial = u.last_name
+            self.fields["email"].initial = u.email
+            self.fields["phone"].initial = u.phone
         # Personne à contacter (1re ligne) obligatoire.
         self.fields["emergency_contact"].required = True
         self.fields["emergency_contact_phone"].required = True
+
+    def save(self, commit=True):
+        emp = super().save(commit=commit)
+        # Répercute les modifications d'identité sur le compte utilisateur lié.
+        user = emp.user
+        if user:
+            user.first_name = self.cleaned_data.get("first_name", user.first_name)
+            user.last_name = self.cleaned_data.get("last_name", user.last_name)
+            user.email = self.cleaned_data.get("email", user.email)
+            user.phone = self.cleaned_data.get("phone", user.phone)
+            if commit:
+                user.save(update_fields=["first_name", "last_name", "email", "phone"])
+        if commit:
+            # La date d'embauche pilote la date de début du contrat actif (item 2) :
+            # elles restent toujours égales.
+            active = emp.contracts.filter(is_active=True).order_by("-start_date").first()
+            if active and active.start_date != emp.hire_date:
+                active.start_date = emp.hire_date
+                active.save(update_fields=["start_date"])
+        return emp
 
 
 _MONTHS = [

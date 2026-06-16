@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{% if obj %}Modifier le message clé{% else %}Nouveau message clé{% endif %}{% endblock %}
+{% block page_title %}{% if obj %}Modifier — {{ obj.title }}{% else %}Nouveau message clé{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-6">
+    <form method="post">
+      {% csrf_token %}
+      {% include "includes/form.html" %}
+      <div class="mt-6 flex gap-3">
+        <button type="submit" class="bg-lpm text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-lpm-dark transition">
+          <i class="fa-solid fa-save mr-2"></i>Enregistrer
+        </button>
+        <a href="{% url 'communication:key_messages' %}" class="bg-slate-100 text-slate-700 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-200 transition">Annuler</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

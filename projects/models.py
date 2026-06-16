@@ -34,6 +34,12 @@ class Project(models.Model):
     name = models.CharField("Nom du projet", max_length=200)
     code = models.CharField("Code", max_length=30, blank=True)
     kind = models.CharField("Type", max_length=10, choices=Kind.choices, default=Kind.CAMPAIGN)
+    # Chaque département pilote ses propres projets : le rattachement détermine qui
+    # voit et gère le projet (le responsable du département concerné).
+    department = models.ForeignKey(
+        "employees.Department", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="projects", verbose_name="Département",
+    )
     client = models.ForeignKey(
         "business.Client", null=True, blank=True, on_delete=models.SET_NULL,
         related_name="projects", verbose_name="Client",
@@ -165,3 +171,69 @@ class ProjectMedia(models.Model):
     @property
     def is_video(self):
         return self.ext in {"mp4", "webm", "ogg", "mov", "m4v"}
+
+
+class Ticket(models.Model):
+    """Backlog : issue technique, demande d'évolution ou bug."""
+    class Kind(models.TextChoices):
+        BUG = "BUG", "Bug"
+        FEATURE = "FEATURE", "Évolution"
+        TASK = "TASK", "Tâche technique"
+        QUESTION = "QUESTION", "Question"
+
+    class Status(models.TextChoices):
+        OPEN = "OPEN", "Ouvert"
+        IN_PROGRESS = "IN_PROGRESS", "En cours"
+        DONE = "DONE", "Résolu"
+        REJECTED = "REJECTED", "Rejeté"
+        CLOSED = "CLOSED", "Fermé"
+
+    class Priority(models.TextChoices):
+        LOW = "LOW", "Basse"
+        NORMAL = "NORMAL", "Normale"
+        HIGH = "HIGH", "Haute"
+        CRITICAL = "CRITICAL", "Critique"
+
+    title = models.CharField("Titre", max_length=300)
+    kind = models.CharField("Type", max_length=10, choices=Kind.choices, default=Kind.TASK)
+    status = models.CharField("Statut", max_length=12, choices=Status.choices, default=Status.OPEN)
+    priority = models.CharField("Priorité", max_length=8, choices=Priority.choices, default=Priority.NORMAL)
+    project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.SET_NULL, related_name="tickets")
+    description = models.TextField(blank=True)
+    reported_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="tickets_reported")
+    assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="tickets_assigned")
+    created_at = models.DateTimeField(default=timezone.now)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Ticket"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.title
+
+
+class Benchmark(models.Model):
+    """Benchmark & veille concurrentielle / sectorielle."""
+    class Category(models.TextChoices):
+        TOOL = "TOOL", "Outil / Technologie"
+        COMPETITOR = "COMPETITOR", "Concurrent"
+        TREND = "TREND", "Tendance"
+        INNOVATION = "INNOVATION", "Innovation"
+        OTHER = "OTHER", "Autre"
+
+    title = models.CharField("Titre", max_length=200)
+    category = models.CharField("Catégorie", max_length=12, choices=Category.choices, default=Category.OTHER)
+    url = models.URLField("URL source", blank=True)
+    summary = models.TextField("Résumé / Analyse")
+    rating = models.PositiveSmallIntegerField("Note (1-5)", null=True, blank=True)
+    tags = models.CharField("Tags", max_length=255, blank=True)
+    added_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="benchmarks")
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        verbose_name = "Benchmark"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.title

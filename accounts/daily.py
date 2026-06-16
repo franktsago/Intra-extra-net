@@ -30,3 +30,9 @@ def run_daily_maintenance():
         notify_ending_contracts(today)
     except Exception:
         pass
+    try:
+        # Statut « En congé » / retour « En activité » selon les congés du jour.
+        from conges.models import sync_leave_status
+        sync_leave_status(today)
+    except Exception:
+        pass

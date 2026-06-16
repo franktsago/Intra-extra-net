@@ -1,10 +1,9 @@
-"""Gestion des tâches — permissions par rôle.
+"""Gestion des tâches — cloisonnement par département (comme les projets).
 
-  • Employé : consulte SES tâches (et celles de son équipe en lecture seule),
-    et peut **changer le statut** de ses propres tâches.
-  • Chef d'équipe (responsable) : crée, modifie, supprime et change le statut
-    des tâches de son équipe.
-  • RH / CEO / Admin : accès complet.
+  • Responsable ET son équipe : ne voient que les tâches de leur(s) département(s).
+  • Employé : peut **changer le statut** de ses propres tâches ; une tâche qu'il
+    crée est soumise à validation de son responsable.
+  • RH / CEO / Admin : vision d'ensemble (toutes les tâches).
 """
 
 from django.contrib import messages
@@ -16,7 +15,9 @@ from django.utils import timezone
 
 from accounts.models import Role
 from accounts.utils import internal_required, role_required
-from employees.models import Employee
+from employees.models import (
+    Employee, department_colleagues_ids, department_ids_for,
+)
 from notifications.models import Notification, notify
 
 from .forms import EmployeeTaskForm, TaskForm, TaskStatusForm
@@ -26,32 +27,35 @@ lead_required = role_required(Role.MANAGER, Role.RH, Role.CEO, Role.ADMIN)
 
 
 def _manager_user_of(user):
-    """Compte du responsable hiérarchique de l'utilisateur (pour la validation)."""
+    """Responsable à qui adresser une tâche à valider.
+
+    Priorité au responsable hiérarchique (Employee.manager) ; à défaut, le
+    responsable du/des département(s) de l'employé (cloisonnement par département)."""
     emp = Employee.objects.filter(user=user).select_related("manager__user").first()
-    return emp.manager.user if emp and emp.manager else None
+    if emp and emp.manager and emp.manager.user_id:
+        return emp.manager.user
+    # Repli : responsable de département.
+    from employees.models import Department, department_ids_for
+    dept = (Department.objects.filter(id__in=department_ids_for(user), manager__isnull=False)
+            .exclude(manager=user).select_related("manager").first())
+    return dept.manager if dept else None
 
 
-def _subordinate_user_ids(user):
-    return list(Employee.objects.filter(manager__user=user).values_list("user_id", flat=True))
-
-
-def _team_user_ids(user):
-    """Collègues partageant le même responsable (équipe de l'employé) + soi-même."""
-    me = Employee.objects.filter(user=user).select_related("manager").first()
-    ids = {user.id}
-    if me and me.manager_id:
-        ids.update(Employee.objects.filter(manager_id=me.manager_id).values_list("user_id", flat=True))
-    return list(ids)
+def _task_in_user_departments(user, task):
+    """La tâche relève-t-elle d'un département de l'utilisateur ? (via les personnes
+    concernées : assignée ou créatrice)."""
+    dept_users = department_colleagues_ids(user)
+    return task.assigned_to_id in dept_users or task.created_by_id in dept_users
 
 
 def can_manage_task(user, task):
-    """Peut créer/modifier/supprimer la tâche (chef d'équipe concerné, RH+)."""
+    """Peut créer/modifier/supprimer la tâche : RH+ partout ; un responsable
+    uniquement pour les tâches de son/ses département(s)."""
     if user.is_rh:  # RH, CEO, admin
         return True
     if not user.is_manager:
         return False
-    return (task.created_by_id == user.id
-            or (task.assigned_to_id and task.assigned_to_id in _subordinate_user_ids(user)))
+    return task.created_by_id == user.id or _task_in_user_departments(user, task)
 
 
 def can_change_status(user, task):
@@ -62,9 +66,10 @@ def can_change_status(user, task):
 
 
 def can_view_task(user, task):
-    if user.is_rh or can_change_status(user, task):
+    if user.is_rh or task.assigned_to_id == user.id or task.created_by_id == user.id:
         return True
-    return task.assigned_to_id in _team_user_ids(user)
+    # Visible si la tâche relève d'un département de l'utilisateur (équipe comprise).
+    return _task_in_user_departments(user, task)
 
 
 @internal_required
@@ -73,12 +78,12 @@ def task_board(request):
     scope = request.GET.get("scope", "mine")
     if user.is_rh:
         base = Task.objects.all()
-    elif user.is_manager:
-        ids = _subordinate_user_ids(user) + [user.id]
-        base = Task.objects.filter(Q(assigned_to_id__in=ids) | Q(created_by=user))
     else:
-        base = Task.objects.filter(assigned_to_id__in=_team_user_ids(user))
-    base = base.select_related("assigned_to", "created_by")
+        # Responsable comme équipe : tâches rattachées à leur(s) département(s),
+        # via la personne assignée ou créatrice.
+        ids = department_colleagues_ids(user)
+        base = Task.objects.filter(Q(assigned_to_id__in=ids) | Q(created_by_id__in=ids))
+    base = base.select_related("assigned_to", "created_by").distinct()
 
     if scope == "mine":
         tasks = base.filter(assigned_to=user)
@@ -92,7 +97,7 @@ def task_board(request):
     return render(request, "tasks/board.html", {
         "columns": columns, "scope": scope,
         "can_create": True,
-        "team_label": "Toutes" if user.is_rh else ("Mon équipe"),
+        "team_label": "Toutes" if user.is_rh else "Mon département",
     })
 
 

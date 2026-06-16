@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Benchmarks & Veille{% endblock %}
+{% block page_title %}Benchmarks & Veille concurrentielle{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap gap-3 mb-4">
+  <a href="{% url 'projects:benchmark_create' %}" class="inline-flex items-center gap-2 bg-lpm text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-lpm-dark transition">
+    <i class="fa-solid fa-plus"></i> Nouveau benchmark
+  </a>
+  <form method="get" class="flex gap-2">
+    <select name="cat" class="rounded-xl border border-slate-200 px-3 py-2 text-sm">
+      <option value="">Toutes les catégories</option>
+      {% for v, l in categories %}<option value="{{ v }}" {% if cat == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-sm hover:bg-slate-200 transition">Filtrer</button>
+  </form>
+</div>
+
+<div class="space-y-4">
+  {% for bm in benchmarks %}
+  <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-5">
+    <div class="flex items-start justify-between mb-2">
+      <div>
+        <div class="font-semibold text-slate-800">{{ bm.title }}</div>
+        <div class="flex items-center gap-2 mt-1">
+          <span class="text-xs px-2 py-0.5 rounded-full bg-lpm/10 text-lpm font-medium">{{ bm.get_category_display }}</span>
+          {% if bm.rating %}<span class="text-xs text-amber-500">{% for i in "12345" %}{% if forloop.counter <= bm.rating %}★{% else %}☆{% endif %}{% endfor %}</span>{% endif %}
+          {% if bm.tags %}<span class="text-xs text-slate-400">{{ bm.tags }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        {% if bm.url %}<a href="{{ bm.url }}" target="_blank" class="text-xs text-lpm hover:underline"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>{% endif %}
+        {% if user.is_manager %}<a href="{% url 'projects:benchmark_edit' bm.pk %}" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><i class="fa-solid fa-pen text-xs"></i></a>{% endif %}
+      </div>
+    </div>
+    <p class="text-sm text-slate-600">{{ bm.summary|truncatechars:200 }}</p>
+    <div class="text-xs text-slate-400 mt-2">{{ bm.added_by.get_full_name|default:bm.added_by.username|default:"—" }} · {{ bm.created_at|date:"d/m/Y" }}</div>
+  </div>
+  {% empty %}
+  <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-8 text-center text-slate-400">
+    Aucun benchmark enregistré.
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

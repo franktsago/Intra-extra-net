@@ -223,9 +223,14 @@ def must_clock(user):
 
 
 def clocking_employees():
-    """Employés tenus de pointer (employés, stagiaires, responsables, RH) en activité."""
+    """Employés concernés par le pointage (employés, stagiaires, responsables, RH).
+
+    Inclut les employés « En congé » : ils restent visibles dans la feuille de
+    présence (marqués « En congé » par `ensure_absences`) au lieu de disparaître.
+    Les comptes suspendus / sortis des effectifs sont exclus."""
+    from employees.models import WORKFORCE_STATUSES
     return Employee.objects.filter(
-        status=Employee.Status.ACTIVE,
+        status__in=WORKFORCE_STATUSES,
         user__role__in=clocking_roles(),
     )
 
@@ -541,3 +546,60 @@ class Objective(models.Model):
 
     def __str__(self):
         return self.label
+
+
+# --------------------------------------------------------------------------- #
+# Onboarding
+# --------------------------------------------------------------------------- #
+class OnboardingPlan(models.Model):
+    """Parcours d'intégration type par profil."""
+    name = models.CharField("Nom du parcours", max_length=200)
+    description = models.TextField(blank=True)
+    role_target = models.CharField("Rôle visé", max_length=50, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="onboarding_plans")
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        verbose_name = "Plan d'intégration"
+
+    def __str__(self):
+        return self.name
+
+
+class OnboardingStep(models.Model):
+    """Étape d'un plan d'intégration."""
+    plan = models.ForeignKey(OnboardingPlan, on_delete=models.CASCADE, related_name="steps")
+    order = models.PositiveSmallIntegerField("Ordre", default=1)
+    title = models.CharField("Titre", max_length=200)
+    description = models.TextField(blank=True)
+    day = models.PositiveSmallIntegerField("Jour J+", default=1)
+    document = models.ForeignKey("documents.Document", null=True, blank=True, on_delete=models.SET_NULL, related_name="onboarding_steps")
+
+    class Meta:
+        verbose_name = "Étape d'intégration"
+        ordering = ["order"]
+
+    def __str__(self):
+        return f"J+{self.day} — {self.title}"
+
+
+class OnboardingProgress(models.Model):
+    """Suivi d'intégration individuel pour un employé."""
+    employee = models.ForeignKey("employees.Employee", on_delete=models.CASCADE, related_name="onboarding_progress")
+    plan = models.ForeignKey(OnboardingPlan, on_delete=models.CASCADE, related_name="progress")
+    started_at = models.DateField("Démarré le", default=timezone.now)
+    completed_steps = models.ManyToManyField(OnboardingStep, blank=True, related_name="completed_by")
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = "Suivi d'intégration"
+        unique_together = ("employee", "plan")
+
+    def __str__(self):
+        return f"{self.employee} — {self.plan}"
+
+    @property
+    def completion_rate(self):
+        total = self.plan.steps.count()
+        done = self.completed_steps.count()
+        return round(done / total * 100) if total else 0

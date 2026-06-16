@@ -121,7 +121,26 @@ class UserEditForm(StyledFormMixin, forms.ModelForm):
         user.secondary_roles = ",".join(extra)
         if commit:
             user.save()
+            self._sync_employee_status(user)
         return user
+
+    @staticmethod
+    def _sync_employee_status(user):
+        """Répercute la (dés)activation du compte sur la fiche employé.
+
+        Désactiver un compte le sort des effectifs (statut « Sorti ») ; le
+        réactiver le replace « En activité » s'il en était sorti. Ainsi un
+        employé désactivé disparaît partout (annuaire, effectifs, statistiques)."""
+        emp = getattr(user, "employee", None)
+        if not emp:
+            return
+        from employees.models import Employee
+        if not user.is_active and emp.status != Employee.Status.TERMINATED:
+            emp.status = Employee.Status.TERMINATED
+            emp.save(update_fields=["status"])
+        elif user.is_active and emp.status == Employee.Status.TERMINATED:
+            emp.status = Employee.Status.ACTIVE
+            emp.save(update_fields=["status"])
 
 
 class ProfileForm(StyledFormMixin, forms.ModelForm):

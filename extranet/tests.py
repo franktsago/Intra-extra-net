@@ -129,11 +129,13 @@ class ExtranetPortalTest(TestCase):
         # employé interne non-manager → redirigé hors de l'extranet
         self.assertEqual(self.client.get(reverse("extranet:tickets")).status_code, 302)
 
-    def test_client_cannot_see_other_client_ticket(self):
+    def test_client_redirige_si_ticket_autre_client(self):
         other = User.objects.create_user("cli2", password="x", role=Role.CLIENT)
         t = Ticket.objects.create(client=other, subject="Privé", description="x")
         self.client.force_login(self.client_u)
-        self.assertEqual(self.client.get(reverse("extranet:ticket", args=[t.pk])).status_code, 403)
+        r = self.client.get(reverse("extranet:ticket", args=[t.pk]))
+        self.assertEqual(r.status_code, 302)
+        self.assertRedirects(r, reverse("extranet:tickets"), fetch_redirect_response=False)
 
     # --- Demandes ---
     def test_client_submits_request_notifies_direction(self):

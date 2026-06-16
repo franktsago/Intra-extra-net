@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}{{ ep.name }}{% endblock %}
+{% block page_title %}{{ ep.name }}{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+  <!-- Fiche projet -->
+  <div class="lg:col-span-1 space-y-4">
+    <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-5">
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <span class="text-slate-500">Statut</span>
+          <span class="text-xs px-2 py-1 rounded-full font-medium
+            {% if ep.status == 'ACTIVE' %}bg-blue-100 text-blue-700
+            {% elif ep.status == 'DONE' %}bg-emerald-100 text-emerald-700
+            {% elif ep.status == 'PLANNED' %}bg-amber-100 text-amber-700
+            {% else %}bg-red-100 text-red-700{% endif %}">
+            {{ ep.get_status_display }}
+          </span>
+        </div>
+        {% if ep.date %}<div class="flex justify-between"><span class="text-slate-500">Date</span><span>{{ ep.date|date:"d/m/Y" }}</span></div>{% endif %}
+        {% if ep.location %}<div class="flex justify-between"><span class="text-slate-500">Lieu</span><span>{{ ep.location }}</span></div>{% endif %}
+        <div class="flex justify-between"><span class="text-slate-500">Budget</span><span class="font-semibold">{{ ep.budget|floatformat:0 }} FCFA</span></div>
+        {% if ep.responsible %}<div class="flex justify-between"><span class="text-slate-500">Responsable</span><span>{{ ep.responsible.get_full_name|default:ep.responsible.username }}</span></div>{% endif %}
+      </div>
+      {% if user.is_manager %}
+      <a href="{% url 'communication:event_project_edit' ep.pk %}" class="mt-4 w-full flex items-center justify-center gap-2 bg-lpm text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-lpm-dark transition">
+        <i class="fa-solid fa-pen"></i> Modifier
+      </a>
+      {% endif %}
+    </div>
+
+    <!-- Bilan -->
+    {% if report %}
+    <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-5">
+      <h3 class="font-semibold text-slate-800 mb-3">Bilan post-événement</h3>
+      <div class="text-sm text-slate-600 space-y-2">
+        <div>{{ report.summary|truncatechars:200 }}</div>
+        <div class="flex justify-between text-xs"><span class="text-slate-400">Participants</span><span class="font-medium">{{ report.participants_count }}</span></div>
+        <div class="flex justify-between text-xs"><span class="text-slate-400">Budget dépensé</span><span class="font-medium">{{ report.budget_spent|floatformat:0 }} FCFA</span></div>
+      </div>
+    </div>
+    {% elif user.is_manager %}
+    <form method="post" action="{% url 'communication:event_report_edit' ep.pk %}">
+      {% csrf_token %}
+      <button type="submit" class="w-full bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-200 transition">
+        <i class="fa-solid fa-file-pen mr-2"></i>Rédiger le bilan
+      </button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="lg:col-span-2 space-y-6">
+    <!-- Prestataires -->
+    <div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 font-semibold text-slate-800">Prestataires ({{ ep.suppliers.count }})</div>
+      <div class="divide-y divide-slate-50">
+        {% for sup in ep.suppliers.all %}
+        <div class="px-5 py-3 flex items-center justify-between text-sm">
+          <div><span class="font-medium text-slate-800">{{ sup.name }}</span> <span class="text-slate-400">— {{ sup.service }}</span></div>
+          <div class="flex items-center gap-3">
+            <span class="text-slate-600">{{ sup.quote_amount|floatformat:0 }} F</span>
+            <span class="text-xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{{ sup.status }}</span>
+          </div>
+        </div>
+        {% empty %}
+        <div class="px-5 py-4 text-center text-slate-400 text-sm">Aucun prestataire.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Participants -->
+    <div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <span class="font-semibold text-slate-800">Participants ({{ ep.participants.count }})</span>
+        {% if user.is_manager %}
+        <button onclick="document.getElementById('add-participant').classList.toggle('hidden')" class="text-xs text-lpm hover:underline">+ Ajouter</button>
+        {% endif %}
+      </div>
+      {% if user.is_manager %}
+      <div id="add-participant" class="hidden px-5 py-4 border-b border-slate-100 bg-slate-50">
+        <form method="post" action="{% url 'communication:event_participant_add' ep.pk %}">
+          {% csrf_token %}
+          <div class="grid grid-cols-2 gap-3 text-sm">
+            <input name="first_name" placeholder="Prénom" required class="rounded-lg border border-slate-200 px-3 py-2">
+            <input name="last_name" placeholder="Nom" required class="rounded-lg border border-slate-200 px-3 py-2">
+            <input name="email" type="email" placeholder="Email" class="rounded-lg border border-slate-200 px-3 py-2">
+            <input name="company" placeholder="Organisation" class="rounded-lg border border-slate-200 px-3 py-2">
+          </div>
+          <button type="submit" class="mt-3 bg-lpm text-white px-4 py-2 rounded-xl text-sm hover:bg-lpm-dark transition">Ajouter</button>
+        </form>
+      </div>
+      {% endif %}
+      <div class="divide-y divide-slate-50">
+        {% for p in ep.participants.all %}
+        <div class="px-5 py-3 flex items-center justify-between text-sm">
+          <div><span class="font-medium text-slate-800">{{ p.first_name }} {{ p.last_name }}</span> {% if p.company %}<span class="text-slate-400">— {{ p.company }}</span>{% endif %}</div>
+          <span class="text-xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{{ p.status }}</span>
+        </div>
+        {% empty %}
+        <div class="px-5 py-4 text-center text-slate-400 text-sm">Aucun participant.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

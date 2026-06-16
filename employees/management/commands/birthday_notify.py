@@ -12,7 +12,7 @@ from employees.birthday import send_birthday_notifications
 
 
 class Command(BaseCommand):
-    help = "Envoie les notifications d'anniversaire (J‑3 à l'encadrement, jour‑J à tout le personnel)."
+    help = "Envoie les notifications d'anniversaire (J-3 a l'encadrement, jour-J a tout le personnel)."
 
     def add_arguments(self, parser):
         parser.add_argument("--date", help="Forcer la date AAAA-MM-JJ (tests).")
@@ -21,4 +21,4 @@ class Command(BaseCommand):
         today = parse_date(options["date"]) if options.get("date") else timezone.localdate()
         sent_day, sent_pre = send_birthday_notifications(today)
         self.stdout.write(self.style.SUCCESS(
-            f"Anniversaires : {sent_day} message(s) jour‑J, {sent_pre} alerte(s) J‑3."))
+            f"Anniversaires : {sent_day} message(s) jour-J, {sent_pre} alerte(s) J-3."))

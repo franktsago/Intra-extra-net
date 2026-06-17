@@ -124,7 +124,8 @@
         </div>
       </details>
 
-      {# ══ DIGITAL & IT — backlog technique & veille (ouverts à tous) ════════ #}
+      {# ══ DIGITAL & IT — reserve aux membres du departement IT (+ direction) ═ #}
+      {% if is_digital_it or user.is_ceo %}
       <details class="nav-group" data-key="digital">
         <summary><div class="nav-group-header"><span><i class="fa-solid fa-laptop-code grp-ico"></i> Digital & IT</span><i class="fa-solid fa-chevron-down nav-chevron"></i></div></summary>
         <div class="nav-group-body space-y-0.5">
@@ -132,6 +133,17 @@
           <a href="{% url 'projects:benchmark_list' %}" class="nav-link {% if '/projets/benchmarks' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-binoculars fa-fw text-slate-400"></i> Benchmarks & Veille</a>
         </div>
       </details>
+      {% endif %}
+
+      {# ══ VEILLE — veille sectorielle / concurrentielle (tous les departements) ═ #}
+      {% if not is_digital_it and not user.is_ceo %}
+      <details class="nav-group" data-key="veille">
+        <summary><div class="nav-group-header"><span><i class="fa-solid fa-binoculars grp-ico"></i> Veille</span><i class="fa-solid fa-chevron-down nav-chevron"></i></div></summary>
+        <div class="nav-group-body space-y-0.5">
+          <a href="{% url 'projects:benchmark_list' %}" class="nav-link {% if '/projets/benchmarks' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-chart-line fa-fw text-slate-400"></i> Veille sectorielle</a>
+        </div>
+      </details>
+      {% endif %}
 
       {# ══ MARKETING — managers uniquement ══════════════════════════════════ #}
       {% if user.is_manager %}

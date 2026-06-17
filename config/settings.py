@@ -154,6 +154,7 @@ TEMPLATES = [
                 "notifications.context_processors.notifications_badge",
                 "messaging.context_processors.messages_badge",
                 "extranet.context_processors.client_inbox_badges",
+                "employees.context_processors.user_departments",
                 "config.context_processors.branding",
             ],
         },

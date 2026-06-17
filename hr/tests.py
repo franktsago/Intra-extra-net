@@ -146,6 +146,52 @@ class AbsenceGenerationTest(TestCase):
         self.assertEqual(rec.status, Attendance.Status.LEAVE)  # visible « En congé »
 
 
+class AttendanceDepartmentScopeTest(TestCase):
+    """Présences cloisonnées par département : un responsable voit son département."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from employees.models import Department, Employee
+        cls.mkt = Department.objects.create(name="Marketing", code="MKT")
+        cls.fin = Department.objects.create(name="Finance", code="FIN")
+        cls.mgr = User.objects.create_user("mgr_att", password="x", role=Role.MANAGER,
+                                           first_name="Manon", last_name="CHEFMKT")
+        cls.member = User.objects.create_user("mem_att", password="x", role=Role.EMPLOYE,
+                                              first_name="Mike", last_name="MKTMEMBER")
+        cls.other = User.objects.create_user("oth_att", password="x", role=Role.EMPLOYE,
+                                             first_name="Otto", last_name="FINMEMBER")
+        Employee.objects.get(user=cls.mgr).departments.set([cls.mkt])
+        Employee.objects.get(user=cls.member).departments.set([cls.mkt])
+        Employee.objects.get(user=cls.other).departments.set([cls.fin])
+
+    def test_manager_sees_only_department_attendance(self):
+        from hr.models import Attendance
+        from employees.models import Employee
+        today = timezone.localdate()
+        Attendance.objects.create(employee=Employee.objects.get(user=self.member),
+                                  date=today, status=Attendance.Status.PRESENT)
+        Attendance.objects.create(employee=Employee.objects.get(user=self.other),
+                                  date=today, status=Attendance.Status.PRESENT)
+        self.client.force_login(self.mgr)
+        r = self.client.get(reverse("hr:attendance") + f"?date={today.isoformat()}")
+        self.assertContains(r, "MKTMEMBER")       # membre de son département
+        self.assertNotContains(r, "FINMEMBER")    # autre département
+
+    def test_rh_sees_everyone(self):
+        from hr.models import Attendance
+        from employees.models import Employee
+        rh = User.objects.create_user("rh_att", password="x", role=Role.RH)
+        today = timezone.localdate()
+        Attendance.objects.create(employee=Employee.objects.get(user=self.member),
+                                  date=today, status=Attendance.Status.PRESENT)
+        Attendance.objects.create(employee=Employee.objects.get(user=self.other),
+                                  date=today, status=Attendance.Status.PRESENT)
+        self.client.force_login(rh)
+        r = self.client.get(reverse("hr:attendance") + f"?date={today.isoformat()}")
+        self.assertContains(r, "MKTMEMBER")
+        self.assertContains(r, "FINMEMBER")
+
+
 class EvaluationTeamTest(TestCase):
     @classmethod
     def setUpTestData(cls):

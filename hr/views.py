@@ -269,10 +269,10 @@ def attendance_today(request):
     ensure_absences(day_obj)
     records = Attendance.objects.filter(date=day_obj).select_related("employee__user")
     scope = "Tout le personnel"
-    # Un responsable (non RH) ne voit que les présences de SON équipe.
+    # Un responsable (non RH) ne voit que les présences de SON département.
     if not request.user.is_rh:
-        records = records.filter(employee__manager__user=request.user)
-        scope = "Mon équipe"
+        records = _team_scoped(records, request.user)
+        scope = "Mon département"
     return render(request, "hr/attendance_today.html", {
         "records": records, "day": day, "scope": scope,
         "office": OfficeLocation.current(), "can_set_office": request.user.is_rh,
@@ -280,10 +280,11 @@ def attendance_today(request):
 
 
 def _team_scoped(qs, user):
-    """Un responsable (non RH) ne voit que SON équipe."""
-    if not user.is_rh:
-        return qs.filter(employee__manager__user=user)
-    return qs
+    """Un responsable (non RH) ne voit que les présences de SON/SES département(s)."""
+    if user.is_rh:
+        return qs
+    from employees.models import department_colleagues_ids
+    return qs.filter(employee__user_id__in=department_colleagues_ids(user))
 
 
 @rh_required

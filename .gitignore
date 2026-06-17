@@ -24,3 +24,9 @@ Thumbs.db
 # Outils locaux / sauvegardes
 .claude/
 *.bak
+
+# Données réelles (confidentiel) — ne jamais publier
+LPM_modele_donnees.xlsx
+Inventaire Magasin LPMC.xlsx
+/data_reelles/
+*_donnees.xlsx

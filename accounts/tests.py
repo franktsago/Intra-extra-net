@@ -304,6 +304,8 @@ class SignatureStampTest(TestCase):
     def test_can_sign_property(self):
         self.assertTrue(User.objects.create_user("rhs", password="x", role=Role.RH).can_sign)
         self.assertTrue(User.objects.create_user("ceos", password="x", role=Role.CEO).can_sign)
+        # Les responsables peuvent désormais déposer signature + cachet.
+        self.assertTrue(User.objects.create_user("mgrs", password="x", role=Role.MANAGER).can_sign)
         self.assertFalse(User.objects.create_user("emps", password="x", role=Role.EMPLOYE).can_sign)
 
     def test_rh_uploads_signature_and_stamp(self):

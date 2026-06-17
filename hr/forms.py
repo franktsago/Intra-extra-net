@@ -93,10 +93,11 @@ class EvaluationForm(StyledFormMixin, forms.ModelForm):
 
     def __init__(self, *args, viewer=None, **kwargs):
         super().__init__(*args, **kwargs)
-        # Un responsable (non RH/CEO/admin) n'évalue que les membres de SON équipe.
+        # Un responsable (non RH/CEO/admin) n'évalue que les membres de SON département.
         if viewer is not None and viewer.is_manager and not viewer.is_rh:
-            from employees.models import Employee
-            self.fields["employee"].queryset = Employee.objects.filter(manager__user=viewer)
+            from employees.models import Employee, department_colleagues_ids
+            self.fields["employee"].queryset = Employee.objects.filter(
+                user_id__in=department_colleagues_ids(viewer)).exclude(user=viewer)
         # Le compte admin principal est masqué de la liste (sauf pour l'admin).
         self.fields["employee"].queryset = hide_superadmin(
             self.fields["employee"].queryset, viewer, user_field="user")

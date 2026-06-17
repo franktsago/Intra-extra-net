@@ -195,18 +195,22 @@ class AttendanceDepartmentScopeTest(TestCase):
 class EvaluationTeamTest(TestCase):
     @classmethod
     def setUpTestData(cls):
+        from employees.models import Department, Employee
+        cls.mkt = Department.objects.create(name="Marketing", code="MKT")
+        cls.fin = Department.objects.create(name="Finance", code="FIN")
         cls.mgr = User.objects.create_user("evmgr", password="x", role=Role.MANAGER)
         cls.member = User.objects.create_user("evmember", password="x", role=Role.EMPLOYE)
         cls.outsider = User.objects.create_user("evout", password="x", role=Role.EMPLOYE)
-        emp = Employee.objects.get(user=cls.member)
-        emp.manager = Employee.objects.get(user=cls.mgr)
-        emp.save()
+        Employee.objects.get(user=cls.mgr).departments.set([cls.mkt])
+        Employee.objects.get(user=cls.member).departments.set([cls.mkt])
+        Employee.objects.get(user=cls.outsider).departments.set([cls.fin])
 
-    def test_manager_evaluates_only_team(self):
+    def test_manager_evaluates_only_department(self):
         from hr.forms import EvaluationForm
         ids = set(EvaluationForm(viewer=self.mgr).fields["employee"].queryset.values_list("user_id", flat=True))
-        self.assertIn(self.member.id, ids)
-        self.assertNotIn(self.outsider.id, ids)
+        self.assertIn(self.member.id, ids)          # membre de son département
+        self.assertNotIn(self.outsider.id, ids)     # autre département
+        self.assertNotIn(self.mgr.id, ids)          # pas lui-même
 
 
 class LateThresholdTest(TestCase):

@@ -580,17 +580,21 @@ def candidate_status(request, pk, status):
 # Évaluation / Performance
 # --------------------------------------------------------------------------- #
 def _can_eval(user, ev):
-    """RH/CEO/admin : toutes les évaluations. Responsable : seulement son équipe."""
+    """RH/CEO/admin : toutes les évaluations. Responsable : son département (hors lui-même)."""
     if user.is_rh:
         return True
-    return ev.employee.manager and ev.employee.manager.user_id == user.id
+    from employees.models import department_colleagues_ids
+    return (ev.employee.user_id in department_colleagues_ids(user)
+            and ev.employee.user_id != user.id)
 
 
 @mgr_required
 def evaluation_list(request):
     evals = Evaluation.objects.select_related("employee__user", "evaluator")
-    if not request.user.is_rh:  # responsable → uniquement son équipe
-        evals = evals.filter(employee__manager__user=request.user)
+    if not request.user.is_rh:  # responsable → uniquement son département
+        from employees.models import department_colleagues_ids
+        evals = (evals.filter(employee__user_id__in=department_colleagues_ids(request.user))
+                 .exclude(employee__user=request.user))
     return render(request, "hr/evaluation_list.html", {"evaluations": evals})
 
 

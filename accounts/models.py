@@ -153,8 +153,8 @@ class User(AbstractUser):
 
     @property
     def can_sign(self) -> bool:
-        """Signataire habilité (signature + cachet) : RH, CEO et admin."""
-        return self.effective_role in {Role.RH, Role.CEO, Role.ADMIN} or self.is_admin_lpm
+        """Signataire habilité (signature + cachet) : responsables, RH, CEO et admin."""
+        return self.effective_role in {Role.MANAGER, Role.RH, Role.CEO, Role.ADMIN} or self.is_admin_lpm
 
     @property
     def is_online(self) -> bool:

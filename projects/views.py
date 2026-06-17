@@ -109,6 +109,22 @@ def media_upload(request, pk):
     return redirect("projects:detail", pk=pk)
 
 
+@internal_required
+def media_delete(request, pk, media_id):
+    """Supprime un média du rapport terrain (auteur du média ou responsable)."""
+    from django.core.exceptions import PermissionDenied
+    from .models import ProjectMedia
+    media = get_object_or_404(ProjectMedia, pk=media_id, project_id=pk)
+    if not (request.user.is_manager or media.uploaded_by_id == request.user.id):
+        raise PermissionDenied("Vous ne pouvez supprimer que les médias que vous avez ajoutés.")
+    if request.method == "POST":
+        if media.file:
+            media.file.delete(save=False)
+        media.delete()
+        messages.success(request, "Média supprimé.")
+    return redirect("projects:detail", pk=pk)
+
+
 # ---------------------------------------------------------------------------
 # Backlog & Tickets
 # ---------------------------------------------------------------------------

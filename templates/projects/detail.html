@@ -92,7 +92,15 @@
       <h3 class="font-bold text-slate-900 mb-4">Rapport terrain & médias</h3>
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
         {% for m in project.media.all %}
-        <div class="rounded-xl border border-slate-100 overflow-hidden">
+        <div class="rounded-xl border border-slate-100 overflow-hidden relative group">
+          {% if can_edit or m.uploaded_by_id == user.id %}
+          <form method="post" action="{% url 'projects:media_delete' project.pk m.pk %}" class="absolute top-1 right-1 z-10"
+                onsubmit="return confirm('Supprimer ce média ?')">{% csrf_token %}
+            <button type="submit" title="Supprimer" class="h-7 w-7 rounded-full bg-white/90 hover:bg-red-500 hover:text-white text-red-500 shadow flex items-center justify-center text-xs transition">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </form>
+          {% endif %}
           {% if m.is_image %}<a href="{{ m.file.url }}" target="_blank"><img src="{{ m.file.url }}" class="w-full h-24 object-cover"></a>
           {% elif m.is_video %}<video src="{{ m.file.url }}" class="w-full h-24 object-cover bg-black" controls></video>
           {% else %}<a href="{{ m.file.url }}" class="flex items-center justify-center h-24 bg-slate-50 text-slate-400"><i class="fa-solid fa-file text-2xl"></i></a>{% endif %}

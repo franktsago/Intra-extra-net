@@ -73,6 +73,58 @@ class ProjectDepartmentScopeTest(TestCase):
         self.assertIn(self.ops.id, dept_ids)
 
 
+class ProjectMediaDeleteTest(TestCase):
+    """Suppression d'un média du rapport terrain : auteur ou responsable."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from projects.models import Project
+        cls.mgr = User.objects.create_user("pm_mgr", password="x", role=Role.MANAGER)
+        cls.emp = User.objects.create_user("pm_emp", password="x", role=Role.EMPLOYE)
+        cls.other = User.objects.create_user("pm_oth", password="x", role=Role.EMPLOYE)
+        cls.proj = Project.objects.create(name="ProjMedia")
+
+    def _media(self, uploader):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from projects.models import ProjectMedia
+        return ProjectMedia.objects.create(
+            project=self.proj, uploaded_by=uploader,
+            file=SimpleUploadedFile("rapport.txt", b"data"))
+
+    def test_uploader_can_delete(self):
+        import tempfile
+        from django.test import override_settings
+        from projects.models import ProjectMedia
+        with override_settings(MEDIA_ROOT=tempfile.mkdtemp()):
+            m = self._media(self.emp)
+            self.client.force_login(self.emp)
+            r = self.client.post(reverse("projects:media_delete", args=[self.proj.pk, m.pk]))
+            self.assertEqual(r.status_code, 302)
+            self.assertFalse(ProjectMedia.objects.filter(pk=m.pk).exists())
+
+    def test_other_employee_cannot_delete(self):
+        import tempfile
+        from django.test import override_settings
+        from projects.models import ProjectMedia
+        with override_settings(MEDIA_ROOT=tempfile.mkdtemp()):
+            m = self._media(self.emp)
+            self.client.force_login(self.other)
+            r = self.client.post(reverse("projects:media_delete", args=[self.proj.pk, m.pk]))
+            self.assertEqual(r.status_code, 403)
+            self.assertTrue(ProjectMedia.objects.filter(pk=m.pk).exists())
+
+    def test_manager_can_delete_any(self):
+        import tempfile
+        from django.test import override_settings
+        from projects.models import ProjectMedia
+        with override_settings(MEDIA_ROOT=tempfile.mkdtemp()):
+            m = self._media(self.emp)
+            self.client.force_login(self.mgr)
+            r = self.client.post(reverse("projects:media_delete", args=[self.proj.pk, m.pk]))
+            self.assertEqual(r.status_code, 302)
+            self.assertFalse(ProjectMedia.objects.filter(pk=m.pk).exists())
+
+
 class ProjectsBacklogAccessTest(TestCase):
     @classmethod
     def setUpTestData(cls):

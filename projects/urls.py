@@ -11,6 +11,7 @@ urlpatterns = [
     path("<int:pk>/modifier/", views.project_edit, name="edit"),
     path("<int:pk>/phase/<int:phase_id>/<str:status>/", views.phase_set, name="phase_set"),
     path("<int:pk>/media/", views.media_upload, name="media_upload"),
+    path("<int:pk>/media/<int:media_id>/supprimer/", views.media_delete, name="media_delete"),
     path("backlog/", views.ticket_list, name="ticket_list"),
     path("ticket/nouveau/", views.ticket_edit, name="ticket_create"),
     path("ticket/<int:pk>/modifier/", views.ticket_edit, name="ticket_edit"),

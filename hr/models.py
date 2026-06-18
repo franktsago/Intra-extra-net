@@ -74,6 +74,9 @@ class OfficeLocation(models.Model):
     lat = models.FloatField("Latitude")
     lng = models.FloatField("Longitude")
     radius_m = models.PositiveIntegerField("Rayon autorisé (m)", default=500)
+    # Date de début du pointage : les jours ANTÉRIEURS ne sont jamais comptés
+    # (ni présences/absences générées, ni retenues salariales).
+    start_date = models.DateField("Date de début du pointage", null=True, blank=True)
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
     updated_at = models.DateTimeField(auto_now=True)
@@ -182,13 +185,18 @@ def salary_impacts(month_start, employees=None):
     qs = employees if employees is not None else clocking_employees()
     hours_per_day = getattr(settings, "LPM_WORK_HOURS_PER_DAY", 8)
     coeff = float(PayrollSetting.current().late_coefficient)
+    # Les jours antérieurs à la date de début du pointage ne comptent pas.
+    period_start = month_start
+    start = attendance_start_date()
+    if start and start > period_start:
+        period_start = start
     # Ajustements manuels du mois (montant forcé) indexés par employé.
     overrides = {
         a.employee_id: a for a in SalaryAdjustment.objects.filter(month=month_start)
     }
     rows = []
     for emp in qs:
-        recs = Attendance.objects.filter(employee=emp, date__gte=month_start, date__lt=nxt)
+        recs = Attendance.objects.filter(employee=emp, date__gte=period_start, date__lt=nxt)
         late = absent = late_min = 0
         for r in recs:
             if r.status == Attendance.Status.LATE:
@@ -235,15 +243,32 @@ def clocking_employees():
     )
 
 
+def attendance_start_date():
+    """Date de début du pointage : avant elle, rien n'est compté.
+
+    Priorité au réglage en base (OfficeLocation), puis à la variable
+    d'environnement LPM_ATTENDANCE_START. None = aucune restriction.
+    """
+    loc = OfficeLocation.current()
+    if loc and loc.start_date:
+        return loc.start_date
+    from django.conf import settings
+    return getattr(settings, "LPM_ATTENDANCE_START", None)
+
+
 def ensure_absences(day):
     """Marque « Absent » (ou « En congé ») les employés devant pointer et sans pointage.
 
     N'agit que pour aujourd'hui (après l'heure de début) ou les jours passés ;
     ne touche jamais aux pointages déjà enregistrés. Un congé approuvé prime.
+    Les jours antérieurs à la date de début du pointage sont ignorés.
     """
     from django.conf import settings
     today = timezone.localdate()
     if day > today:
+        return
+    start = attendance_start_date()
+    if start and day < start:
         return
     if day == today:
         now = timezone.localtime()

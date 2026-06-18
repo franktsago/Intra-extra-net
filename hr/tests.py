@@ -94,6 +94,39 @@ class PointageAccessTest(TestCase):
         self.assertEqual(self.client.get(reverse("hr:pointage")).status_code, 302)
 
 
+class AttendanceStartDateTest(TestCase):
+    """Le pointage ne compte qu'à partir de la date de début (présences + paie)."""
+
+    def test_absences_skip_days_before_start(self):
+        from hr.models import Attendance, OfficeLocation, ensure_absences
+        from employees.models import Employee
+        u = User.objects.create_user("att_gate", password="x", role=Role.EMPLOYE)
+        emp = Employee.objects.get(user=u)
+        today = timezone.localdate()
+        start = today - timedelta(days=3)
+        OfficeLocation.objects.create(name="S", lat=1.0, lng=1.0, start_date=start)
+        before = today - timedelta(days=5)
+        after = today - timedelta(days=2)
+        ensure_absences(before)
+        ensure_absences(after)
+        self.assertFalse(Attendance.objects.filter(employee=emp, date=before).exists())
+        self.assertTrue(Attendance.objects.filter(employee=emp, date=after).exists())
+
+    def test_salary_impacts_ignore_days_before_start(self):
+        from datetime import date
+        from hr.models import Attendance, Contract, OfficeLocation, salary_impacts
+        from employees.models import Employee
+        u = User.objects.create_user("att_sal", password="x", role=Role.EMPLOYE)
+        emp = Employee.objects.get(user=u)
+        Contract.objects.create(employee=emp, type=Contract.Type.CDI,
+                                start_date=date(2026, 1, 1), is_active=True, salary=300000)
+        OfficeLocation.objects.create(name="S", lat=1.0, lng=1.0, start_date=date(2026, 1, 15))
+        Attendance.objects.create(employee=emp, date=date(2026, 1, 5), status=Attendance.Status.ABSENT)
+        Attendance.objects.create(employee=emp, date=date(2026, 1, 20), status=Attendance.Status.ABSENT)
+        rows = salary_impacts(date(2026, 1, 1), employees=[emp])
+        self.assertEqual(rows[0]["absent"], 1)  # seul le 20/01 (≥ début) est compté
+
+
 class AbsenceGenerationTest(TestCase):
     @classmethod
     def setUpTestData(cls):

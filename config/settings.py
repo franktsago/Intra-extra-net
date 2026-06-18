@@ -237,6 +237,12 @@ LPM_OFFICE_LAT = float(os.getenv("LPM_OFFICE_LAT", "4.07424"))
 LPM_OFFICE_LNG = float(os.getenv("LPM_OFFICE_LNG", "9.71709"))
 LPM_OFFICE_RADIUS_M = int(os.getenv("LPM_OFFICE_RADIUS_M", "500"))
 LPM_GEOFENCE_ENABLED = env_bool("LPM_GEOFENCE_ENABLED", True)
+# Date de début du pointage (repli si non défini en base) : les jours antérieurs
+# ne sont jamais comptés (présences, absences, retenues salariales). Ex. 2026-06-18.
+_att_start = os.getenv("LPM_ATTENDANCE_START", "").strip()
+LPM_ATTENDANCE_START = (
+    __import__("datetime").date.fromisoformat(_att_start) if _att_start else None
+)
 # Heure limite d'arrivée : un pointage APRÈS cette heure = « En retard ».
 # Fixée à 08h10 (tolérance de 10 min). La retenue prorata se calcule à partir
 # de ce seuil (minutes au-delà de 08h10).

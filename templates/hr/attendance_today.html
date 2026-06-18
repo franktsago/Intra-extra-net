@@ -30,6 +30,21 @@
     </form>
   </div>
   <p class="text-xs text-slate-400 mt-2">À faire <strong>depuis le bureau</strong> : capture votre position actuelle comme référence du pointage.</p>
+
+  <div class="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <div class="font-bold text-slate-800"><i class="fa-solid fa-calendar-day text-lpm"></i> Date de début du pointage</div>
+      <div class="text-sm text-slate-500">
+        {% if office.start_date %}Le pointage compte à partir du <strong>{{ office.start_date|date:"d/m/Y" }}</strong> ; les jours antérieurs ne sont pas comptés.{% else %}<span class="text-amber-600">Non définie</span> — tous les jours passés sont comptés.{% endif %}
+      </div>
+    </div>
+    <form method="post" action="{% url 'hr:set_office' %}" class="flex items-end gap-2">{% csrf_token %}
+      <input type="hidden" name="set_start" value="1">
+      <div><label class="text-xs text-slate-500">À partir du</label>
+        <input type="date" name="start_date" value="{{ office.start_date|date:'Y-m-d' }}" class="rounded-lg border border-slate-300 px-2 py-1.5"></div>
+      <button class="bg-lpm hover:bg-lpm-dark text-white px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap"><i class="fa-solid fa-check mr-1"></i> Enregistrer</button>
+    </form>
+  </div>
 </div>
 <script>
   function calibrer(){

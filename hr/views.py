@@ -94,19 +94,36 @@ def stats(request):
 
 @rh_required
 def set_office(request):
-    """Calibre le lieu de pointage depuis la position GPS de l'utilisateur (sur site)."""
-    if request.method == "POST":
-        try:
-            lat = float(request.POST.get("lat"))
-            lng = float(request.POST.get("lng"))
-            radius = int(request.POST.get("radius") or 150)
-        except (TypeError, ValueError):
-            messages.error(request, "Position invalide.")
-            return redirect("hr:attendance")
-        loc = OfficeLocation.current() or OfficeLocation()
-        loc.lat, loc.lng, loc.radius_m, loc.updated_by = lat, lng, radius, request.user
+    """Réglage du pointage : lieu (GPS) et/ou date de début."""
+    if request.method != "POST":
+        return redirect("hr:attendance")
+    from django.conf import settings as dj_settings
+    from django.utils.dateparse import parse_date
+    loc = OfficeLocation.current() or OfficeLocation()
+
+    # --- Date de début du pointage ---
+    if request.POST.get("set_start"):
+        loc.start_date = parse_date(request.POST.get("start_date") or "")  # None = réinitialise
+        if loc.lat is None:  # nouvel enregistrement sans GPS : valeurs par défaut
+            loc.lat, loc.lng = dj_settings.LPM_OFFICE_LAT, dj_settings.LPM_OFFICE_LNG
         loc.save()
-        messages.success(request, f"Lieu de pointage enregistré ({lat:.5f}, {lng:.5f}, rayon {radius} m).")
+        if loc.start_date:
+            messages.success(request, f"Pointage compté à partir du {loc.start_date:%d/%m/%Y}.")
+        else:
+            messages.info(request, "Date de début du pointage réinitialisée.")
+        return redirect("hr:attendance")
+
+    # --- Lieu de pointage (GPS) ---
+    try:
+        lat = float(request.POST.get("lat"))
+        lng = float(request.POST.get("lng"))
+        radius = int(request.POST.get("radius") or 150)
+    except (TypeError, ValueError):
+        messages.error(request, "Position invalide.")
+        return redirect("hr:attendance")
+    loc.lat, loc.lng, loc.radius_m, loc.updated_by = lat, lng, radius, request.user
+    loc.save()
+    messages.success(request, f"Lieu de pointage enregistré ({lat:.5f}, {lng:.5f}, rayon {radius} m).")
     return redirect("hr:attendance")
 
 

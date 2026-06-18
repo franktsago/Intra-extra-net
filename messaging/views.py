@@ -245,6 +245,27 @@ def forward(request, kind, pk):
 
 
 @login_required
+def message_edit(request, pk):
+    """Modifie le texte d'un message direct (expéditeur, dans les 10 min)."""
+    msg = get_object_or_404(Message, pk=pk)
+    me = request.user
+    if msg.sender_id != me.id:
+        raise PermissionDenied("Seul l'expéditeur peut modifier son message.")
+    other_id = msg.recipient_id if msg.sender_id == me.id else msg.sender_id
+    if request.method == "POST":
+        if not msg.within_edit_window:
+            flash.error(request, "Le délai de modification (10 minutes) est dépassé.")
+        else:
+            body = (request.POST.get("body") or "").strip()
+            if body:
+                msg.body = body
+                msg.edited_at = timezone.now()
+                msg.save(update_fields=["body", "edited_at"])
+                flash.success(request, "Message modifié.")
+    return redirect(_hub("u%d" % other_id))
+
+
+@login_required
 def message_delete_me(request, pk):
     """Supprime un message direct UNIQUEMENT pour soi (laisse une trace côté utilisateur)."""
     msg = get_object_or_404(Message, pk=pk)
@@ -340,6 +361,25 @@ def group_message_delete(request, pk):
         m.save()
         flash.success(request, "Message supprimé pour tout le monde.")
     return redirect(_hub("g%d" % gid))
+
+
+@login_required
+def group_message_edit(request, pk):
+    """Modifie le texte d'un message de groupe (expéditeur, dans les 10 min)."""
+    m = get_object_or_404(GroupMessage.objects.select_related("group"), pk=pk)
+    if m.sender_id != request.user.id:
+        raise PermissionDenied("Seul l'expéditeur peut modifier son message.")
+    if request.method == "POST":
+        if not m.within_edit_window:
+            flash.error(request, "Le délai de modification (10 minutes) est dépassé.")
+        else:
+            body = (request.POST.get("body") or "").strip()
+            if body:
+                m.body = body
+                m.edited_at = timezone.now()
+                m.save(update_fields=["body", "edited_at"])
+                flash.success(request, "Message modifié.")
+    return redirect(_hub("g%d" % m.group_id))
 
 
 @login_required

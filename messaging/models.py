@@ -14,6 +14,9 @@ from django.utils import timezone
 
 from accounts.models import INTRANET_ROLES
 
+# Délai pendant lequel l'expéditeur peut modifier son message (10 minutes).
+EDIT_WINDOW_SECONDS = 10 * 60
+
 
 class Message(models.Model):
     sender = models.ForeignKey(
@@ -34,6 +37,7 @@ class Message(models.Model):
     deleted_for = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="+")
     is_read = models.BooleanField("Lu", default=False)
     created_at = models.DateTimeField("Envoyé le", default=timezone.now)
+    edited_at = models.DateTimeField("Modifié le", null=True, blank=True)
 
     class Meta:
         verbose_name = "Message"
@@ -75,6 +79,13 @@ class Message(models.Model):
         if self.body:
             return self.body[:60]
         return "🎤 Message vocal" if self.is_audio else ("📎 Pièce jointe" if self.attachment else "")
+
+    @property
+    def within_edit_window(self):
+        """Le message texte est-il encore modifiable (≤ 10 min, non supprimé) ?"""
+        if self.deleted_for_all or not self.body:
+            return False
+        return (timezone.now() - self.created_at).total_seconds() <= EDIT_WINDOW_SECONDS
 
     @property
     def reaction_summary(self):
@@ -204,6 +215,7 @@ class GroupMessage(models.Model):
     deleted_for_all = models.BooleanField("Supprimé pour tous", default=False)
     deleted_for = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="+")
     created_at = models.DateTimeField(default=timezone.now)
+    edited_at = models.DateTimeField("Modifié le", null=True, blank=True)
 
     class Meta:
         verbose_name = "Message de groupe"
@@ -240,6 +252,13 @@ class GroupMessage(models.Model):
         if self.body:
             return self.body[:60]
         return "🎤 Message vocal" if self.is_audio else ("📎 Pièce jointe" if self.attachment else "")
+
+    @property
+    def within_edit_window(self):
+        """Le message texte est-il encore modifiable (≤ 10 min, non supprimé) ?"""
+        if self.deleted_for_all or self.is_system or not self.body:
+            return False
+        return (timezone.now() - self.created_at).total_seconds() <= EDIT_WINDOW_SECONDS
 
     @property
     def reaction_summary(self):

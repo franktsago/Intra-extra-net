@@ -15,10 +15,13 @@
   .emoji-pop.show{display:block}
   .emoji-pop button{font-size:20px;line-height:1;padding:4px;border-radius:8px}
   .emoji-pop button:hover{background:#f1f5f9}
-  /* Hauteur adaptative : 100dvh gère la barre d'adresse mobile */
-  .wa-shell{height:calc(100dvh - 150px);min-height:520px}
+  /* Hauteur STABLE : 100svh = petite zone visible (barre d'adresse affichée),
+     constante → l'écran ne saute pas quand la barre du navigateur apparaît/disparaît. */
+  .wa-shell{height:calc(100svh - 150px);min-height:520px}
+  /* Le défilement reste contenu dans la liste des messages (pas d'entraînement de la page). */
+  #thread,#convList{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
   @media (max-width:640px){
-    .wa-shell{height:calc(100dvh - 80px);min-height:0;border-radius:0;border-left:0;border-right:0;
+    .wa-shell{height:calc(100svh - 64px);min-height:0;border-radius:0;border-left:0;border-right:0;
               margin-left:-1rem;margin-right:-1rem}
     .emoji-pop{width:calc(100vw - 32px);left:8px}
   }
@@ -170,6 +173,7 @@
               <button name="emoji" value="🙏" class="hover:scale-125 transition">🙏</button>
             </form>
             <button type="button" data-reply data-id="{{ m.pk }}" data-name="{{ m.sender.get_full_name|default:m.sender.username }}" data-text="{{ m.short }}" class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"><i class="fa-solid fa-reply fa-fw mr-2 text-slate-400"></i>Répondre</button>
+            {% if m.sender == user and m.within_edit_window %}<button type="button" data-edit-toggle="edit-{{ m.pk }}" class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"><i class="fa-solid fa-pen fa-fw mr-2 text-slate-400"></i>Modifier</button>{% endif %}
             <a href="{% if active.type == 'group' %}{% url 'messaging:forward' 'g' m.pk %}{% else %}{% url 'messaging:forward' 'd' m.pk %}{% endif %}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"><i class="fa-solid fa-share fa-fw mr-2 text-slate-400"></i>Transférer</a>
             {% if m.body %}<button type="button" data-copy="{{ m.body }}" class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"><i class="fa-solid fa-copy fa-fw mr-2 text-slate-400"></i>Copier</button>{% endif %}
             <form method="post" action="{% if active.type == 'group' %}{% url 'messaging:pin_message' 'g' m.pk %}{% else %}{% url 'messaging:pin_message' 'd' m.pk %}{% endif %}">{% csrf_token %}
@@ -209,11 +213,22 @@
             {% endif %}
             {% if m.body %}<span class="text-sm whitespace-pre-line text-slate-800">{{ m.body }}</span>{% endif %}
             <span class="float-right ml-2 mt-1 select-none text-[10px] leading-none flex items-center gap-1 {% if m.sender == user %}text-slate-500{% else %}text-slate-400{% endif %}">
+              {% if m.edited_at %}<span class="italic">modifié</span>{% endif %}
               {{ m.created_at|date:"H:i" }}
               {% if active.type == 'direct' and m.sender == user %}<i class="fa-solid {% if m.is_read %}fa-check-double text-sky-600{% else %}fa-check text-slate-400{% endif %}"></i>{% endif %}
             </span>
             <div class="clear-both"></div>
           </div>
+          {% if m.sender == user and m.within_edit_window %}
+          <form data-edit-form id="edit-{{ m.pk }}" method="post" class="hidden w-full mt-1"
+                action="{% if active.type == 'group' %}{% url 'messaging:group_message_edit' m.pk %}{% else %}{% url 'messaging:message_edit' m.pk %}{% endif %}">{% csrf_token %}
+            <textarea name="body" rows="2" class="w-full text-sm rounded-lg border border-lpm/40 px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-lpm/30">{{ m.body }}</textarea>
+            <div class="flex justify-end gap-2 mt-1">
+              <button type="button" data-edit-cancel="edit-{{ m.pk }}" class="text-xs px-2.5 py-1 rounded-lg text-slate-500 hover:bg-slate-100">Annuler</button>
+              <button type="submit" class="text-xs px-3 py-1 rounded-lg bg-lpm text-white hover:bg-lpm-dark">Enregistrer</button>
+            </div>
+          </form>
+          {% endif %}
           {% with reacts=m.reaction_summary %}
           {% if reacts %}
           <div class="flex gap-1 -mt-1.5 z-10">
@@ -270,5 +285,5 @@
 (function(){var t=document.getElementById('thread');if(t)t.scrollTop=t.scrollHeight;})();
 function filterConvs(q){q=(q||'').toLowerCase();document.querySelectorAll('#convList .convitem').forEach(function(el){el.style.display=el.getAttribute('data-name').indexOf(q)>-1?'':'none';});}
 </script>
-<script src="{% static 'js/chat.js' %}?v=9"></script>
+<script src="{% static 'js/chat.js' %}?v=11"></script>
 {% endblock %}

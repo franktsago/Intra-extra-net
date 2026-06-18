@@ -9,17 +9,9 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#0073DE">
   <link rel="apple-touch-icon" href="{% static 'img/logo.png' %}">
-  <script src="{% static 'vendor/tailwind.min.js' %}"></script>
+  {# Tailwind compilé (CSS figé, rapide — plus de recompilation dans le navigateur) #}
+  <link rel="stylesheet" href="{% static 'vendor/tailwind.built.css' %}">
   <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
-  <script>
-    tailwind.config = {
-      theme: { extend: {
-        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
-        colors: { lpm: { light: '#0196F2', DEFAULT: '#0073DE', dark: '#0057CA' } },
-        boxShadow: { card: '0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06)' },
-      } }
-    }
-  </script>
   <style>
     body { background:#f6f8fb; }
     .lpm-gradient { background: linear-gradient(135deg,#0196F2 0%,#0073DE 55%,#0057CA 100%); }
@@ -358,6 +350,6 @@
   if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(function(){}); }
 </script>
 {% block scripts %}{% endblock %}
-<script src="{% static 'js/calls.js' %}?v=2"></script>
+<script src="{% static 'js/calls.js' %}?v=3"></script>
 </body>
 </html>

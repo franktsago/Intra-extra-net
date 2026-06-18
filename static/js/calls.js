@@ -54,11 +54,16 @@
   });
 
   function poll() {
+    // Ne sonde pas quand l'onglet est en arrière-plan (économise le serveur).
+    if (document.hidden) return;
     fetch('/messagerie/appel/entrant/', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
       .then(function (r) { return r.json(); })
       .then(function (d) { if (d.call) { if (d.call.id !== current) show(d.call); } else hide(); })
       .catch(function () {});
   }
-  setInterval(poll, 4000);
+  // 12 s suffisent (un appel sonne ~45 s) et allègent fortement la charge serveur.
+  setInterval(poll, 12000);
+  // Vérifie aussi dès que l'utilisateur revient sur l'onglet.
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) poll(); });
   poll();
 })();

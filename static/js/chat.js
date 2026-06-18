@@ -27,9 +27,12 @@
         this.style.height = Math.min(this.scrollHeight, 120) + 'px';
         refresh();
       });
-      // Entrée = envoyer, Maj+Entrée = nouvelle ligne
+      // Sur ordinateur : Entrée = envoyer, Maj+Entrée = nouvelle ligne.
+      // Sur téléphone (écran tactile) : Entrée = nouvelle ligne ; on envoie avec le bouton.
+      var isTouch = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
+        || ('ontouchstart' in window);
       input.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        if (e.key === 'Enter' && !e.shiftKey && !isTouch) {
           if (this.value.trim().length) { e.preventDefault(); form.submit(); }
         }
       });
@@ -164,6 +167,26 @@
       closeMenus();
       return;
     }
+    // Ouvre le formulaire d'édition d'un message (≤ 10 min).
+    var et = ev.target.closest('[data-edit-toggle]');
+    if (et) {
+      ev.preventDefault();
+      var f = document.getElementById(et.getAttribute('data-edit-toggle'));
+      if (f) {
+        f.classList.remove('hidden');
+        var ta = f.querySelector('textarea');
+        if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+      }
+      closeMenus();
+      return;
+    }
+    var ec = ev.target.closest('[data-edit-cancel]');
+    if (ec) {
+      ev.preventDefault();
+      var fc = document.getElementById(ec.getAttribute('data-edit-cancel'));
+      if (fc) fc.classList.add('hidden');
+      return;
+    }
     closeMenus();
   });
   document.addEventListener('click', function (ev) {
@@ -226,6 +249,7 @@
     }
 
     function poll() {
+      if (document.hidden) return;  // pas de sondage si l'onglet est en arrière-plan
       fetch('/messagerie/flux/' + kind + '/' + pk + '/?after=' + lastId, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(function (r) { return r.json(); })
         .then(function (d) {

@@ -55,9 +55,13 @@ class ActivityLogMiddleware:
                     "Veuillez vous reconnecter.",
                 )
             else:
-                request.session["last_activity"] = now
-                # Présence « en ligne » : met à jour last_seen au plus une fois/10 s.
-                if now - request.session.get("last_seen_ts", 0) > 10:
+                # Performance : on ne réécrit la session qu'au plus 1×/minute
+                # (précision suffisante pour un délai d'inactivité de 30 min) →
+                # évite une écriture en base à chaque requête.
+                if not last or (now - last) > 60:
+                    request.session["last_activity"] = now
+                # Présence « en ligne » : met à jour last_seen au plus une fois/25 s.
+                if now - request.session.get("last_seen_ts", 0) > 25:
                     request.session["last_seen_ts"] = now
                     try:
                         from django.contrib.auth import get_user_model

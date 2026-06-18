@@ -212,7 +212,10 @@ LOGOUT_REDIRECT_URL = "accounts:login"
 # Déconnexion automatique après inactivité (en secondes) — exigence du CDC.
 SESSION_EXPIRE_SECONDS = int(os.getenv("SESSION_EXPIRE_SECONDS", 30 * 60))
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-SESSION_SAVE_EVERY_REQUEST = True
+# Performance : on N'enregistre PAS la session à chaque requête. Le suivi
+# d'inactivité est géré par le middleware, qui ne modifie la session (donc ne
+# l'écrit) qu'au plus une fois par minute → bien moins d'écritures en base.
+SESSION_SAVE_EVERY_REQUEST = False
 
 
 # --------------------------------------------------------------------------- #

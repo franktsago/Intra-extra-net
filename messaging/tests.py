@@ -5,6 +5,59 @@ from accounts.models import Role, User
 from messaging.models import allowed_recipients, can_message
 
 
+class MessageEditTest(TestCase):
+    """Modification d'un message envoyé : expéditeur uniquement, dans les 10 min."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.a = User.objects.create_user("ed_a", password="x", role=Role.EMPLOYE)
+        cls.b = User.objects.create_user("ed_b", password="x", role=Role.EMPLOYE)
+
+    def _msg(self, **extra):
+        from messaging.models import Message
+        return Message.objects.create(sender=self.a, recipient=self.b, body="Original", **extra)
+
+    def test_sender_can_edit_within_window(self):
+        m = self._msg()
+        self.client.force_login(self.a)
+        r = self.client.post(reverse("messaging:message_edit", args=[m.pk]), {"body": "Corrigé"})
+        self.assertEqual(r.status_code, 302)
+        m.refresh_from_db()
+        self.assertEqual(m.body, "Corrigé")
+        self.assertIsNotNone(m.edited_at)
+
+    def test_recipient_cannot_edit(self):
+        m = self._msg()
+        self.client.force_login(self.b)
+        r = self.client.post(reverse("messaging:message_edit", args=[m.pk]), {"body": "Pirate"})
+        self.assertEqual(r.status_code, 403)
+        m.refresh_from_db()
+        self.assertEqual(m.body, "Original")
+
+    def test_edit_blocked_after_10_minutes(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        m = self._msg()
+        m.created_at = timezone.now() - timedelta(minutes=11)
+        m.save(update_fields=["created_at"])
+        self.assertFalse(m.within_edit_window)
+        self.client.force_login(self.a)
+        self.client.post(reverse("messaging:message_edit", args=[m.pk]), {"body": "Trop tard"})
+        m.refresh_from_db()
+        self.assertEqual(m.body, "Original")   # inchangé : délai dépassé
+
+    def test_group_message_edit(self):
+        from messaging.models import ChatGroup, GroupMessage
+        grp = ChatGroup.objects.create(name="G")
+        grp.members.add(self.a, self.b)
+        gm = GroupMessage.objects.create(group=grp, sender=self.a, body="Salut")
+        self.client.force_login(self.a)
+        self.client.post(reverse("messaging:group_message_edit", args=[gm.pk]), {"body": "Bonjour"})
+        gm.refresh_from_db()
+        self.assertEqual(gm.body, "Bonjour")
+        self.assertIsNotNone(gm.edited_at)
+
+
 class MessageSignalingTest(TestCase):
     """Un message reçu se signale par un badge (Messagerie / Discussions),
     jamais par une notification (cloche)."""

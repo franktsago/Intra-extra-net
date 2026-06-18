@@ -167,6 +167,33 @@ class ContractTypeInUserListTest(TestCase):
         self.assertContains(r, "CDD")
 
 
+class SensitiveInfoVisibilityTest(TestCase):
+    """Type de contrat / date d'embauche / ancienneté : visibles RH/direction seulement."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.rh = User.objects.create_user("rh_sens", password="x", role=Role.RH)
+        cls.emp_viewer = User.objects.create_user("emp_viewer", password="x", role=Role.EMPLOYE)
+        from employees.models import Employee
+        cls.target = Employee.objects.get(
+            user=User.objects.create_user("t.cible", password="x", role=Role.EMPLOYE,
+                                          first_name="Tom", last_name="CIBLE"))
+
+    def test_employee_does_not_see_contract_and_hire_date(self):
+        self.client.force_login(self.emp_viewer)
+        r = self.client.get(reverse("employees:detail", args=[self.target.pk]))
+        self.assertEqual(r.status_code, 200)
+        self.assertNotContains(r, "Type de contrat")
+        self.assertNotContains(r, "Date d'embauche")
+        self.assertNotContains(r, "Ancienneté")
+
+    def test_rh_sees_contract_and_hire_date(self):
+        self.client.force_login(self.rh)
+        r = self.client.get(reverse("employees:detail", args=[self.target.pk]))
+        self.assertContains(r, "Type de contrat")
+        self.assertContains(r, "Date d'embauche")
+
+
 class HRDocumentsTest(TestCase):
     """RH/CEO/admin téléchargent attestations + contrat ; les autres non."""
 

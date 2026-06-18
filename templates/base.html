@@ -79,11 +79,11 @@
       <details class="nav-group" data-key="magasin">
         <summary><div class="nav-group-header"><span><i class="fa-solid fa-warehouse grp-ico"></i> Magasin</span><i class="fa-solid fa-chevron-down nav-chevron"></i></div></summary>
         <div class="nav-group-body space-y-0.5">
-          {% if user.is_manager %}
+          {% if can_manage_stock %}
           <a href="{% url 'stock:hub' %}?s=dashboard" class="nav-link {% if '/stock/' in request.path and 's=dashboard' in request.get_full_path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-chart-pie fa-fw text-slate-400"></i> Tableau de bord</a>
           {% endif %}
           <a href="{% url 'stock:hub' %}" class="nav-link {% if '/stock/' in request.path and '/emprunts' not in request.path and '/commandes' not in request.path and 's=dashboard' not in request.get_full_path and 's=mouvements' not in request.get_full_path and 's=recevt' not in request.get_full_path and 's=maintenance' not in request.get_full_path and 's=alertes' not in request.get_full_path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-boxes-stacked fa-fw text-slate-400"></i> Inventaire</a>
-          {% if user.is_manager %}
+          {% if can_manage_stock %}
           <a href="{% url 'stock:hub' %}?s=mouvements" class="nav-link {% if 's=mouvements' in request.get_full_path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-arrow-right-arrow-left fa-fw text-slate-400"></i> Mouvements</a>
           <a href="{% url 'stock:hub' %}?s=recevt" class="nav-link {% if 's=recevt' in request.get_full_path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-calendar-check fa-fw text-slate-400"></i> Post-Événement</a>
           <a href="{% url 'stock:hub' %}?s=maintenance" class="nav-link {% if 's=maintenance' in request.get_full_path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-screwdriver-wrench fa-fw text-slate-400"></i> Maintenance</a>
@@ -217,8 +217,8 @@
       </details>
       {% endif %}
 
-      {# ══ COMMERCIAL & FINANCE — managers uniquement ════════════════════════ #}
-      {% if user.is_manager %}
+      {# ══ COMMERCIAL & FINANCE — département Financier (+ direction) ═════════ #}
+      {% if can_manage_finance %}
       <details class="nav-group" data-key="commercial">
         <summary><div class="nav-group-header"><span><i class="fa-solid fa-sack-dollar grp-ico"></i> Commercial & Finance</span><i class="fa-solid fa-chevron-down nav-chevron"></i></div></summary>
         <div class="nav-group-body space-y-0.5">

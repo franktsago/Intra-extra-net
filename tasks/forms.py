@@ -18,6 +18,8 @@ class TaskForm(StyledFormMixin, forms.ModelForm):
     def __init__(self, *args, viewer=None, **kwargs):
         super().__init__(*args, **kwargs)
         from accounts.utils import hide_superadmin
+        # L'assignation d'une tâche est obligatoire.
+        self.fields["assigned_to"].required = True
         qs = User.objects.filter(role__in=INTRANET_ROLES, is_active=True)
         # Un responsable (non RH/CEO/admin) n'affecte qu'aux membres de SON département.
         if viewer is not None and viewer.is_manager and not viewer.is_rh:

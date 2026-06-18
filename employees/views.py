@@ -134,17 +134,41 @@ def employee_edit(request, pk=None):
 
 @internal_required
 def org_chart(request):
-    """Organigramme : départements et leurs effectifs."""
-    from django.db.models import Prefetch
-    visible_emps = hide_superadmin(
+    """Organigramme dans l'ordre administratif : Direction Générale, RH, Finance,
+    puis les autres départements ; au sein de chacun, CEO → RH → responsable →
+    employé → stagiaire."""
+    from employees.models import _norm_kw
+    visible = list(hide_superadmin(
         Employee.objects.filter(user__is_active=True)
         .exclude(status=Employee.Status.TERMINATED)
-        .select_related("user").prefetch_related("positions"),
-        request.user, user_field="user")
-    departments = Department.objects.select_related("manager").prefetch_related(
-        Prefetch("employees", queryset=visible_emps)
-    )
-    return render(request, "employees/org_chart.html", {"departments": departments})
+        .select_related("user").prefetch_related("positions", "departments"),
+        request.user, user_field="user"))
+
+    role_rank = {"ADMIN": 0, "CEO": 0, "RH": 1, "MANAGER": 2, "EMPLOYE": 3, "STAGIAIRE": 4}
+
+    def emp_key(e):
+        return (role_rank.get(e.user.role, 5), (e.user.last_name or "").lower())
+
+    def dept_rank(d):
+        h = _norm_kw(d.name) + " " + _norm_kw(d.code)
+        tokens = h.split()
+        if "direction" in h or "dg" in tokens:
+            return 0
+        if "rh" in tokens or "ressources humaines" in h or "administration" in h:
+            return 1
+        if "financ" in h or "fi" in tokens:
+            return 2
+        return 3
+
+    depts = sorted(Department.objects.select_related("manager"),
+                   key=lambda d: (dept_rank(d), d.name.lower()))
+    by_dept = {}
+    for e in visible:
+        for d in e.departments.all():
+            by_dept.setdefault(d.id, []).append(e)
+    groups = [{"dept": d, "members": sorted(by_dept.get(d.id, []), key=emp_key)}
+              for d in depts]
+    return render(request, "employees/org_chart.html", {"groups": groups})
 
 
 @role_required(Role.ADMIN, Role.CEO, Role.RH)

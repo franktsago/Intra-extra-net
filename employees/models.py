@@ -285,3 +285,32 @@ def department_colleagues_ids(user):
             .values_list("user_id", flat=True)
         )
     return ids
+
+
+def _norm_kw(s):
+    """Minuscule sans accents (pour comparer nom/code de département de façon robuste)."""
+    import unicodedata
+    s = "" if s in (None, "") else str(s).strip().lower()
+    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+
+
+def in_department(user, *keywords):
+    """L'utilisateur relève-t-il d'un département dont le NOM ou le CODE contient
+    l'un des mots-clés ? RH / CEO / admin ont toujours accès (vue transverse).
+
+    Sert à réserver l'écriture d'un module au département concerné (ex. magasin →
+    Logistique, finance → Financier) ; les autres internes restent en lecture.
+    """
+    if getattr(user, "is_rh", False):  # RH / CEO / admin
+        return True
+    kws = [_norm_kw(k) for k in keywords if k]
+    if not kws:
+        return False
+    dept_ids = department_ids_for(user)
+    if not dept_ids:
+        return False
+    for d in Department.objects.filter(id__in=dept_ids):
+        hay = _norm_kw(d.name) + " " + _norm_kw(d.code)
+        if any(k in hay for k in kws):
+            return True
+    return False

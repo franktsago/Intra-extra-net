@@ -144,11 +144,26 @@ class UserEditForm(StyledFormMixin, forms.ModelForm):
 
 
 class ProfileForm(StyledFormMixin, forms.ModelForm):
-    """Édition de son propre profil."""
+    """Édition de son propre profil.
+
+    Un employé ou un responsable ne peut PAS modifier son identité (nom, prénom,
+    email, téléphone) : ces champs sont grisés. Seules la RH et la Direction
+    peuvent les changer (ici ou via l'annuaire)."""
 
     class Meta:
         model = User
         fields = ["first_name", "last_name", "email", "phone", "avatar"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        u = self.instance
+        if u and u.pk and not getattr(u, "is_rh", False):
+            for name in ("first_name", "last_name", "email", "phone"):
+                f = self.fields[name]
+                f.disabled = True  # ignore toute valeur soumise + grise le champ
+                f.help_text = "Modifiable uniquement par la RH."
+                f.widget.attrs["class"] = (f.widget.attrs.get("class", "")
+                                           + " bg-slate-100 cursor-not-allowed").strip()
 
 
 class SignatureForm(StyledFormMixin, forms.ModelForm):

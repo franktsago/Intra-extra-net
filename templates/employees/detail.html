@@ -23,9 +23,12 @@
       <div class="grid sm:grid-cols-2 gap-4 text-sm">
         <div><div class="text-slate-400">Matricule</div><div class="font-medium text-slate-800">{{ employee.matricule }}</div></div>
         <div><div class="text-slate-400">Département(s)</div><div class="font-medium text-slate-800">{{ employee.department_names|default:"—" }}</div></div>
+        {# Informations sensibles : réservées à la RH / Direction. #}
+        {% if user.is_rh %}
         <div><div class="text-slate-400">Type de contrat</div><div class="font-medium text-slate-800">{{ employee.get_contract_type_display }}</div></div>
         <div><div class="text-slate-400">Date d'embauche</div><div class="font-medium text-slate-800">{{ employee.hire_date|date:"d/m/Y" }}</div></div>
         <div><div class="text-slate-400">Ancienneté</div><div class="font-medium text-slate-800">{{ employee.seniority_years }} an(s)</div></div>
+        {% endif %}
         <div><div class="text-slate-400">Responsable</div><div class="font-medium text-slate-800">{{ employee.manager.full_name|default:"—" }}</div></div>
         {% if user.is_rh %}<div><div class="text-slate-400">N° CNPS</div><div class="font-medium text-slate-800">{{ employee.cnps_number|default:"—" }}</div></div>{% endif %}
         {% if user.is_rh %}

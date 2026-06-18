@@ -38,7 +38,7 @@
   {# ONGLETS DE NAVIGATION #}
   <div class="border-b border-slate-100 overflow-x-auto">
     <nav class="flex min-w-max">
-      {% if user.is_manager %}
+      {% if can_manage_stock %}
       <a href="?s=dashboard" class="flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition whitespace-nowrap {% if active_tab == 'dashboard' %}border-lpm text-lpm{% else %}border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-200{% endif %}">
         <i class="fa-solid fa-chart-pie text-xs"></i> Tableau de bord
       </a>
@@ -49,7 +49,7 @@
       <a href="?s=mouvements" class="flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition whitespace-nowrap {% if active_tab == 'mouvements' %}border-lpm text-lpm{% else %}border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-200{% endif %}">
         <i class="fa-solid fa-arrow-right-arrow-left text-xs"></i> Mouvements
       </a>
-      {% if user.is_manager %}
+      {% if can_manage_stock %}
       <a href="?s=recevt" class="flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition whitespace-nowrap {% if active_tab == 'recevt' %}border-lpm text-lpm{% else %}border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-200{% endif %}">
         <i class="fa-solid fa-calendar-check text-xs"></i> Post-Événement
       </a>
@@ -269,7 +269,7 @@
       </div>
       {% endfor %}
     </div>
-    {% if user.is_manager %}
+    {% if can_manage_stock %}
     <div class="mt-3">
       <a href="{% url 'stock:order_create' %}" class="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition">
         <i class="fa-solid fa-truck"></i> Créer un bon de commande
@@ -302,7 +302,7 @@
       <button type="submit" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-sm hover:bg-slate-200 transition">Filtrer</button>
       {% if cat_filter or state_filter %}<a href="?s=inventaire" class="text-xs text-slate-400 hover:text-slate-700 px-3 py-2">Réinitialiser</a>{% endif %}
     </form>
-    {% if user.is_manager %}
+    {% if can_manage_stock %}
     <a href="{% url 'stock:item_create' %}" class="inline-flex items-center gap-2 lpm-gradient text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm hover:opacity-90 transition">
       <i class="fa-solid fa-plus"></i> Nouvel article
     </a>
@@ -362,7 +362,7 @@
           <td class="px-4 py-3 text-center">
             <div class="flex items-center justify-center gap-1">
               <a href="{% url 'stock:item_detail' item.pk %}" class="p-1.5 rounded-lg hover:bg-lpm/10 text-lpm" title="Voir détail"><i class="fa-solid fa-eye text-xs"></i></a>
-              {% if user.is_manager %}
+              {% if can_manage_stock %}
               <a href="{% url 'stock:item_edit' item.pk %}" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400" title="Modifier"><i class="fa-solid fa-pen text-xs"></i></a>
               {% endif %}
             </div>
@@ -453,7 +453,7 @@
   {# ==================================================================== #}
   {% elif active_tab == "recevt" %}
 
-  {% if user.is_manager %}
+  {% if can_manage_stock %}
   <div class="mb-5 bg-slate-50 border border-slate-200 rounded-xl p-4">
     <h4 class="font-semibold text-slate-700 mb-3 flex items-center gap-2 text-sm">
       <i class="fa-solid fa-plus text-lpm"></i> Nouvelle réconciliation post-événement
@@ -489,7 +489,7 @@
           <th class="px-4 py-3 text-left">Action</th>
           <th class="px-4 py-3 text-left">Responsable</th>
           <th class="px-4 py-3 text-left">Commentaires</th>
-          {% if user.is_manager %}<th class="px-4 py-3 text-center">Actions</th>{% endif %}
+          {% if can_manage_stock %}<th class="px-4 py-3 text-center">Actions</th>{% endif %}
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-50">
@@ -519,7 +519,7 @@
           <td class="px-4 py-3 text-xs text-slate-500">{{ r.get_action_display }}</td>
           <td class="px-4 py-3 text-xs text-slate-400">{{ r.responsible.get_full_name|default:"—" }}</td>
           <td class="px-4 py-3 text-xs text-slate-400">{{ r.comments|truncatechars:40|default:"—" }}</td>
-          {% if user.is_manager %}
+          {% if can_manage_stock %}
           <td class="px-4 py-3 text-center">
             <div class="flex items-center justify-center gap-1">
               <a href="{% url 'stock:reconciliation_edit' r.pk %}" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition"><i class="fa-solid fa-pen text-xs"></i></a>
@@ -531,7 +531,7 @@
           {% endif %}
         </tr>
         {% empty %}
-        <tr><td colspan="{% if user.is_manager %}11{% else %}10{% endif %}" class="px-4 py-12 text-center text-slate-400">Aucune fiche de réconciliation.</td></tr>
+        <tr><td colspan="{% if can_manage_stock %}11{% else %}10{% endif %}" class="px-4 py-12 text-center text-slate-400">Aucune fiche de réconciliation.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -542,7 +542,7 @@
   {# ==================================================================== #}
   {% elif active_tab == "maintenance" %}
 
-  {% if user.is_manager %}
+  {% if can_manage_stock %}
   <div class="mb-5 bg-slate-50 border border-slate-200 rounded-xl p-4">
     <h4 class="font-semibold text-slate-700 mb-3 flex items-center gap-2 text-sm">
       <i class="fa-solid fa-wrench text-orange-500"></i> Signaler une panne / anomalie
@@ -604,7 +604,7 @@
         </div>
         {% if fiche.comments %}<p class="text-xs text-slate-400 italic mt-1">{{ fiche.comments }}</p>{% endif %}
       </div>
-      {% if user.is_manager %}
+      {% if can_manage_stock %}
       <div class="flex flex-col gap-1 shrink-0">
         <a href="{% url 'stock:maintenance_edit' fiche.pk %}" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 text-sm" title="Modifier"><i class="fa-solid fa-pen"></i></a>
         {% if fiche.status == 'PENDING' or fiche.status == 'IN_PROGRESS' %}

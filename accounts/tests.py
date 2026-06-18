@@ -328,6 +328,25 @@ class SignatureStampTest(TestCase):
         self.assertNotContains(r, "Signature &amp; cachet")
 
 
+class ProfileIdentityLockTest(TestCase):
+    """Employé/responsable ne peuvent pas modifier nom/prénom/email/téléphone (grisés)."""
+
+    def test_identity_disabled_for_employee_and_manager(self):
+        from accounts.forms import ProfileForm
+        for role in (Role.EMPLOYE, Role.MANAGER):
+            u = User.objects.create_user(f"prof_{role}", password="x", role=role)
+            f = ProfileForm(instance=u)
+            for name in ("first_name", "last_name", "email", "phone"):
+                self.assertTrue(f.fields[name].disabled, f"{name} devrait être grisé pour {role}")
+            self.assertFalse(f.fields["avatar"].disabled)
+
+    def test_identity_editable_for_rh(self):
+        from accounts.forms import ProfileForm
+        rh = User.objects.create_user("prof_rh", password="x", role=Role.RH)
+        f = ProfileForm(instance=rh)
+        self.assertFalse(f.fields["first_name"].disabled)
+
+
 class EmergencyContactTest(TestCase):
     """Personne à contacter : obligatoire (nom + tel valide) pour un interne,
     2e contact optionnel, non requis pour un externe."""

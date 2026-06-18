@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from accounts.models import Role
-from accounts.utils import internal_required, role_required
+from accounts.utils import department_required, internal_required, role_required
 
 from .forms import (
     BorrowRequestForm, MaintenanceItemForm, PostEventReconciliationForm,
@@ -17,7 +17,9 @@ from .models import (
     PurchaseOrder, StockItem, StockMovement, StockSupplier,
 )
 
-mgr_required = role_required(Role.ADMIN, Role.CEO, Role.RH, Role.MANAGER)
+# Écritures du magasin : réservées au département Logistique (+ RH/CEO/admin).
+# Les autres internes consultent l'inventaire mais ne peuvent rien modifier.
+mgr_required = department_required("logistique", "magasin", "stock")
 
 
 # ---------------------------------------------------------------------------

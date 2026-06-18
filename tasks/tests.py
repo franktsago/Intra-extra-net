@@ -123,6 +123,14 @@ class TaskTeamAssignmentTest(TestCase):
         self.assertIn(self.outsider.id, ids)
         self.assertIn(self.member.id, ids)
 
+    def test_assigned_to_is_required(self):
+        from tasks.forms import TaskForm
+        self.assertTrue(TaskForm(viewer=self.mgr).fields["assigned_to"].required)
+        form = TaskForm(data={"title": "Sans assignation", "priority": "NORMAL",
+                              "status": "TODO"}, viewer=self.mgr)
+        self.assertFalse(form.is_valid())
+        self.assertIn("assigned_to", form.errors)
+
 
 class TaskDepartmentScopeTest(TestCase):
     """Cloisonnement des tâches par département : chacun ne voit que le sien (item)."""

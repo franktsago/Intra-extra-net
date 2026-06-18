@@ -23,9 +23,21 @@ def _item(**kwargs):
 class StockAccessTest(TestCase):
     @classmethod
     def setUpTestData(cls):
+        from employees.models import Department, Employee
         cls.mgr = User.objects.create_user("mgr_stock", password="x", role=Role.MANAGER)
         cls.emp = User.objects.create_user("emp_stock", password="x", role=Role.EMPLOYE)
         cls.ext = User.objects.create_user("ext_stock", password="x", role=Role.CLIENT)
+        # Le responsable qui gère le magasin appartient au département Logistique.
+        cls.dep_log = Department.objects.create(name="Logistique", code="LOG")
+        Employee.objects.get(user=cls.mgr).departments.set([cls.dep_log])
+        # Un responsable d'un autre département ne doit PAS pouvoir modifier le magasin.
+        cls.mgr_other = User.objects.create_user("mgr_other_stock", password="x", role=Role.MANAGER)
+        Employee.objects.get(user=cls.mgr_other).departments.set(
+            [Department.objects.create(name="Marketing", code="MKT")])
+
+    def test_item_create_403_pour_manager_hors_logistique(self):
+        self.client.force_login(self.mgr_other)
+        self.assertEqual(self.client.get(reverse("stock:item_create")).status_code, 403)
 
     # ---- Hub ----
     def test_hub_200_pour_interne(self):

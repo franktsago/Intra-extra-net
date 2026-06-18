@@ -73,6 +73,32 @@ def role_required(*roles):
     return decorator
 
 
+def department_required(*keywords):
+    """Réserve une vue (écriture) aux membres du département concerné — identifié par
+    un mot-clé de nom/code (ex. « logistique », « financ ») — plus RH / CEO / admin.
+
+    Les autres internes reçoivent un 403 (ils gardent l'accès en lecture via les vues
+    non protégées) ; les externes sont redirigés vers l'extranet.
+    """
+
+    def decorator(view_func):
+        @wraps(view_func)
+        @login_required
+        def _wrapped(request, *args, **kwargs):
+            u = request.user
+            if not u.is_internal and not u.is_superuser:
+                return _redirect_external(request)
+            from employees.models import in_department
+            if in_department(u, *keywords):
+                return view_func(request, *args, **kwargs)
+            raise PermissionDenied(
+                "Modification réservée au département concerné (et à la Direction).")
+
+        return _wrapped
+
+    return decorator
+
+
 def internal_required(view_func):
     """Réserve une vue aux utilisateurs internes (intranet).
 

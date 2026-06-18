@@ -54,7 +54,7 @@
         </div>
         {% endif %}
       </div>
-      {% if user.is_manager %}
+      {% if can_manage_stock %}
       <a href="{% url 'stock:item_edit' item.pk %}" class="mt-4 w-full flex items-center justify-center gap-2 bg-lpm text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-lpm-dark transition">
         <i class="fa-solid fa-pen"></i> Modifier l'article
       </a>
@@ -76,7 +76,7 @@
 
   <div class="lg:col-span-2 space-y-6">
     <!-- Formulaire mouvement -->
-    {% if user.is_manager %}
+    {% if can_manage_stock %}
     <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-5">
       <h3 class="font-semibold text-slate-800 mb-3"><i class="fa-solid fa-arrows-up-down text-lpm mr-2"></i>Enregistrer un mouvement</h3>
       <form method="post" action="{% url 'stock:movement_add' item.pk %}">
@@ -144,7 +144,7 @@
     <div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
       <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
         <h3 class="font-semibold text-slate-800"><i class="fa-solid fa-wrench text-orange-500 mr-2"></i>Historique maintenance</h3>
-        {% if user.is_manager %}
+        {% if can_manage_stock %}
         <a href="{% url 'stock:hub' %}?s=maintenance" class="text-xs text-lpm hover:underline">Voir tout</a>
         {% endif %}
       </div>
@@ -177,7 +177,7 @@
     <div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
       <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
         <h3 class="font-semibold text-slate-800"><i class="fa-solid fa-calendar-check text-lpm mr-2"></i>Réconciliations post-événement</h3>
-        {% if user.is_manager %}
+        {% if can_manage_stock %}
         <a href="{% url 'stock:hub' %}?s=recevt" class="text-xs text-lpm hover:underline">Voir tout</a>
         {% endif %}
       </div>

@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import ActivityLog, Role, User
-from accounts.utils import log_activity, role_required
+from accounts.utils import department_required, log_activity, role_required
 from notifications.models import Notification, notify
 
 from .forms import (
@@ -18,8 +18,9 @@ from .forms import (
 )
 from .models import Client, Invoice, Opportunity, Quote
 
-# Accès au module commercial : direction, RH, responsables.
-biz_required = role_required(Role.ADMIN, Role.CEO, Role.RH, Role.MANAGER)
+# Commercial & Finance : réservé au département Financier (+ RH / CEO / admin).
+# Chaque département ne voit et ne modifie que ce qui le concerne.
+biz_required = department_required("financ", "commercial", "finance")
 exec_required = role_required(Role.ADMIN, Role.CEO)
 
 

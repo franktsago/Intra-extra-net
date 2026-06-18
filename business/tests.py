@@ -8,8 +8,12 @@ from business.models import Client, Quote
 class CeoValidationTest(TestCase):
     @classmethod
     def setUpTestData(cls):
+        from employees.models import Department, Employee
         cls.ceo = User.objects.create_user("ceo", password="x", role=Role.CEO)
         cls.mgr = User.objects.create_user("mgr", password="x", role=Role.MANAGER)
+        # Le module Commercial & Finance est réservé au département Financier.
+        Employee.objects.get(user=cls.mgr).departments.set(
+            [Department.objects.create(name="Financier", code="FI")])
 
     def test_manager_created_client_pending_then_ceo_validates(self):
         self.client.force_login(self.mgr)

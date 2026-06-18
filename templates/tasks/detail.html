@@ -57,5 +57,41 @@
       </form>
     {% endif %}
   </div>
+
+  {# ===== Rendu / livrables de la tâche ===== #}
+  <div class="bg-white rounded-xl shadow-card p-6 mt-5">
+    <h3 class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-paperclip text-lpm mr-1"></i> Rendu / livrables</h3>
+    <p class="text-xs text-slate-400 mb-4">Fichiers rattachés à cette tâche (livrables envoyés au responsable / à l'équipe).</p>
+
+    {% if attachments %}
+    <div class="space-y-2 mb-4">
+      {% for a in attachments %}
+      <div class="flex items-center gap-3 p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50">
+        <span class="h-9 w-9 rounded-lg bg-lpm/10 text-lpm flex items-center justify-center text-xs font-bold flex-shrink-0">{{ a.ext|upper|default:"?" }}</span>
+        <a href="{{ a.file.url }}" download class="flex-1 min-w-0 text-sm font-medium text-slate-700 hover:text-lpm truncate">{{ a.filename }}</a>
+        <span class="text-xs text-slate-400 flex-shrink-0 hidden sm:block">{{ a.uploaded_by.get_full_name|default:a.uploaded_by.username }} · {{ a.created_at|date:"d/m H:i" }}</span>
+        <a href="{{ a.file.url }}" download class="text-slate-400 hover:text-lpm p-1" title="Télécharger"><i class="fa-solid fa-download"></i></a>
+        {% if can_manage or a.uploaded_by_id == user.id %}
+        <form method="post" action="{% url 'tasks:attachment_delete' task.pk a.pk %}" onsubmit="return confirm('Supprimer ce fichier ?');">{% csrf_token %}
+          <button class="text-slate-300 hover:text-red-500 p-1" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+        </form>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-slate-400 mb-4">Aucun fichier pour l'instant.</p>
+    {% endif %}
+
+    {% if can_upload %}
+    <form method="post" action="{% url 'tasks:attach' task.pk %}" enctype="multipart/form-data"
+          class="border-t border-slate-100 pt-4 flex flex-col sm:flex-row sm:items-center gap-3">{% csrf_token %}
+      <input type="file" name="files" multiple required
+             class="flex-1 text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:border-0 file:rounded-lg file:bg-lpm/10 file:text-lpm file:font-medium file:cursor-pointer">
+      <button class="lpm-gradient text-white font-medium px-5 py-2 rounded-lg shadow flex-shrink-0"><i class="fa-solid fa-upload mr-1"></i> Déposer le rendu</button>
+    </form>
+    {% if task.status == 'DONE' %}<p class="text-xs text-emerald-600 mt-2"><i class="fa-solid fa-circle-check mr-1"></i>Tâche terminée — pensez à joindre votre rendu pour votre responsable.</p>{% endif %}
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

@@ -95,6 +95,50 @@ class TaskValidationWorkflowTest(TestCase):
         self.assertFalse(task.is_approved)
 
 
+class TaskRenderAndNotifyTest(TestCase):
+    """Tâche terminée → notification au créateur ; dépôt de rendu (fichiers)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.mgr = User.objects.create_user("rn_mgr", password="x", role=Role.MANAGER)
+        cls.emp = User.objects.create_user("rn_emp", password="x", role=Role.EMPLOYE)
+        e = Employee.objects.get(user=cls.emp)
+        e.manager = Employee.objects.get(user=cls.mgr)
+        e.save()
+        cls.task = Task.objects.create(title="Livrable X", assigned_to=cls.emp,
+                                       created_by=cls.mgr, is_approved=True)
+
+    def test_done_notifies_assigner(self):
+        from notifications.models import Notification
+        self.client.force_login(self.emp)
+        self.client.post(reverse("tasks:detail", args=[self.task.pk]), {"status": "DONE"})
+        self.task.refresh_from_db()
+        self.assertEqual(self.task.status, "DONE")
+        self.assertTrue(Notification.objects.filter(
+            recipient=self.mgr, title__icontains="termin").exists())
+
+    def test_assignee_uploads_render(self):
+        import tempfile
+        from django.test import override_settings
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from tasks.models import TaskAttachment
+        with override_settings(MEDIA_ROOT=tempfile.mkdtemp()):
+            self.client.force_login(self.emp)
+            r = self.client.post(reverse("tasks:attach", args=[self.task.pk]), {
+                "files": [SimpleUploadedFile("rendu.pdf", b"%PDF-1.4"),
+                          SimpleUploadedFile("notes.txt", b"notes")]})
+            self.assertEqual(r.status_code, 302)
+            self.assertEqual(TaskAttachment.objects.filter(task=self.task).count(), 2)
+
+    def test_other_cannot_upload(self):
+        other = User.objects.create_user("rn_other", password="x", role=Role.EMPLOYE)
+        self.client.force_login(other)
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        r = self.client.post(reverse("tasks:attach", args=[self.task.pk]),
+                             {"files": [SimpleUploadedFile("x.txt", b"x")]})
+        self.assertEqual(r.status_code, 403)
+
+
 class TaskTeamAssignmentTest(TestCase):
     @classmethod
     def setUpTestData(cls):

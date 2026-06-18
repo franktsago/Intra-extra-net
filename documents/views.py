@@ -36,7 +36,7 @@ def document_list(request):
     })
 
 
-@role_required(Role.ADMIN, Role.CEO, Role.RH, Role.MANAGER)
+@internal_required
 def document_upload(request):
     if request.method == "POST":
         form = DocumentForm(request.POST, request.FILES, viewer=request.user)

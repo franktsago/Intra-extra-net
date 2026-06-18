@@ -175,6 +175,8 @@ def task_detail(request, pk):
     status_only = (not manage) and can_change_status(user, task)
     pending = not task.is_approved
     can_approve = pending and manage
+    # Statut AVANT toute modification (form.is_valid() met déjà à jour l'instance).
+    was_done = task.status == Task.Status.DONE
 
     if request.method == "POST":
         if manage:
@@ -188,16 +190,63 @@ def task_detail(request, pk):
             if obj.status == Task.Status.DONE and not obj.completed_at:
                 obj.completed_at = timezone.now()
             obj.save()
+            # Tâche terminée → on prévient la personne qui l'a assignée.
+            if obj.status == Task.Status.DONE and not was_done and obj.created_by_id and obj.created_by_id != user.id:
+                notify(obj.created_by, "Tâche terminée ✅",
+                       f"{user.get_full_name() or user.username} a terminé la tâche « {obj.title} ».",
+                       Notification.Level.SUCCESS, reverse("tasks:detail", args=[obj.pk]))
             messages.success(request, "Tâche mise à jour.")
             return redirect("tasks:detail", pk=pk)
     else:
         form = TaskForm(instance=task, viewer=user) if manage else (TaskStatusForm(instance=task) if status_only else None)
 
+    # Dépôt de rendu : l'assigné (ou un responsable) peut joindre des fichiers.
+    can_upload = manage or task.assigned_to_id == user.id
     return render(request, "tasks/detail.html", {
         "task": task, "form": form, "can_manage": manage,
         "status_only": status_only, "read_only": form is None,
         "pending": pending, "can_approve": can_approve,
+        "attachments": task.attachments.select_related("uploaded_by"),
+        "can_upload": can_upload,
     })
+
+
+@internal_required
+def task_attach(request, pk):
+    """Dépose un ou plusieurs fichiers de rendu sur une tâche (assigné ou responsable)."""
+    from .models import TaskAttachment
+    task = get_object_or_404(Task, pk=pk)
+    if not (can_manage_task(request.user, task) or task.assigned_to_id == request.user.id):
+        raise PermissionDenied("Seul l'assigné ou le responsable peut déposer un rendu.")
+    if request.method == "POST":
+        files = request.FILES.getlist("files")
+        for f in files:
+            TaskAttachment.objects.create(task=task, file=f, uploaded_by=request.user)
+        if files:
+            messages.success(request, f"{len(files)} fichier(s) ajouté(s) au rendu.")
+            # Prévient le responsable / la personne qui a assigné la tâche.
+            if task.created_by_id and task.created_by_id != request.user.id:
+                notify(task.created_by, "Rendu déposé 📎",
+                       f"{request.user.get_full_name() or request.user.username} a déposé un rendu pour « {task.title} ».",
+                       Notification.Level.INFO, reverse("tasks:detail", args=[task.pk]))
+        else:
+            messages.error(request, "Aucun fichier sélectionné.")
+    return redirect("tasks:detail", pk=pk)
+
+
+@internal_required
+def task_attachment_delete(request, pk, att_id):
+    """Supprime un fichier de rendu (son auteur ou un responsable)."""
+    from .models import TaskAttachment
+    att = get_object_or_404(TaskAttachment, pk=att_id, task_id=pk)
+    if not (can_manage_task(request.user, att.task) or att.uploaded_by_id == request.user.id):
+        raise PermissionDenied("Suppression réservée à l'auteur du fichier ou au responsable.")
+    if request.method == "POST":
+        if att.file:
+            att.file.delete(save=False)
+        att.delete()
+        messages.success(request, "Fichier supprimé.")
+    return redirect("tasks:detail", pk=pk)
 
 
 @internal_required

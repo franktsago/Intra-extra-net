@@ -61,3 +61,48 @@ class ConfidentialDocumentTest(TestCase):
         self.client.force_login(self.rh)
         self.client.post(reverse("documents:delete", args=[self.doc.pk]))
         self.assertFalse(Document.objects.filter(pk=self.doc.pk).exists())
+
+
+class DocumentSharingTest(TestCase):
+    """Partage ciblé par un employé : collègues, responsable, ou les deux."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from employees.models import Department
+        dep = Department.objects.create(name="Marketing", code="MKT")
+        cls.mgr = User.objects.create_user("dshare_mgr", password="x", role=Role.MANAGER)
+        cls.emp = User.objects.create_user("dshare_emp", password="x", role=Role.EMPLOYE)
+        cls.colleague = User.objects.create_user("dshare_col", password="x", role=Role.EMPLOYE)
+        cls.outsider = User.objects.create_user("dshare_out", password="x", role=Role.EMPLOYE)
+        Employee.objects.get(user=cls.emp).departments.set([dep])
+        Employee.objects.get(user=cls.colleague).departments.set([dep])
+        e = Employee.objects.get(user=cls.emp)
+        e.manager = Employee.objects.get(user=cls.mgr)
+        e.save()
+
+    def _doc(self, vis):
+        return Document.objects.create(title="Rendu", file="documents/x.txt",
+                                       visibility=vis, uploaded_by=self.emp)
+
+    def test_for_my_manager(self):
+        d = self._doc("MY_MANAGER")
+        self.assertTrue(d.can_view(self.mgr))
+        self.assertTrue(d.can_view(self.emp))
+        self.assertFalse(d.can_view(self.colleague))
+        self.assertFalse(d.can_view(self.outsider))
+
+    def test_for_colleagues(self):
+        d = self._doc("COLLEAGUES")
+        self.assertTrue(d.can_view(self.colleague))
+        self.assertFalse(d.can_view(self.outsider))
+
+    def test_for_both(self):
+        d = self._doc("COLL_MGR")
+        self.assertTrue(d.can_view(self.mgr))
+        self.assertTrue(d.can_view(self.colleague))
+        self.assertFalse(d.can_view(self.outsider))
+
+    def test_employee_can_open_upload(self):
+        from django.urls import reverse
+        self.client.force_login(self.emp)
+        self.assertEqual(self.client.get(reverse("documents:upload")).status_code, 200)

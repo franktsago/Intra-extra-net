@@ -15,6 +15,13 @@ class DocumentForm(StyledFormMixin, forms.ModelForm):
         # Seuls RH / CEO / admin peuvent marquer un document comme confidentiel.
         if not getattr(viewer, "is_rh", False):
             self.fields.pop("is_confidential", None)
+        # Un employé (non responsable) ne peut partager que vers ses collègues,
+        # son responsable, ou les deux.
+        if viewer is not None and not getattr(viewer, "is_manager", False):
+            share = {"COLLEAGUES", "MY_MANAGER", "COLL_MGR"}
+            self.fields["visibility"].choices = [
+                (v, l) for v, l in Document.Visibility.choices if v in share]
+            self.fields["visibility"].initial = "MY_MANAGER"
 
 
 class CategoryForm(StyledFormMixin, forms.ModelForm):

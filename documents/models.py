@@ -25,6 +25,10 @@ class DocumentCategory(models.Model):
 class Document(models.Model):
     class Visibility(models.TextChoices):
         ALL = "ALL", "Tout le personnel"
+        # Partages d'un employé (relatifs au déposant) :
+        COLLEAGUES = "COLLEAGUES", "Mes collègues (mon département)"
+        MY_MANAGER = "MY_MANAGER", "Mon responsable"
+        COLLEAGUES_MANAGER = "COLL_MGR", "Mes collègues et mon responsable"
         TEAM = "TEAM", "Mon équipe (responsable)"
         MANAGERS = "MANAGERS", "Responsables et RH"
         RH = "RH", "RH et direction"
@@ -118,11 +122,37 @@ class Document(models.Model):
         """Affichable en ligne (PDF, image, Word, Excel, PowerPoint)."""
         return self.is_pdf or self.is_image or self.is_office
 
+    def _shared_with_colleagues(self, user):
+        """Visible par les collègues de département du déposant (+ déposant, RH/direction)."""
+        if user.is_rh or self.uploaded_by_id == user.id:
+            return True
+        if not self.uploaded_by_id:
+            return False
+        from employees.models import department_colleagues_ids
+        return user.id in department_colleagues_ids(self.uploaded_by)
+
+    def _shared_with_manager(self, user):
+        """Visible par le responsable hiérarchique du déposant (+ déposant, RH/direction)."""
+        if user.is_rh or self.uploaded_by_id == user.id:
+            return True
+        if not self.uploaded_by_id:
+            return False
+        from employees.models import Employee
+        emp = (Employee.objects.filter(user_id=self.uploaded_by_id)
+               .select_related("manager__user").first())
+        return bool(emp and emp.manager and emp.manager.user_id == user.id)
+
     def can_view(self, user):
         if user.is_admin_lpm:
             return True
         if self.visibility == self.Visibility.ALL:
             return user.is_internal
+        if self.visibility == self.Visibility.COLLEAGUES:
+            return self._shared_with_colleagues(user)
+        if self.visibility == self.Visibility.MY_MANAGER:
+            return self._shared_with_manager(user)
+        if self.visibility == self.Visibility.COLLEAGUES_MANAGER:
+            return self._shared_with_colleagues(user) or self._shared_with_manager(user)
         if self.visibility == self.Visibility.TEAM:
             # Le responsable propriétaire, son équipe, et la direction RH/CEO.
             if user.is_rh or self.team_owner_id == user.id:

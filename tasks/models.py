@@ -62,3 +62,37 @@ class Task(models.Model):
     @property
     def priority_color(self):
         return {"LOW": "slate", "NORMAL": "sky", "HIGH": "amber", "URGENT": "red"}[self.priority]
+
+
+class TaskAttachment(models.Model):
+    """Fichier de rendu rattaché à une tâche (livrable envoyé au responsable/équipe).
+
+    Plusieurs fichiers possibles par tâche ; on sait ainsi à quelle tâche
+    correspond chaque livrable."""
+
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="attachments")
+    file = models.FileField("Fichier de rendu", upload_to="tasks/rendus/%Y/%m/")
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL,
+        related_name="task_attachments", verbose_name="Déposé par",
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        verbose_name = "Rendu de tâche"
+        verbose_name_plural = "Rendus de tâche"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        import os
+        return os.path.basename(self.file.name)
+
+    @property
+    def filename(self):
+        import os
+        return os.path.basename(self.file.name)
+
+    @property
+    def ext(self):
+        import os
+        return os.path.splitext(self.file.name)[1].lower().lstrip(".")

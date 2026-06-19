@@ -8,7 +8,7 @@
   <div class="bg-white rounded-xl shadow-card overflow-hidden">
     <div class="lpm-gradient text-white px-5 py-3 flex items-center justify-between">
       <div><h3 class="font-bold">{{ g.dept.name }}</h3>
-      {% if g.dept.manager %}<p class="text-xs text-white/80">Responsable : {{ g.dept.manager.get_full_name }}</p>{% endif %}</div>
+      {% if g.dept.manager_list %}<p class="text-xs text-white/80">Responsable{{ g.dept.manager_list|length|pluralize }} : {% for m in g.dept.manager_list %}{{ m.get_full_name|default:m.username }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}</div>
       <span class="bg-white/20 px-3 py-1 rounded-full text-sm">{{ g.members|length }} pers.</span>
     </div>
     <div class="p-5 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">

@@ -34,11 +34,13 @@ def _manager_user_of(user):
     emp = Employee.objects.filter(user=user).select_related("manager__user").first()
     if emp and emp.manager and emp.manager.user_id:
         return emp.manager.user
-    # Repli : responsable de département.
-    from employees.models import Department, department_ids_for
-    dept = (Department.objects.filter(id__in=department_ids_for(user), manager__isnull=False)
-            .exclude(manager=user).select_related("manager").first())
-    return dept.manager if dept else None
+    # Repli : un responsable de l'un de ses départements (principal ou co-responsable).
+    from accounts.models import User
+    from employees.models import department_ids_for
+    dept_ids = department_ids_for(user)
+    return (User.objects.filter(
+        Q(departements_diriges__id__in=dept_ids) | Q(departements_codiriges__id__in=dept_ids))
+        .exclude(pk=user.pk).distinct().first())
 
 
 def _task_in_user_departments(user, task):

@@ -18,7 +18,13 @@ class Department(models.Model):
     description = models.TextField("Description", blank=True)
     manager = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
-        related_name="departements_diriges", verbose_name="Responsable",
+        related_name="departements_diriges", verbose_name="Responsable principal",
+    )
+    # Un département peut avoir PLUSIEURS responsables. `manager` reste le
+    # responsable « principal » (1er) pour l'affichage et la compatibilité.
+    managers = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="departements_codiriges",
+        verbose_name="Responsables",
     )
     parent = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.SET_NULL,
@@ -37,6 +43,25 @@ class Department(models.Model):
     def headcount(self):
         # Effectif = personnel présent dans l'organisation (au travail OU en congé).
         return self.employees.filter(status__in=WORKFORCE_STATUSES).count()
+
+    @property
+    def manager_ids(self):
+        """Ids de tous les responsables (principal + co-responsables)."""
+        ids = set(self.managers.values_list("id", flat=True))
+        if self.manager_id:
+            ids.add(self.manager_id)
+        return ids
+
+    @property
+    def manager_list(self):
+        """Responsables à afficher (principal d'abord puis co-responsables)."""
+        out = []
+        if self.manager_id:
+            out.append(self.manager)
+        for m in self.managers.all():
+            if m.id != self.manager_id:
+                out.append(m)
+        return out
 
 
 def _next_birthday(birth_date, today):
@@ -268,7 +293,8 @@ def department_ids_for(user):
     emp = Employee.objects.filter(user=user).first()
     if emp:
         ids.update(emp.departments.values_list("id", flat=True))
-    ids.update(Department.objects.filter(manager=user).values_list("id", flat=True))
+    ids.update(Department.objects.filter(
+        models.Q(manager=user) | models.Q(managers=user)).values_list("id", flat=True))
     return ids
 
 

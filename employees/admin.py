@@ -7,6 +7,7 @@ from .models import Department, Employee, Position
 class DepartmentAdmin(admin.ModelAdmin):
     list_display = ("name", "code", "manager", "parent", "headcount")
     search_fields = ("name", "code")
+    filter_horizontal = ("managers",)
 
 
 @admin.register(Position)

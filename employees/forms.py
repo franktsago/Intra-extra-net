@@ -1,5 +1,6 @@
 from django import forms
 
+from accounts.forms import CheckboxDropdown as SimpleCheckboxDropdown
 from accounts.forms import StyledFormMixin
 from accounts.models import INTRANET_ROLES, User
 
@@ -149,15 +150,38 @@ class EmployeeProfileForm(StyledFormMixin, forms.ModelForm):
 
 
 class DepartmentForm(StyledFormMixin, forms.ModelForm):
+    managers = forms.ModelMultipleChoiceField(
+        label="Responsables", required=False, queryset=None,
+        widget=SimpleCheckboxDropdown(placeholder="Sélectionner les responsables…", noun="responsable"),
+        help_text="Un département peut avoir plusieurs responsables.",
+    )
+
     class Meta:
         model = Department
-        fields = ["name", "code", "description", "manager", "parent"]
+        fields = ["name", "code", "description", "parent"]
 
     def __init__(self, *args, viewer=None, **kwargs):
         super().__init__(*args, **kwargs)
         from accounts.utils import hide_superadmin
-        self.fields["manager"].queryset = hide_superadmin(
-            self.fields["manager"].queryset, viewer)
+        qs = hide_superadmin(
+            User.objects.filter(role__in=INTRANET_ROLES, is_active=True), viewer
+        ).order_by("first_name", "last_name")
+        self.fields["managers"].queryset = qs
+        if self.instance and self.instance.pk:
+            init = list(self.instance.managers.all())
+            if not init and self.instance.manager_id:
+                init = [self.instance.manager]
+            self.fields["managers"].initial = init
+
+    def save(self, commit=True):
+        dept = super().save(commit=False)
+        mgrs = list(self.cleaned_data.get("managers", []))
+        # Le responsable principal (compat/affichage) = 1er sélectionné.
+        dept.manager = mgrs[0] if mgrs else None
+        if commit:
+            dept.save()
+            dept.managers.set(mgrs)
+        return dept
 
 
 class PositionForm(StyledFormMixin, forms.ModelForm):

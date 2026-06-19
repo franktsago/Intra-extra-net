@@ -126,7 +126,8 @@ class UserEditForm(StyledFormMixin, forms.ModelForm):
     )
     linked_accounts = forms.ModelMultipleChoiceField(
         label="Comptes liés (même personne)", required=False,
-        queryset=User.objects.none(), widget=forms.SelectMultiple,
+        queryset=User.objects.none(),
+        widget=CheckboxDropdown(placeholder="Sélectionner les comptes…", noun="compte"),
         help_text="Autres comptes de la MÊME personne : elle pourra basculer de "
                   "l'un à l'autre sans se reconnecter. Chaque action reste tracée.",
     )

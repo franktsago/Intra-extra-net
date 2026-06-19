@@ -28,6 +28,22 @@ class DepartmentCrudTest(TestCase):
         self.assertEqual(r.status_code, 302)
         self.assertFalse(Department.objects.filter(pk=dep.pk).exists())
 
+    def test_multiple_managers(self):
+        from employees.models import department_ids_for
+        r1 = User.objects.create_user("dm1", password="x", role=Role.MANAGER)
+        r2 = User.objects.create_user("dm2", password="x", role=Role.MANAGER)
+        self.client.force_login(self.admin)
+        r = self.client.post(reverse("employees:departments"),
+                             {"name": "Studio", "code": "STU", "managers": [r1.pk, r2.pk]})
+        self.assertEqual(r.status_code, 302)
+        dep = Department.objects.get(name="Studio")
+        # Les deux sont responsables…
+        self.assertEqual(set(dep.managers.values_list("pk", flat=True)), {r1.pk, r2.pk})
+        self.assertEqual(dep.manager_id, r1.pk)   # principal = 1er
+        # …et chacun « dirige » le département (cloisonnement).
+        self.assertIn(dep.id, department_ids_for(r1))
+        self.assertIn(dep.id, department_ids_for(r2))
+
     def test_employee_forbidden(self):
         dep = Department.objects.create(name="RH")
         self.client.force_login(self.emp)

@@ -15,7 +15,7 @@
           <td class="px-4 py-3 font-medium text-slate-800">{{ d.name }}
             {% if d.parent %}<span class="text-xs text-slate-400">· {{ d.parent.name }}</span>{% endif %}</td>
           <td class="px-4 py-3 text-slate-500">{{ d.code|default:"—" }}</td>
-          <td class="px-4 py-3 text-slate-500">{{ d.manager.get_full_name|default:"—" }}</td>
+          <td class="px-4 py-3 text-slate-500">{% for m in d.manager_list %}{{ m.get_full_name|default:m.username }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
           <td class="px-4 py-3">{{ d.headcount }}</td>
           <td class="px-4 py-3 text-right whitespace-nowrap">
             <a href="{% url 'employees:department_edit' d.pk %}" class="text-lpm hover:underline" title="Modifier"><i class="fa-solid fa-pen"></i></a>

@@ -48,7 +48,8 @@ class ActivityLogMiddleware:
         if user is not None and user.is_authenticated:
             now = int(time.time())
             last = request.session.get("last_activity")
-            if last and (now - last) > self.timeout:
+            # Déconnexion par inactivité UNIQUEMENT si un délai (> 0) est configuré.
+            if self.timeout > 0 and last and (now - last) > self.timeout:
                 logout(request)
                 messages.info(
                     request,
@@ -56,11 +57,18 @@ class ActivityLogMiddleware:
                     "Veuillez vous reconnecter.",
                 )
             else:
-                # Performance : on ne réécrit la session qu'au plus 1×/minute
-                # (précision suffisante pour un délai d'inactivité de 30 min) →
+                # Performance : on ne réécrit la session qu'au plus 1×/minute →
                 # évite une écriture en base à chaque requête.
                 if not last or (now - last) > 60:
                     request.session["last_activity"] = now
+                # Session persistante : prolonge le cookie (fenêtre glissante) au
+                # plus 1×/jour, pour que l'utilisateur actif ne soit jamais déconnecté.
+                if self.timeout <= 0 and (now - request.session.get("expiry_bumped", 0)) > 86400:
+                    request.session["expiry_bumped"] = now
+                    try:
+                        request.session.set_expiry(getattr(settings, "SESSION_COOKIE_AGE", 60 * 60 * 24 * 60))
+                    except Exception:
+                        pass
                 # Présence « en ligne » : met à jour last_seen au plus une fois/25 s.
                 if now - request.session.get("last_seen_ts", 0) > 25:
                     request.session["last_seen_ts"] = now

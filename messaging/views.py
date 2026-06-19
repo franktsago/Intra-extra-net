@@ -487,9 +487,53 @@ def call(request, call_id):
         call.save(update_fields=["status", "answered_at"])
     title = call.group.name if call.group_id else (call.other.get_full_name() or call.other.username)
     back = _hub(("g%d" % call.group_id) if call.group_id else ("u%d" % call.other_id))
-    return render(request, "messaging/call.html", {
-        "room": call.room, "title": title, "mode": call.mode, "back": back, "call": call,
-        "is_caller": request.user.id == call.caller_id})
+    ctx = {"room": call.room, "title": title, "mode": call.mode, "back": back, "call": call,
+           "is_caller": request.user.id == call.caller_id}
+    # Appel DIRECT (1-à-1) → WebRTC natif (signalisation maison, sans service externe).
+    # Appel de GROUPE → Jitsi (média multipartite).
+    if call.group_id:
+        return render(request, "messaging/call.html", ctx)
+    import json
+    from django.conf import settings
+    ice = [{"urls": settings.WEBRTC_STUN_URLS}]
+    if settings.WEBRTC_TURN_URL:
+        ice.append({"urls": settings.WEBRTC_TURN_URL,
+                    "username": settings.WEBRTC_TURN_USERNAME,
+                    "credential": settings.WEBRTC_TURN_CREDENTIAL})
+    ctx["ice_servers"] = json.dumps(ice)
+    return render(request, "messaging/call_rtc.html", ctx)
+
+
+@login_required
+def call_signal(request, call_id):
+    """Signalisation WebRTC d'un appel direct : échange offre/réponse/ICE par polling."""
+    import json
+    from django.http import JsonResponse
+    from .models import Call, CallSignal
+    call = get_object_or_404(Call, pk=call_id)
+    if call.group_id or not _call_participant(call, request.user):
+        raise PermissionDenied()
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+        except (ValueError, UnicodeDecodeError):
+            return JsonResponse({"ok": False}, status=400)
+        kind = data.get("kind")
+        if kind not in ("offer", "answer", "ice"):
+            return JsonResponse({"ok": False}, status=400)
+        CallSignal.objects.create(call=call, sender=request.user, kind=kind,
+                                  payload=json.dumps(data.get("payload")))
+        return JsonResponse({"ok": True})
+    # GET : signaux émis par l'AUTRE pair, après ?after=.
+    after = 0
+    try:
+        after = int(request.GET.get("after") or 0)
+    except ValueError:
+        after = 0
+    sigs = (CallSignal.objects.filter(call=call, id__gt=after)
+            .exclude(sender=request.user).order_by("id"))
+    out = [{"id": s.id, "kind": s.kind, "payload": json.loads(s.payload)} for s in sigs]
+    return JsonResponse({"signals": out, "status": call.status})
 
 
 @csrf_exempt

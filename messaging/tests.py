@@ -632,3 +632,49 @@ class GroupWithClientsTest(TestCase):
         # …et y écrire.
         self.client.post(reverse("messaging:group", args=[g.pk]), {"body": "Bonjour l'équipe"})
         self.assertTrue(GroupMessage.objects.filter(group=g, sender=self.client_u, body="Bonjour l'équipe").exists())
+
+
+class CallSignalTest(TestCase):
+    """Signalisation WebRTC d'un appel direct : échange entre participants, isolé."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.a = User.objects.create_user("csA", password="x", role=Role.EMPLOYE)
+        cls.b = User.objects.create_user("csB", password="x", role=Role.EMPLOYE)
+        cls.c = User.objects.create_user("csC", password="x", role=Role.EMPLOYE)
+
+    def _start_call(self):
+        from messaging.models import Call
+        self.client.force_login(self.a)
+        self.client.get(reverse("messaging:call_start", args=["d", self.b.pk, "audio"]))
+        return Call.objects.latest("id")
+
+    def test_signal_exchange_between_participants(self):
+        import json
+        call = self._start_call()
+        # A poste une offre.
+        self.client.post(reverse("messaging:call_signal", args=[call.pk]),
+                         data=json.dumps({"kind": "offer", "payload": {"sdp": "x"}}),
+                         content_type="application/json")
+        # B récupère le signal de A.
+        self.client.force_login(self.b)
+        d = json.loads(self.client.get(reverse("messaging:call_signal", args=[call.pk])).content)
+        self.assertEqual(len(d["signals"]), 1)
+        self.assertEqual(d["signals"][0]["kind"], "offer")
+        self.assertEqual(d["signals"][0]["payload"]["sdp"], "x")
+        # A ne voit pas son propre signal (seulement ceux de l'autre pair).
+        self.client.force_login(self.a)
+        d2 = json.loads(self.client.get(reverse("messaging:call_signal", args=[call.pk])).content)
+        self.assertEqual(len(d2["signals"]), 0)
+
+    def test_non_participant_blocked(self):
+        call = self._start_call()
+        self.client.force_login(self.c)
+        r = self.client.get(reverse("messaging:call_signal", args=[call.pk]))
+        self.assertEqual(r.status_code, 403)
+
+    def test_direct_call_page_uses_webrtc(self):
+        call = self._start_call()
+        r = self.client.get(reverse("messaging:call", args=[call.pk]))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "RTCPeerConnection")   # page WebRTC native, pas Jitsi

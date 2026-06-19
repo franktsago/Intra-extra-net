@@ -10,7 +10,9 @@
   .wa-out{background:#d6e9ff}
   .wa-tail-out:after{content:"";position:absolute;top:0;right:-7px;width:0;height:0;border:7px solid transparent;border-top-color:#d6e9ff;border-right:0}
   .wa-tail-in:after{content:"";position:absolute;top:0;left:-7px;width:0;height:0;border:7px solid transparent;border-top-color:#fff;border-left:0}
-  .wa-input{max-height:120px;min-height:24px;resize:none}
+  /* font-size 16px : empêche le zoom automatique au focus sur iOS/tablette. */
+  .wa-input{max-height:120px;min-height:24px;resize:none;font-size:16px}
+  #convSearch{font-size:16px}
   .emoji-pop{position:absolute;bottom:60px;left:8px;display:none;background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:8px;width:260px;z-index:30}
   .emoji-pop.show{display:block}
   .emoji-pop button{font-size:20px;line-height:1;padding:4px;border-radius:8px}
@@ -285,5 +287,5 @@
 (function(){var t=document.getElementById('thread');if(t)t.scrollTop=t.scrollHeight;})();
 function filterConvs(q){q=(q||'').toLowerCase();document.querySelectorAll('#convList .convitem').forEach(function(el){el.style.display=el.getAttribute('data-name').indexOf(q)>-1?'':'none';});}
 </script>
-<script src="{% static 'js/chat.js' %}?v=12"></script>
+<script src="{% static 'js/chat.js' %}?v=13"></script>
 {% endblock %}

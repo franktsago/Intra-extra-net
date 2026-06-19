@@ -209,9 +209,20 @@ LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "dashboard:home"
 LOGOUT_REDIRECT_URL = "accounts:login"
 
-# Déconnexion automatique après inactivité (en secondes) — exigence du CDC.
-SESSION_EXPIRE_SECONDS = int(os.getenv("SESSION_EXPIRE_SECONDS", 30 * 60))
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+# Session : l'utilisateur reste connecté jusqu'à ce qu'il se déconnecte lui-même.
+# 0 = pas de déconnexion automatique par inactivité (valeur > 0 pour la réactiver).
+SESSION_EXPIRE_SECONDS = int(os.getenv("SESSION_EXPIRE_SECONDS", 0))
+# Le cookie de session survit à la fermeture du navigateur (durée longue, glissante).
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", 60 * 60 * 24 * 60))  # 60 jours
+
+# Appels WebRTC 1-à-1 (signalisation maison). STUN public Google par défaut ;
+# un serveur TURN (utile derrière certains pare-feux/4G) s'ajoute via l'environnement.
+WEBRTC_STUN_URLS = [u.strip() for u in os.getenv(
+    "WEBRTC_STUN_URLS", "stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302").split(",") if u.strip()]
+WEBRTC_TURN_URL = os.getenv("WEBRTC_TURN_URL", "")
+WEBRTC_TURN_USERNAME = os.getenv("WEBRTC_TURN_USERNAME", "")
+WEBRTC_TURN_CREDENTIAL = os.getenv("WEBRTC_TURN_CREDENTIAL", "")
 # Performance : on N'enregistre PAS la session à chaque requête. Le suivi
 # d'inactivité est géré par le middleware, qui ne modifie la session (donc ne
 # l'écrit) qu'au plus une fois par minute → bien moins d'écritures en base.

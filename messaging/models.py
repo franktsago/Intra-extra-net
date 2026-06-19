@@ -300,6 +300,23 @@ class Call(models.Model):
                 "DECLINED": "red", "RINGING": "amber"}.get(self.status, "slate")
 
 
+class CallSignal(models.Model):
+    """Message de signalisation WebRTC (offre / réponse / candidat ICE).
+
+    Échangé entre les deux participants d'un appel direct (1-à-1) via polling :
+    chaque pair lit les signaux émis par l'AUTRE pair après un identifiant donné.
+    """
+    call = models.ForeignKey(Call, on_delete=models.CASCADE, related_name="signals")
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    kind = models.CharField(max_length=10)  # offer / answer / ice
+    payload = models.TextField()             # JSON (SDP ou candidat ICE)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["id"]
+        indexes = [models.Index(fields=["call", "id"])]
+
+
 class ConversationPin(models.Model):
     """Épinglage d'une conversation (directe ou groupe) par un utilisateur."""
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="conversation_pins")

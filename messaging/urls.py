@@ -22,6 +22,7 @@ urlpatterns = [
     path("appel/<int:call_id>/", views.call, name="call"),
     path("appel/<int:call_id>/fin/", views.call_end, name="call_end"),
     path("appel/<int:call_id>/refuser/", views.call_decline, name="call_decline"),
+    path("appel/<int:call_id>/signal/", views.call_signal, name="call_signal"),
     path("epingler-message/<str:kind>/<int:pk>/", views.pin_message, name="pin_message"),
     path("epingler/<str:conv>/", views.pin_conversation, name="pin_conversation"),
     # Chat de groupe (placé avant <int:pk> pour éviter les collisions)

@@ -11,8 +11,8 @@ class TaskForm(StyledFormMixin, forms.ModelForm):
     # une tâche distincte est alors créée pour chacun (espace de chacun).
     assignees = forms.ModelMultipleChoiceField(
         label="Assigner à", queryset=User.objects.none(), required=False,
-        widget=forms.SelectMultiple(attrs={"size": 6}),
-        help_text="Sélectionnez un ou plusieurs membres (Ctrl/Cmd pour en choisir plusieurs).",
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Cochez un ou plusieurs membres de votre équipe.",
     )
 
     class Meta:

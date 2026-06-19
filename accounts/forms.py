@@ -52,7 +52,11 @@ class StyledFormMixin:
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             w = field.widget
-            if isinstance(w, forms.CheckboxInput):
+            if isinstance(w, (forms.CheckboxSelectMultiple, forms.RadioSelect)):
+                # Listes de cases à cocher / boutons radio : petites cases, pas de
+                # bordure pleine largeur sur chaque option.
+                w.attrs.setdefault("class", "h-4 w-4 rounded border-slate-300 text-[#0073DE]")
+            elif isinstance(w, forms.CheckboxInput):
                 w.attrs.setdefault("class", "h-4 w-4 rounded border-slate-300 text-[#0073DE]")
             elif isinstance(w, (forms.ClearableFileInput, forms.FileInput)):
                 w.attrs.setdefault("class", FILE_INPUT)

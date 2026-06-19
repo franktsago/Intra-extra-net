@@ -61,9 +61,11 @@
       .then(function (d) { if (d.call) { if (d.call.id !== current) show(d.call); } else hide(); })
       .catch(function () {});
   }
-  // 12 s suffisent (un appel sonne ~45 s) et allègent fortement la charge serveur.
-  setInterval(poll, 12000);
-  // Vérifie aussi dès que l'utilisateur revient sur l'onglet.
+  // Sonde toutes les 5 s (un appel sonne ~45 s) : assez réactif pour ne pas rater
+  // un appel entrant, tout en restant léger.
+  setInterval(poll, 5000);
+  // Vérifie aussi dès que l'utilisateur revient sur l'onglet / la fenêtre.
   document.addEventListener('visibilitychange', function () { if (!document.hidden) poll(); });
+  window.addEventListener('focus', poll);
   poll();
 })();

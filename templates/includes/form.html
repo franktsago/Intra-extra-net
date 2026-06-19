@@ -4,7 +4,7 @@
 {% endif %}
 <div class="grid sm:grid-cols-2 gap-4">
   {% for f in form %}
-  <div class="{% if f.field.widget.input_type == 'textarea' or f.name == 'content' or f.name == 'description' or f.name == 'facts' %}sm:col-span-2{% endif %}">
+  <div class="{% if f.field.widget.input_type == 'textarea' or f.name == 'content' or f.name == 'description' or f.name == 'facts' or f.name == 'assignees' or f.name == 'linked_accounts' %}sm:col-span-2{% endif %}">
     <label class="block text-sm font-medium text-slate-700 mb-1">{{ f.label }}{% if f.field.required %} <span class="text-red-500">*</span>{% endif %}</label>
     {{ f }}
     {% if f.help_text %}<p class="text-xs text-slate-400 mt-1">{{ f.help_text|safe }}</p>{% endif %}

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Appel {{ mode }} — {{ title }} · LPM Consulting Group</title>
+  <style>
+    html,body{margin:0;height:100%;background:#0a1a33;font-family:Inter,system-ui,sans-serif;color:#fff;overflow:hidden}
+    #stage{position:relative;height:100%;width:100%;background:#0a1a33}
+    #remote{width:100%;height:100%;object-fit:cover;background:#0a1a33;display:{% if mode == 'video' %}block{% else %}none{% endif %}}
+    #local{position:absolute;right:14px;bottom:96px;width:120px;max-width:34vw;border-radius:12px;border:2px solid rgba(255,255,255,.5);object-fit:cover;background:#0d2347;z-index:5;display:{% if mode == 'video' %}block{% else %}none{% endif %}}
+    #avatar{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center}
+    #avatar .circle{height:120px;width:120px;border-radius:50%;background:linear-gradient(135deg,#0196F2,#0057CA);display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:700}
+    #avatar.hide{display:none}
+    #status{position:absolute;top:18px;left:0;right:0;text-align:center;color:#cdd9ec;font-size:14px;z-index:6}
+    #status .t{font-weight:700;color:#fff;font-size:18px}
+    #bar{position:absolute;left:0;right:0;bottom:0;height:84px;display:flex;align-items:center;justify-content:center;gap:18px;background:linear-gradient(0deg,rgba(0,0,0,.55),transparent);z-index:10;padding-bottom:env(safe-area-inset-bottom)}
+    .btn{height:58px;width:58px;border-radius:50%;border:0;cursor:pointer;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.18)}
+    .btn:hover{background:rgba(255,255,255,.28)}
+    .btn.off{background:#fff;color:#0a1a33}
+    .btn.hang{background:#e11d48}.btn.hang:hover{background:#be123c}
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <video id="remote" autoplay playsinline></video>
+    <video id="local" autoplay playsinline muted></video>
+    <div id="avatar"><div class="circle">{{ title|slice:":1"|upper }}</div><div style="font-size:18px;font-weight:600">{{ title }}</div></div>
+    <div id="status"><div class="t">{{ title }}</div><div id="state">{% if is_caller %}Appel en cours…{% else %}Connexion…{% endif %}</div></div>
+    <div id="bar">
+      <button id="mic" class="btn" title="Couper le micro">🎙️</button>
+      {% if mode == 'video' %}<button id="cam" class="btn" title="Couper la caméra">📷</button>{% endif %}
+      <button id="hang" class="btn hang" title="Raccrocher">📞</button>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    var ICE = {{ ice_servers|safe }};
+    var SIGNAL = "{% url 'messaging:call_signal' call.pk %}";
+    var ENDURL = "{% url 'messaging:call_end' call.pk %}";
+    var BACK = "{{ back|escapejs }}";
+    var MODE = "{{ mode }}";
+    var IS_CALLER = {% if is_caller %}true{% else %}false{% endif %};
+    var csrf = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+
+    var remoteV = document.getElementById('remote'), localV = document.getElementById('local');
+    var avatar = document.getElementById('avatar'), stateEl = document.getElementById('state');
+    var pc = null, localStream = null, lastSig = 0, ended = false, answered = false;
+    var pendingIce = [], haveRemote = false, polling = null;
+
+    function setState(t){ if(stateEl) stateEl.textContent = t; }
+
+    // --- Sonnerie d'appel (ringback) pour l'appelant ---
+    var actx=null, rb=null;
+    function ringback(){ try{ if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended')actx.resume(); }catch(e){return;}
+      function beep(){ try{ var o=actx.createOscillator(),g=actx.createGain(); o.frequency.value=440; o.connect(g); g.connect(actx.destination); var t=actx.currentTime; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.18,t+0.03); g.gain.exponentialRampToValueAtTime(0.0001,t+1.0); o.start(t); o.stop(t+1.05);}catch(e){} }
+      beep(); rb=setInterval(beep,3000); }
+    function stopRingback(){ if(rb){clearInterval(rb);rb=null;} }
+
+    function post(kind, payload){
+      return fetch(SIGNAL, {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrf},
+        body: JSON.stringify({kind:kind, payload:payload})}).catch(function(){});
+    }
+
+    function cleanup(){
+      ended = true; stopRingback();
+      if(polling) clearInterval(polling);
+      try{ if(localStream) localStream.getTracks().forEach(function(t){t.stop();}); }catch(e){}
+      try{ if(pc) pc.close(); }catch(e){}
+    }
+    function endCall(redirect){
+      if(ended){ if(redirect) location.href = BACK; return; }
+      cleanup();
+      try{ navigator.sendBeacon ? navigator.sendBeacon(ENDURL) : fetch(ENDURL,{method:'POST',headers:{'X-CSRFToken':csrf}}); }catch(e){}
+      if(redirect) location.href = BACK;
+    }
+    window.addEventListener('pagehide', function(){ try{ navigator.sendBeacon(ENDURL); }catch(e){} });
+
+    function newPc(){
+      pc = new RTCPeerConnection({iceServers: ICE});
+      pc.onicecandidate = function(e){ if(e.candidate) post('ice', e.candidate); };
+      pc.ontrack = function(e){
+        if(e.streams && e.streams[0]){ remoteV.srcObject = e.streams[0]; }
+        answered = true; stopRingback(); avatar.classList.add('hide'); setState('Connecté');
+      };
+      pc.oniceconnectionstatechange = function(){
+        var s = pc.iceConnectionState;
+        if(s === 'connected' || s === 'completed'){ answered = true; stopRingback(); setState('Connecté'); }
+        if(s === 'failed' || s === 'disconnected'){ setState('Connexion perdue…'); }
+      };
+      localStream.getTracks().forEach(function(t){ pc.addTrack(t, localStream); });
+    }
+
+    function applyRemoteDesc(desc){
+      return pc.setRemoteDescription(new RTCSessionDescription(desc)).then(function(){
+        haveRemote = true;
+        pendingIce.forEach(function(c){ pc.addIceCandidate(new RTCIceCandidate(c)).catch(function(){}); });
+        pendingIce = [];
+      });
+    }
+
+    function handleSignal(s){
+      if(s.kind === 'offer'){
+        // Côté appelé : applique l'offre, répond.
+        applyRemoteDesc(s.payload).then(function(){
+          return pc.createAnswer();
+        }).then(function(ans){
+          return pc.setLocalDescription(ans).then(function(){ post('answer', ans); });
+        }).catch(function(){});
+      } else if(s.kind === 'answer'){
+        applyRemoteDesc(s.payload).catch(function(){});
+      } else if(s.kind === 'ice'){
+        if(haveRemote){ pc.addIceCandidate(new RTCIceCandidate(s.payload)).catch(function(){}); }
+        else { pendingIce.push(s.payload); }
+      }
+    }
+
+    function poll(){
+      if(ended) return;
+      fetch(SIGNAL + '?after=' + lastSig, {headers:{'X-Requested-With':'XMLHttpRequest'}})
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if(d.status && (d.status === 'COMPLETED' || d.status === 'DECLINED' || d.status === 'MISSED')){
+            setState(d.status === 'DECLINED' ? 'Appel refusé' : 'Appel terminé');
+            cleanup(); setTimeout(function(){ location.href = BACK; }, 800); return;
+          }
+          (d.signals || []).forEach(function(s){ if(s.id > lastSig) lastSig = s.id; handleSignal(s); });
+        }).catch(function(){});
+    }
+
+    async function start(){
+      if(!navigator.mediaDevices || !window.RTCPeerConnection){
+        setState("Appels non supportés par ce navigateur."); return;
+      }
+      if(!window.isSecureContext && location.hostname!=='localhost' && location.hostname!=='127.0.0.1'){
+        setState("Les appels nécessitent une connexion sécurisée (HTTPS)."); return;
+      }
+      try{
+        localStream = await navigator.mediaDevices.getUserMedia({audio:true, video: MODE==='video'});
+      }catch(e){ setState("Accès micro/caméra refusé."); return; }
+      if(MODE==='video'){ localV.srcObject = localStream; }
+      newPc();
+      if(IS_CALLER){
+        ringback();
+        var offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        post('offer', offer);
+        // 45 s sans réponse → appel manqué.
+        setTimeout(function(){ if(!answered && !ended){ setState("Personne n'a répondu."); endCall(true); } }, 45000);
+      }
+      poll(); polling = setInterval(poll, 1500);
+    }
+
+    // --- Contrôles ---
+    document.getElementById('hang').addEventListener('click', function(){ endCall(true); });
+    document.getElementById('mic').addEventListener('click', function(){
+      if(!localStream) return; var on=false;
+      localStream.getAudioTracks().forEach(function(t){ t.enabled = !t.enabled; on = t.enabled; });
+      this.classList.toggle('off', !on);
+    });
+    var camBtn = document.getElementById('cam');
+    if(camBtn) camBtn.addEventListener('click', function(){
+      if(!localStream) return; var on=false;
+      localStream.getVideoTracks().forEach(function(t){ t.enabled = !t.enabled; on = t.enabled; });
+      this.classList.toggle('off', !on);
+      localV.style.visibility = on ? 'visible' : 'hidden';
+    });
+    // Débloque l'audio (politique navigateur) au 1er geste.
+    document.addEventListener('click', function(){ try{ if(actx && actx.state==='suspended') actx.resume(); }catch(e){} }, {once:true});
+
+    start();
+  })();
+  </script>
+</body>
+</html>

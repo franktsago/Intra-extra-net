@@ -293,7 +293,7 @@
               {% with dept=user.department_label %}
               {% for code, label in user.available_roles_display %}
               <a href="{% url 'accounts:switch_role' code %}" class="flex items-center justify-between gap-2 px-4 py-2 text-sm hover:bg-slate-50 {% if code == user.effective_role %}text-lpm font-medium{% else %}text-slate-700{% endif %}">
-                <span class="min-w-0"><i class="fa-solid fa-user-shield fa-fw text-slate-300 mr-2"></i>{{ label }}{% if dept %} <span class="text-xs text-slate-400">· {{ dept }}</span>{% endif %}</span>
+                <span class="min-w-0"><i class="fa-solid fa-user-shield fa-fw text-slate-300 mr-2"></i>{{ label }}{% if dept and code == 'MANAGER' %} <span class="text-xs text-slate-400">· {{ dept }}</span>{% endif %}</span>
                 {% if code == user.effective_role %}<i class="fa-solid fa-check text-lpm flex-shrink-0"></i>{% endif %}
               </a>
               {% endfor %}
@@ -375,6 +375,6 @@
   if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(function(){}); }
 </script>
 {% block scripts %}{% endblock %}
-<script src="{% static 'js/calls.js' %}?v=3"></script>
+<script src="{% static 'js/calls.js' %}?v=4"></script>
 </body>
 </html>

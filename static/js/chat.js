@@ -111,12 +111,26 @@
       try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
       catch (e) { alert("Accès au micro refusé ou indisponible."); return; }
       chunks = [];
-      rec = new MediaRecorder(stream);
+      // Choisit un format réellement supporté par le navigateur. iOS/Safari
+      // n'enregistre PAS en webm (seulement mp4/aac) : forcer webm produisait un
+      // fichier illisible → les vocaux ne « fonctionnaient » pas sur iPhone/iPad.
+      var TYPES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/ogg'];
+      var mt = '';
+      if (window.MediaRecorder && MediaRecorder.isTypeSupported) {
+        for (var i = 0; i < TYPES.length; i++) { if (MediaRecorder.isTypeSupported(TYPES[i])) { mt = TYPES[i]; break; } }
+      }
+      try { rec = mt ? new MediaRecorder(stream, { mimeType: mt }) : new MediaRecorder(stream); }
+      catch (e) { rec = new MediaRecorder(stream); }
       rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
       rec.onstop = function () {
         try {
-          var blob = new Blob(chunks, { type: 'audio/webm' });
-          var file = new File([blob], 'voix-' + Date.now() + '.webm', { type: 'audio/webm' });
+          // Type/extension réels du format enregistré (mp4/m4a sur iOS, webm ailleurs).
+          var type = (rec && rec.mimeType) || mt || 'audio/webm';
+          var base = type.split(';')[0];
+          var ext = base.indexOf('mp4') > -1 ? 'm4a' : base.indexOf('aac') > -1 ? 'm4a'
+                  : base.indexOf('ogg') > -1 ? 'ogg' : base.indexOf('mpeg') > -1 ? 'mp3' : 'webm';
+          var blob = new Blob(chunks, { type: base });
+          var file = new File([blob], 'voix-' + Date.now() + '.' + ext, { type: base });
           var dt = new DataTransfer(); dt.items.add(file); fileInput.files = dt.files;
           // Aperçu : l'utilisateur écoute puis décide d'envoyer ou d'annuler.
           blobUrl = URL.createObjectURL(blob);

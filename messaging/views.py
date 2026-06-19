@@ -161,6 +161,12 @@ def thread(request, pk):
                 msg.reply_to = Message.objects.filter(
                     pk=rid).filter(Q(sender=me, recipient=other) | Q(sender=other, recipient=me)).first()
             msg.save()  # signalé par le badge « Messagerie » (pas de cloche)
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                from django.http import JsonResponse
+                return JsonResponse({"ok": True, "id": msg.id})
+        elif request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            from django.http import JsonResponse
+            return JsonResponse({"ok": False}, status=400)
     return redirect(_hub("u%d" % other.pk))
 
 
@@ -339,6 +345,12 @@ def group_thread(request, pk):
             if rid:
                 m.reply_to = GroupMessage.objects.filter(pk=rid, group=group).first()
             m.save()
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                from django.http import JsonResponse
+                return JsonResponse({"ok": True, "id": m.id})
+        elif request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            from django.http import JsonResponse
+            return JsonResponse({"ok": False}, status=400)
     return redirect(_hub("g%d" % group.pk))
 
 

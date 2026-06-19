@@ -9,6 +9,7 @@
     <a href="{% url 'hr:attendance_export' %}?date={{ day }}" class="border border-slate-300 text-slate-600 px-3 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-file-csv mr-1"></i> Fiche du jour</a>
     <a href="{% url 'hr:attendance_export' %}?month={{ day|slice:':7' }}" class="border border-slate-300 text-slate-600 px-3 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-file-csv mr-1"></i> Fiche du mois</a>
     {% if can_payroll %}<a href="{% url 'hr:payroll_impacts' %}?month={{ day|slice:':7' }}" class="bg-amber-500 text-white px-3 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-money-bill-wave mr-1"></i> Incidences salariales</a>{% endif %}
+    {% if can_set_office %}<a href="{% url 'hr:attendance_settings' %}" class="border border-slate-300 text-slate-600 px-3 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-sliders mr-1"></i> Paramètres</a>{% endif %}
     <a href="{% url 'hr:hub' %}" class="text-sm text-lpm hover:underline self-center">← Espace RH</a>
   </div>
 </div>
@@ -64,7 +65,7 @@
   <table class="w-full text-sm">
     <thead class="bg-slate-50 text-slate-500 text-left"><tr>
       <th class="px-4 py-3">Employé</th><th class="px-4 py-3">Arrivée</th><th class="px-4 py-3">Départ</th>
-      <th class="px-4 py-3">Durée</th><th class="px-4 py-3">Statut</th></tr></thead>
+      <th class="px-4 py-3">Durée</th><th class="px-4 py-3">Heures sup</th><th class="px-4 py-3">Statut</th></tr></thead>
     <tbody class="divide-y divide-slate-100">
       {% for a in records %}
       <tr class="hover:bg-slate-50">
@@ -72,9 +73,13 @@
         <td class="px-4 py-3">{{ a.check_in|date:"H:i"|default:"—" }}</td>
         <td class="px-4 py-3">{{ a.check_out|date:"H:i"|default:"—" }}</td>
         <td class="px-4 py-3">{{ a.worked }}</td>
-        <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs bg-{{ a.status_color }}-50 text-{{ a.status_color }}-600">{{ a.get_status_display }}</span></td>
+        <td class="px-4 py-3">{% if a.overtime %}<span class="text-indigo-600 font-medium">+{{ a.overtime }} min</span>{% else %}—{% endif %}</td>
+        <td class="px-4 py-3">
+          <span class="px-2 py-0.5 rounded-full text-xs bg-{{ a.status_color }}-50 text-{{ a.status_color }}-600">{{ a.get_status_display }}</span>
+          {% if a.late_recovered %}<span class="ml-1 px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-600" title="Retard rattrapé par heures sup — aucune retenue"><i class="fa-solid fa-rotate-left mr-0.5"></i>rattrapé</span>{% endif %}
+        </td>
       </tr>
-      {% empty %}<tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">Aucun pointage ce jour.</td></tr>{% endfor %}
+      {% empty %}<tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Aucun pointage ce jour.</td></tr>{% endfor %}
     </tbody>
   </table>
 </div>

@@ -4,6 +4,8 @@ Complète les modules existants (employés, congés, discipline) pour couvrir
 l'ensemble du périmètre RH du cahier des charges.
 """
 
+from decimal import Decimal
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -134,29 +136,65 @@ class Attendance(models.Model):
         return {"PRESENT": "emerald", "LATE": "amber", "ABSENT": "red",
                 "LEAVE": "sky", "MISSION": "violet"}.get(self.status, "slate")
 
+    @property
+    def overtime(self):
+        """Heures supplémentaires effectuées (minutes après 17h)."""
+        return overtime_minutes(self)
 
-def hourly_rate(employee):
+    @property
+    def late_recovered(self):
+        """Retard rattrapé par des heures sup (aucune retenue salariale)."""
+        return is_late_recovered(self)
+
+
+def _attn_cfg(cfg=None):
+    """Le singleton PayrollSetting (paramètres de pointage). Réutilisable dans les boucles."""
+    return cfg if cfg is not None else PayrollSetting.current()
+
+
+def hourly_rate(employee, cfg=None):
     """Taux horaire brut = salaire mensuel du contrat actif / heures légales mensuelles."""
-    from django.conf import settings
+    cfg = _attn_cfg(cfg)
     c = employee.contracts.filter(is_active=True).order_by("-start_date").first()
     salary = float(c.salary) if c and c.salary else 0.0
-    monthly_h = getattr(settings, "LPM_MONTHLY_HOURS", 173.33) or 173.33
+    if cfg.pk:
+        monthly_h = float(cfg.monthly_hours) or 173.33
+    else:
+        monthly_h = getattr(settings, "LPM_MONTHLY_HOURS", 173.33) or 173.33
     return salary / monthly_h if salary else 0.0
 
 
-def late_threshold_min():
+def late_threshold_min(cfg=None):
     """Minute de la journée au-delà de laquelle une arrivée est « En retard » (08h10 par défaut)."""
-    from django.conf import settings
+    cfg = _attn_cfg(cfg)
+    if cfg.pk:
+        return int(cfg.late_threshold_min)
     return getattr(settings, "LPM_WORK_START_MIN", 8 * 60 + 10)
 
 
-def status_for_checkin(check_in_local):
+def work_end_min(cfg=None):
+    """Minute de la journée correspondant à la fin du travail (17h00 par défaut)."""
+    cfg = _attn_cfg(cfg)
+    if cfg.pk:
+        return int(cfg.work_end_min)
+    return getattr(settings, "LPM_WORK_END_MIN", 17 * 60)
+
+
+def checkout_enabled_min(cfg=None):
+    """Minute à partir de laquelle le pointage de départ est autorisé (15h00 par défaut)."""
+    cfg = _attn_cfg(cfg)
+    if cfg.pk:
+        return int(cfg.checkout_enabled_min)
+    return getattr(settings, "LPM_CHECKOUT_ENABLED_MIN", 15 * 60)
+
+
+def status_for_checkin(check_in_local, cfg=None):
     """Statut d'arrivée : « En retard » si pointage strictement après le seuil, sinon « Présent »."""
     minutes = check_in_local.hour * 60 + check_in_local.minute
-    return Attendance.Status.LATE if minutes > late_threshold_min() else Attendance.Status.PRESENT
+    return Attendance.Status.LATE if minutes > late_threshold_min(cfg) else Attendance.Status.PRESENT
 
 
-def attendance_minutes_late(rec):
+def attendance_minutes_late(rec, cfg=None):
     """Minutes de retard d'un pointage (0 si à l'heure / absent / congé).
 
     Mesurées à partir du seuil de retard (08h10) : une arrivée à 08h25 = 15 min.
@@ -164,7 +202,39 @@ def attendance_minutes_late(rec):
     if rec.status != Attendance.Status.LATE or not rec.check_in:
         return 0
     lt = timezone.localtime(rec.check_in)
-    return max(0, (lt.hour * 60 + lt.minute) - late_threshold_min())
+    return max(0, (lt.hour * 60 + lt.minute) - late_threshold_min(cfg))
+
+
+def overtime_minutes(rec, cfg=None):
+    """Minutes travaillées APRÈS l'heure de fin (heures supplémentaires).
+
+    Basé sur l'heure de départ pointée. Un départ à 17h40 = 40 min d'heures sup.
+    """
+    if not rec.check_out:
+        return 0
+    lt = timezone.localtime(rec.check_out)
+    return max(0, (lt.hour * 60 + lt.minute) - work_end_min(cfg))
+
+
+def is_late_recovered(rec, cfg=None):
+    """Le retard est-il rattrapé par des heures supplémentaires ?
+
+    Conditions : retard ≤ seuil rattrapable (30 min) ET au moins N min restées
+    après l'heure de fin (30 min → 17h30). Un retard rattrapé n'entraîne aucune
+    retenue salariale.
+    """
+    cfg = _attn_cfg(cfg)
+    if rec.status != Attendance.Status.LATE:
+        return False
+    late = attendance_minutes_late(rec, cfg)
+    if cfg.pk:
+        max_rec, min_ot = int(cfg.late_recovery_max_min), int(cfg.overtime_min_minutes)
+    else:
+        max_rec = getattr(settings, "LPM_LATE_RECOVERY_MAX_MIN", 30)
+        min_ot = getattr(settings, "LPM_OVERTIME_MIN_MINUTES", 30)
+    if late <= 0 or late > max_rec:
+        return False
+    return overtime_minutes(rec, cfg) >= min_ot
 
 
 def salary_impacts(month_start, employees=None):
@@ -183,8 +253,9 @@ def salary_impacts(month_start, employees=None):
     else:
         nxt = _date(month_start.year, month_start.month + 1, 1)
     qs = employees if employees is not None else clocking_employees()
-    hours_per_day = getattr(settings, "LPM_WORK_HOURS_PER_DAY", 8)
-    coeff = float(PayrollSetting.current().late_coefficient)
+    cfg = PayrollSetting.current()
+    hours_per_day = float(cfg.work_hours_per_day) if cfg.pk else getattr(settings, "LPM_WORK_HOURS_PER_DAY", 8)
+    coeff = float(cfg.late_coefficient)
     # Les jours antérieurs à la date de début du pointage ne comptent pas.
     period_start = month_start
     start = attendance_start_date()
@@ -201,10 +272,12 @@ def salary_impacts(month_start, employees=None):
         for r in recs:
             if r.status == Attendance.Status.LATE:
                 late += 1
-                late_min += attendance_minutes_late(r)
+                # Retard rattrapé par des heures sup → aucune retenue pour ce jour.
+                if not is_late_recovered(r, cfg):
+                    late_min += attendance_minutes_late(r, cfg)
             elif r.status == Attendance.Status.ABSENT:
                 absent += 1
-        rate = hourly_rate(emp)
+        rate = hourly_rate(emp, cfg)
         computed = int(round(rate * (late_min / 60.0) * coeff + rate * hours_per_day * absent))
         ov = overrides.get(emp.id)
         deduction = int(ov.amount) if ov else computed
@@ -395,22 +468,91 @@ def apply_mission_to_attendance(mission):
 # --------------------------------------------------------------------------- #
 # Paramètres de paie + ajustements manuels de retenue
 # --------------------------------------------------------------------------- #
-class PayrollSetting(models.Model):
-    """Réglage global de la paie (singleton). Modifiable par CEO / RH / admin."""
+def _hhmm(minutes):
+    """Convertit des minutes-depuis-minuit en « HH:MM » (1020 → 17:00)."""
+    minutes = int(minutes or 0)
+    return f"{minutes // 60:02d}:{minutes % 60:02d}"
 
+
+class PayrollSetting(models.Model):
+    """Paramètres globaux du pointage et de la paie (singleton).
+
+    Encode les règles camerounaises de présence : horaires de travail, retards,
+    heures supplémentaires (majorations légales) et incidences salariales.
+    Modifiable par CEO / RH / admin. Les horaires sont stockés en minutes
+    depuis minuit (08h10 = 490).
+    """
+
+    # --- Horaires (minutes depuis minuit) ---
+    late_threshold_min = models.PositiveSmallIntegerField(
+        "Heure limite d'arrivée", default=8 * 60 + 10,
+        help_text="Une arrivée APRÈS cette heure est comptée « En retard » (08h10 = 08h00 + 10 min de tolérance).")
+    work_end_min = models.PositiveSmallIntegerField(
+        "Heure de fin de travail", default=17 * 60,
+        help_text="Fin de la journée de travail (17h00). Les heures supplémentaires démarrent après.")
+    checkout_enabled_min = models.PositiveSmallIntegerField(
+        "Activation du pointage de départ", default=15 * 60,
+        help_text="Le bouton « Pointer le départ » reste grisé avant cette heure (15h00).")
+
+    # --- Heures supplémentaires : rattrapage du retard ---
+    overtime_min_minutes = models.PositiveSmallIntegerField(
+        "Heures sup minimum pour rattraper un retard", default=30,
+        help_text="Minutes à rester après la fin du travail pour annuler un retard (30 min → jusqu'à 17h30).")
+    late_recovery_max_min = models.PositiveSmallIntegerField(
+        "Retard maximum rattrapable", default=30,
+        help_text="Un retard supérieur à cette durée n'est jamais rattrapable par heures sup (30 min).")
+
+    # --- Majorations légales des heures supplémentaires (Code du travail camerounais) ---
+    ot_rate_tier1 = models.DecimalField(
+        "Majoration heures sup 1-8 (%)", max_digits=5, decimal_places=2, default=20,
+        help_text="1re à 8e heure sup hebdomadaire (41e–48e h) : +20 %.")
+    ot_rate_tier2 = models.DecimalField(
+        "Majoration heures sup 9-16 (%)", max_digits=5, decimal_places=2, default=30,
+        help_text="9e à 16e heure sup (49e–56e h) : +30 %.")
+    ot_rate_tier3 = models.DecimalField(
+        "Majoration heures sup au-delà (%)", max_digits=5, decimal_places=2, default=40,
+        help_text="Au-delà de la 16e heure sup (57e h et +) : +40 %.")
+    ot_rate_night = models.DecimalField(
+        "Majoration heures de nuit (%)", max_digits=5, decimal_places=2, default=50,
+        help_text="Travail de nuit (22h–06h) : +50 %.")
+    ot_rate_sunday = models.DecimalField(
+        "Majoration dimanche / jour férié (%)", max_digits=5, decimal_places=2, default=40,
+        help_text="Heures effectuées un dimanche ou un jour férié : +40 %.")
+
+    # --- Paie ---
+    monthly_hours = models.DecimalField(
+        "Heures légales mensuelles", max_digits=6, decimal_places=2, default=Decimal("173.33"),
+        help_text="Durée légale mensuelle (40 h/sem → 173,33 h). Base du taux horaire.")
+    work_hours_per_day = models.DecimalField(
+        "Heures de travail par jour", max_digits=4, decimal_places=2, default=8,
+        help_text="Durée journalière. Base de la retenue pour absence (1 jour = N heures).")
     late_coefficient = models.DecimalField(
         "Coefficient de retenue sur retard", max_digits=5, decimal_places=2, default=1,
         help_text="Multiplie la retenue prorata des retards (1,00 = 100 %, 0,50 = moitié, 0 = aucune).")
+
     updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL,
                                    related_name="+")
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "Paramètre de paie"
-        verbose_name_plural = "Paramètres de paie"
+        verbose_name = "Paramètre de pointage & paie"
+        verbose_name_plural = "Paramètres de pointage & paie"
 
     def __str__(self):
-        return f"Coefficient retard : {self.late_coefficient}"
+        return f"Pointage : retard {_hhmm(self.late_threshold_min)} · fin {_hhmm(self.work_end_min)}"
+
+    # Affichage HH:MM pour les formulaires/templates.
+    @property
+    def late_threshold_hhmm(self):
+        return _hhmm(self.late_threshold_min)
+
+    @property
+    def work_end_hhmm(self):
+        return _hhmm(self.work_end_min)
+
+    @property
+    def checkout_enabled_hhmm(self):
+        return _hhmm(self.checkout_enabled_min)
 
     @classmethod
     def current(cls):

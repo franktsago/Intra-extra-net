@@ -28,9 +28,16 @@
         <button type="button" onclick="pointerArrivee()" id="btn-in" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-3 rounded-xl"><i class="fa-solid fa-location-crosshairs mr-1"></i> Pointer l'arrivée</button>
       </form>
       {% elif not today.check_out %}
+      {% if can_checkout %}
       <form method="post" action="{% url 'hr:clock' 'out' %}">{% csrf_token %}
         <button class="bg-slate-800 hover:bg-slate-900 text-white font-semibold px-6 py-3 rounded-xl"><i class="fa-solid fa-right-from-bracket mr-1"></i> Pointer le départ</button>
       </form>
+      {% else %}
+      <div class="text-center">
+        <button type="button" disabled class="bg-slate-200 text-slate-400 cursor-not-allowed font-semibold px-6 py-3 rounded-xl"><i class="fa-solid fa-lock mr-1"></i> Pointer le départ</button>
+        <p class="text-xs text-slate-400 mt-2">Disponible à partir de <strong>{{ checkout_after }}</strong>.</p>
+      </div>
+      {% endif %}
       {% else %}
       <div class="text-emerald-600 font-medium"><i class="fa-solid fa-circle-check"></i> Journée pointée ({{ today.worked }}){% if today.on_site %} · <span class="text-xs">sur site</span>{% endif %}</div>
       {% endif %}

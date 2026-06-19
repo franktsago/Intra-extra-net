@@ -21,6 +21,32 @@
       mic.classList.toggle('hidden', has);
       mic.classList.toggle('flex', !has);
     }
+    // Envoi AJAX du texte (pas de rechargement → l'écran ne saute plus, le clavier
+    // reste ouvert). Repli sur l'envoi classique pour pièces jointes / vocaux / hors hub.
+    function ajaxSend() {
+      var thread = document.getElementById('thread');
+      if (!thread || !thread.dataset.pollKind) return false;   // pages autonomes → submit normal
+      if (fileInput && fileInput.files && fileInput.files.length) return false;  // pièce jointe
+      if (!input || !input.value.trim().length) return false;
+      var csrfEl = form.querySelector('[name=csrfmiddlewaretoken]');
+      fetch(form.action, {
+        method: 'POST', body: new FormData(form),
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      }).then(function (r) { return r.json(); }).then(function () {
+        input.value = ''; input.style.height = 'auto';
+        var bar = form.querySelector('[data-reply-bar]');
+        if (bar) { bar.classList.add('hidden'); bar.classList.remove('flex'); }
+        var ri = form.querySelector('[data-reply-input]'); if (ri) ri.value = '';
+        refresh();
+        if (window.__chatPoll) window.__chatPoll();   // affiche le message tout de suite
+        input.focus();
+      }).catch(function () { form.submit(); });
+      return true;
+    }
+    form.addEventListener('submit', function (e) {
+      if (ajaxSend()) e.preventDefault();
+    });
+
     if (input) {
       input.addEventListener('input', function () {
         this.style.height = 'auto';
@@ -33,7 +59,7 @@
         || ('ontouchstart' in window);
       input.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey && !isTouch) {
-          if (this.value.trim().length) { e.preventDefault(); form.submit(); }
+          if (this.value.trim().length) { e.preventDefault(); if (!ajaxSend()) form.submit(); }
         }
       });
     }
@@ -281,6 +307,7 @@
           }
         }).catch(function () {});
     }
+    window.__chatPoll = poll;  // appelé après un envoi AJAX pour afficher le message aussitôt
     poll();                  // 1er rafraîchissement immédiat
     setInterval(poll, 1500); // puis toutes les 1,5 s → quasi temps réel
 

@@ -17,8 +17,8 @@ from .forms import (
 from .models import (
     Attendance, Candidate, Contract, Evaluation, JobOpening, Mission,
     OfficeLocation, PayrollSetting, SalaryAdjustment, apply_mission_to_attendance,
-    attendance_minutes_late, ensure_absences, must_clock, salary_impacts,
-    status_for_checkin,
+    attendance_minutes_late, checkout_enabled_min, ensure_absences, must_clock,
+    salary_impacts, status_for_checkin,
 )
 
 rh_required = role_required(Role.RH, Role.CEO, Role.ADMIN)
@@ -200,11 +200,17 @@ def my_attendance(request):
         today_rec = Attendance.objects.filter(employee=emp, date=today).first()
         history = emp.attendances.all()[:30]
         mission_today = emp.missions.filter(start_date__lte=today, end_date__gte=today).first()
-    start_min = getattr(settings, "LPM_WORK_START_MIN", 490)
+    from .models import late_threshold_min
+    cfg = PayrollSetting.current()
+    start_min = late_threshold_min(cfg)
     late_after = f"{start_min // 60:02d}h{start_min % 60:02d}"
+    co_min = checkout_enabled_min(cfg)
+    now_min = timezone.localtime().hour * 60 + timezone.localtime().minute
     return render(request, "hr/pointage.html", {
         "employee": emp, "today": today_rec, "history": history or [],
-        "late_after": late_after, "mission_today": mission_today})
+        "late_after": late_after, "mission_today": mission_today,
+        "can_checkout": now_min >= co_min,
+        "checkout_after": f"{co_min // 60:02d}h{co_min % 60:02d}"})
 
 
 def _distance_m(lat1, lng1, lat2, lng2):
@@ -271,6 +277,13 @@ def clock(request, action):
                          (f"Arrivée pointée sur site ({rec.distance_m} m du bureau)." if rec.on_site
                           else "Arrivée pointée."))
     elif action == "out" and rec.check_in and not rec.check_out:
+        # Le pointage de départ n'est autorisé qu'à partir de l'heure configurée (15h).
+        co_min = checkout_enabled_min()
+        now_min = local.hour * 60 + local.minute
+        if now_min < co_min:
+            messages.error(request, f"Le pointage de départ n'est possible qu'à partir de "
+                                    f"{co_min // 60:02d}h{co_min % 60:02d}.")
+            return redirect("hr:pointage")
         rec.check_out = now
         rec.save()
         messages.success(request, "Départ pointé.")
@@ -450,6 +463,63 @@ def payroll_export(request):
     writer.writerow(["TOTAL", "", "", "", "", sum(r["deduction"] for r in rows)])
     resp["Content-Disposition"] = f'attachment; filename="incidences_salariales_{start:%Y-%m}.csv"'
     return resp
+
+
+def _parse_hhmm(value, default):
+    """« HH:MM » → minutes depuis minuit ; renvoie `default` si invalide."""
+    try:
+        h, m = (int(x) for x in str(value).split(":")[:2])
+        if 0 <= h <= 23 and 0 <= m <= 59:
+            return h * 60 + m
+    except (ValueError, AttributeError):
+        pass
+    return default
+
+
+@rh_required
+def attendance_settings(request):
+    """Paramètres du pointage (loi camerounaise) : horaires, heures sup, paie.
+
+    Singleton PayrollSetting, modifiable par RH / CEO / admin.
+    """
+    from decimal import Decimal, InvalidOperation
+
+    cfg = PayrollSetting.current()
+
+    if request.method == "POST":
+        def _dec(name, default, lo, hi):
+            try:
+                v = Decimal(str(request.POST.get(name, default)).replace(",", "."))
+            except (InvalidOperation, ValueError):
+                v = Decimal(str(default))
+            return max(Decimal(str(lo)), min(v, Decimal(str(hi))))
+
+        def _int(name, default, lo, hi):
+            try:
+                v = int(request.POST.get(name, default))
+            except (ValueError, TypeError):
+                v = default
+            return max(lo, min(v, hi))
+
+        cfg.late_threshold_min = _parse_hhmm(request.POST.get("late_threshold"), 8 * 60 + 10)
+        cfg.work_end_min = _parse_hhmm(request.POST.get("work_end"), 17 * 60)
+        cfg.checkout_enabled_min = _parse_hhmm(request.POST.get("checkout_enabled"), 15 * 60)
+        cfg.overtime_min_minutes = _int("overtime_min_minutes", 30, 0, 600)
+        cfg.late_recovery_max_min = _int("late_recovery_max_min", 30, 0, 600)
+        cfg.ot_rate_tier1 = _dec("ot_rate_tier1", 20, 0, 500)
+        cfg.ot_rate_tier2 = _dec("ot_rate_tier2", 30, 0, 500)
+        cfg.ot_rate_tier3 = _dec("ot_rate_tier3", 40, 0, 500)
+        cfg.ot_rate_night = _dec("ot_rate_night", 50, 0, 500)
+        cfg.ot_rate_sunday = _dec("ot_rate_sunday", 40, 0, 500)
+        cfg.monthly_hours = _dec("monthly_hours", "173.33", 1, 1000)
+        cfg.work_hours_per_day = _dec("work_hours_per_day", 8, 1, 24)
+        cfg.late_coefficient = _dec("late_coefficient", 1, 0, 10)
+        cfg.updated_by = request.user
+        cfg.save()
+        messages.success(request, "Paramètres de pointage enregistrés.")
+        return redirect("hr:attendance_settings")
+
+    return render(request, "hr/attendance_settings.html", {"cfg": cfg})
 
 
 # --------------------------------------------------------------------------- #

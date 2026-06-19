@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Paramètres du pointage{% endblock %}
+{% block page_title %}Paramètres du pointage & paie{% endblock %}
+{% block content %}
+<div class="max-w-3xl">
+  <div class="flex items-center justify-between mb-4">
+    <p class="text-sm text-slate-500">Règles de présence (droit du travail camerounais) : horaires, heures supplémentaires et incidences salariales.</p>
+    <a href="{% url 'hr:attendance' %}" class="text-sm text-lpm hover:underline whitespace-nowrap">← Présences</a>
+  </div>
+
+  <form method="post" class="space-y-5">{% csrf_token %}
+
+    <!-- Horaires -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+      <div class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-clock text-lpm mr-1"></i> Horaires de travail</div>
+      <div class="grid sm:grid-cols-3 gap-4 mt-3">
+        <div>
+          <label class="text-xs text-slate-500">Heure limite d'arrivée</label>
+          <input type="time" name="late_threshold" value="{{ cfg.late_threshold_hhmm }}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+          <p class="text-xs text-slate-400 mt-1">Au-delà = « En retard ».</p>
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Heure de fin de travail</label>
+          <input type="time" name="work_end" value="{{ cfg.work_end_hhmm }}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+          <p class="text-xs text-slate-400 mt-1">Les heures sup démarrent après.</p>
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Activation du pointage de départ</label>
+          <input type="time" name="checkout_enabled" value="{{ cfg.checkout_enabled_hhmm }}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+          <p class="text-xs text-slate-400 mt-1">Bouton « départ » grisé avant.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Heures sup / rattrapage -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+      <div class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-business-time text-indigo-500 mr-1"></i> Rattrapage du retard par heures sup</div>
+      <div class="grid sm:grid-cols-2 gap-4 mt-3">
+        <div>
+          <label class="text-xs text-slate-500">Heures sup minimum pour rattraper (min)</label>
+          <input type="number" min="0" name="overtime_min_minutes" value="{{ cfg.overtime_min_minutes }}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Retard maximum rattrapable (min)</label>
+          <input type="number" min="0" name="late_recovery_max_min" value="{{ cfg.late_recovery_max_min }}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        </div>
+      </div>
+      <p class="text-xs text-slate-400 mt-2">Un retard ≤ retard max rattrapable est annulé (aucune retenue) si l'employé reste au moins « heures sup minimum » après la fin du travail.</p>
+    </div>
+
+    <!-- Majorations légales -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+      <div class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-scale-balanced text-amber-500 mr-1"></i> Majorations légales des heures supplémentaires</div>
+      <p class="text-xs text-slate-400">Taux issus du Code du travail camerounais (référence paie).</p>
+      <div class="grid sm:grid-cols-3 gap-4 mt-3">
+        <div><label class="text-xs text-slate-500">Heures sup 1-8 (%)</label>
+          <input type="number" step="0.01" min="0" name="ot_rate_tier1" value="{{ cfg.ot_rate_tier1 }}" class="w-full rounded-lg border border-slate-300 px-3 py-2"></div>
+        <div><label class="text-xs text-slate-500">Heures sup 9-16 (%)</label>
+          <input type="number" step="0.01" min="0" name="ot_rate_tier2" value="{{ cfg.ot_rate_tier2 }}" class="w-full rounded-lg border border-slate-300 px-3 py-2"></div>
+        <div><label class="text-xs text-slate-500">Au-delà (%)</label>
+          <input type="number" step="0.01" min="0" name="ot_rate_tier3" value="{{ cfg.ot_rate_tier3 }}" class="w-full rounded-lg border border-slate-300 px-3 py-2"></div>
+        <div><label class="text-xs text-slate-500">Heures de nuit (%)</label>
+          <input type="number" step="0.01" min="0" name="ot_rate_night" value="{{ cfg.ot_rate_night }}" class="w-full rounded-lg border border-slate-300 px-3 py-2"></div>
+        <div><label class="text-xs text-slate-500">Dimanche / férié (%)</label>
+          <input type="number" step="0.01" min="0" name="ot_rate_sunday" value="{{ cfg.ot_rate_sunday }}" class="w-full rounded-lg border border-slate-300 px-3 py-2"></div>
+      </div>
+    </div>
+
+    <!-- Paie -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-card p-5">
+      <div class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-money-bill-wave text-emerald-500 mr-1"></i> Incidences salariales</div>
+      <div class="grid sm:grid-cols-3 gap-4 mt-3">
+        <div><label class="text-xs text-slate-500">Heures légales mensuelles</label>
+          <input type="number" step="0.01" min="1" name="monthly_hours" value="{{ cfg.monthly_hours }}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+          <p class="text-xs text-slate-400 mt-1">Base du taux horaire (173,33 h).</p></div>
+        <div><label class="text-xs text-slate-500">Heures de travail par jour</label>
+          <input type="number" step="0.01" min="1" max="24" name="work_hours_per_day" value="{{ cfg.work_hours_per_day }}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+          <p class="text-xs text-slate-400 mt-1">Base de la retenue pour absence.</p></div>
+        <div><label class="text-xs text-slate-500">Coefficient de retenue retard</label>
+          <input type="number" step="0.01" min="0" max="10" name="late_coefficient" value="{{ cfg.late_coefficient }}" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+          <p class="text-xs text-slate-400 mt-1">1,00 = 100 % · 0 = aucune.</p></div>
+      </div>
+    </div>
+
+    <div class="flex justify-end">
+      <button class="lpm-gradient text-white px-6 py-2.5 rounded-lg font-semibold"><i class="fa-solid fa-check mr-1"></i> Enregistrer les paramètres</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

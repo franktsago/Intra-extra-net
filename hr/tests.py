@@ -291,6 +291,132 @@ class LateThresholdTest(TestCase):
         self.assertEqual(row["deduction"], 500)
 
 
+class OvertimeRecoveryTest(TestCase):
+    """Heures sup ≥ 30 min après 17h annulent un retard ≤ 30 min (aucune retenue)."""
+
+    def _aware(self, h, m):
+        from datetime import datetime, time
+        return timezone.make_aware(datetime.combine(timezone.localdate(), time(h, m)))
+
+    def _emp_with_salary(self, username):
+        from datetime import date
+        from hr.models import Contract
+        u = User.objects.create_user(username, password="x", role=Role.EMPLOYE)
+        emp = Employee.objects.get(user=u)
+        Contract.objects.create(employee=emp, type=Contract.Type.CDI,
+                                start_date=date(2026, 1, 1), salary=173330, is_active=True)
+        return emp
+
+    def test_overtime_minutes_measured_from_17h(self):
+        from hr.models import Attendance, overtime_minutes
+        emp = self._emp_with_salary("ot1")
+        rec = Attendance.objects.create(employee=emp, date=timezone.localdate(),
+                                        status=Attendance.Status.PRESENT,
+                                        check_in=self._aware(8, 0), check_out=self._aware(17, 40))
+        self.assertEqual(overtime_minutes(rec), 40)   # 17h40 − 17h00
+
+    def test_late_recovered_cancels_deduction(self):
+        from hr.models import Attendance, is_late_recovered, salary_impacts
+        emp = self._emp_with_salary("ot2")
+        month_start = timezone.localdate().replace(day=1)
+        # 30 min de retard (08h40) + départ 17h30 (30 min d'heures sup) → rattrapé.
+        rec = Attendance.objects.create(employee=emp, date=month_start,
+                                        status=Attendance.Status.LATE,
+                                        check_in=self._aware(8, 40), check_out=self._aware(17, 30))
+        self.assertTrue(is_late_recovered(rec))
+        row = {r["employee"].id: r for r in salary_impacts(month_start)}[emp.id]
+        self.assertEqual(row["late"], 1)            # le retard reste tracé
+        self.assertEqual(row["late_minutes"], 0)    # mais non retenu
+        self.assertEqual(row["deduction"], 0)
+
+    def test_insufficient_overtime_not_recovered(self):
+        from hr.models import Attendance, is_late_recovered, salary_impacts
+        emp = self._emp_with_salary("ot3")
+        month_start = timezone.localdate().replace(day=1)
+        # 30 min de retard mais seulement 20 min d'heures sup (17h20) → non rattrapé.
+        rec = Attendance.objects.create(employee=emp, date=month_start,
+                                        status=Attendance.Status.LATE,
+                                        check_in=self._aware(8, 40), check_out=self._aware(17, 20))
+        self.assertFalse(is_late_recovered(rec))
+        row = {r["employee"].id: r for r in salary_impacts(month_start)}[emp.id]
+        self.assertEqual(row["deduction"], 500)     # 1000 × 30/60
+
+    def test_too_late_not_recoverable(self):
+        from hr.models import Attendance, is_late_recovered
+        emp = self._emp_with_salary("ot4")
+        # 45 min de retard (> 30 min max rattrapable), même avec heures sup → non rattrapé.
+        rec = Attendance.objects.create(employee=emp, date=timezone.localdate(),
+                                        status=Attendance.Status.LATE,
+                                        check_in=self._aware(8, 55), check_out=self._aware(18, 0))
+        self.assertFalse(is_late_recovered(rec))
+
+
+class CheckoutGatingTest(TestCase):
+    """Le pointage de départ n'est possible qu'à partir de l'heure configurée."""
+
+    def setUp(self):
+        self.emp_user = User.objects.create_user("co_emp", password="x", role=Role.EMPLOYE)
+        self.emp = Employee.objects.get(user=self.emp_user)
+        # check_in déjà posé aujourd'hui, départ non encore pointé.
+        self.rec = Attendance.objects.create(
+            employee=self.emp, date=timezone.localdate(),
+            status=Attendance.Status.PRESENT, check_in=timezone.now())
+
+    def test_checkout_blocked_before_enabled_time(self):
+        from hr.models import PayrollSetting
+        PayrollSetting.objects.create(checkout_enabled_min=23 * 60 + 59)  # 23h59 → bloqué
+        self.client.force_login(self.emp_user)
+        self.client.post(reverse("hr:clock", args=["out"]))
+        self.rec.refresh_from_db()
+        self.assertIsNone(self.rec.check_out)
+
+    def test_checkout_allowed_after_enabled_time(self):
+        from hr.models import PayrollSetting
+        PayrollSetting.objects.create(checkout_enabled_min=0)  # 00h00 → toujours autorisé
+        self.client.force_login(self.emp_user)
+        self.client.post(reverse("hr:clock", args=["out"]))
+        self.rec.refresh_from_db()
+        self.assertIsNotNone(self.rec.check_out)
+
+
+class AttendanceSettingsViewTest(TestCase):
+    """Paramètres de pointage : RH peut éditer le singleton, l'employé non."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.rh = User.objects.create_user("rh_set", password="x", role=Role.RH)
+        cls.emp = User.objects.create_user("emp_set", password="x", role=Role.EMPLOYE)
+
+    def test_employee_blocked(self):
+        self.client.force_login(self.emp)
+        self.assertEqual(self.client.get(reverse("hr:attendance_settings")).status_code, 403)
+
+    def test_rh_saves_parameters(self):
+        from hr.models import PayrollSetting
+        self.client.force_login(self.rh)
+        self.assertEqual(self.client.get(reverse("hr:attendance_settings")).status_code, 200)
+        self.client.post(reverse("hr:attendance_settings"), {
+            "late_threshold": "08:15", "work_end": "17:30", "checkout_enabled": "16:00",
+            "overtime_min_minutes": "45", "late_recovery_max_min": "20",
+            "ot_rate_tier1": "20", "ot_rate_tier2": "30", "ot_rate_tier3": "40",
+            "ot_rate_night": "50", "ot_rate_sunday": "40",
+            "monthly_hours": "173.33", "work_hours_per_day": "8", "late_coefficient": "1"})
+        cfg = PayrollSetting.current()
+        self.assertEqual(cfg.late_threshold_min, 8 * 60 + 15)
+        self.assertEqual(cfg.work_end_min, 17 * 60 + 30)
+        self.assertEqual(cfg.checkout_enabled_min, 16 * 60)
+        self.assertEqual(cfg.overtime_min_minutes, 45)
+        self.assertEqual(cfg.late_recovery_max_min, 20)
+
+    def test_settings_drive_late_threshold(self):
+        from hr.models import PayrollSetting, status_for_checkin, Attendance
+        from datetime import datetime, time
+        PayrollSetting.objects.create(late_threshold_min=9 * 60)  # seuil repoussé à 09h00
+        aware = lambda h, m: timezone.make_aware(datetime.combine(timezone.localdate(), time(h, m)))
+        self.assertEqual(status_for_checkin(aware(8, 30)), Attendance.Status.PRESENT)
+        self.assertEqual(status_for_checkin(aware(9, 5)), Attendance.Status.LATE)
+
+
 class SalaryImpactTest(TestCase):
     def test_deduction_for_absence_and_lateness(self):
         from datetime import date, timedelta

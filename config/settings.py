@@ -247,6 +247,12 @@ LPM_ATTENDANCE_START = (
 # Fixée à 08h10 (tolérance de 10 min). La retenue prorata se calcule à partir
 # de ce seuil (minutes au-delà de 08h10).
 LPM_WORK_START_MIN = int(os.getenv("LPM_WORK_START_MIN", str(8 * 60 + 10)))  # 08:10
+# Heure de fin de travail (17h00). Les heures supplémentaires démarrent après.
+LPM_WORK_END_MIN = int(os.getenv("LPM_WORK_END_MIN", str(17 * 60)))  # 17:00
+# Heures sup pour rattraper un retard : il faut rester au moins 30 min après 17h
+# (jusqu'à 17h30) ; cela annule un retard d'au plus 30 min.
+LPM_OVERTIME_MIN_MINUTES = int(os.getenv("LPM_OVERTIME_MIN_MINUTES", "30"))
+LPM_LATE_RECOVERY_MAX_MIN = int(os.getenv("LPM_LATE_RECOVERY_MAX_MIN", "30"))
 # Paie (droit du travail camerounais) : durée légale = 173,33 h/mois (40 h/sem).
 # La retenue sur salaire pour retard/absence est PROPORTIONNELLE au temps non travaillé.
 LPM_MONTHLY_HOURS = float(os.getenv("LPM_MONTHLY_HOURS", "173.33"))

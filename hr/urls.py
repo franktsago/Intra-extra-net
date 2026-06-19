@@ -19,6 +19,7 @@ urlpatterns = [
     path("presences/", views.attendance_today, name="attendance"),
     path("presences/definir-lieu/", views.set_office, name="set_office"),
     path("presences/export/", views.attendance_export, name="attendance_export"),
+    path("presences/parametres/", views.attendance_settings, name="attendance_settings"),
     path("paie/incidences/", views.payroll_impacts, name="payroll_impacts"),
     path("paie/incidences/export/", views.payroll_export, name="payroll_export"),
     # Missions

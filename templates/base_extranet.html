@@ -72,12 +72,33 @@
               <span class="h-9 w-9 rounded-full lpm-gradient text-white text-xs font-bold flex items-center justify-center">{{ user.display_initials }}</span>
             {% endif %}
             <div class="hidden sm:block leading-tight"><div class="text-sm font-semibold text-slate-800">{{ user.get_full_name|default:user.username }}</div><div class="text-[11px] text-slate-400">{{ user.get_role_display }}</div></div>
+            {% if user.has_linked_accounts %}
+            <div class="relative">
+              <button onclick="document.getElementById('acc-menu').classList.toggle('hidden')" class="ml-1 text-slate-400 hover:text-lpm p-1" title="Changer de compte"><i class="fa-solid fa-right-left"></i></button>
+              <div id="acc-menu" class="hidden absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-30">
+                <div class="px-4 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Changer de compte</div>
+                {% for acc in user.linked_group %}
+                <a href="{% url 'accounts:switch_account' acc.pk %}" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                  <i class="fa-solid fa-right-left fa-fw text-slate-300"></i>
+                  <span class="truncate">{{ acc.get_full_name|default:acc.username }} <span class="text-xs text-slate-400">· {{ acc.get_role_display }}</span></span>
+                </a>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
             <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="ml-1 text-slate-400 hover:text-red-600 p-1" title="Déconnexion"><i class="fa-solid fa-right-from-bracket"></i></button></form>
           </div>
         </div>
       </div>
     </header>
     <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-6xl w-full mx-auto">
+      {% if request.session.switch_origin_name %}
+      <div class="mb-5 px-4 py-3 rounded-xl text-sm border bg-amber-50 border-amber-200 text-amber-800 flex flex-wrap items-center gap-2">
+        <i class="fa-solid fa-user-secret"></i>
+        <span>Vous utilisez le compte <strong>{{ user.get_full_name|default:user.username }}</strong> · les actions sont tracées au nom de <strong>{{ request.session.switch_origin_name }}</strong>.</span>
+        <a href="{% url 'accounts:switch_account' request.session.switch_origin_id %}" class="ml-auto font-semibold underline whitespace-nowrap"><i class="fa-solid fa-rotate-left mr-1"></i>Revenir à mon compte</a>
+      </div>
+      {% endif %}
       {% if messages %}<div class="space-y-2 mb-5">{% for m in messages %}
         <div class="px-4 py-3 rounded-xl text-sm border {% if m.tags == 'success' %}bg-emerald-50 border-emerald-200 text-emerald-800{% elif m.tags == 'error' %}bg-red-50 border-red-200 text-red-800{% else %}bg-sky-50 border-sky-200 text-sky-800{% endif %}">{{ m }}</div>
       {% endfor %}</div>{% endif %}

@@ -32,7 +32,15 @@ def hide_superadmin(qs, viewer, user_field=None):
 
 
 def log_activity(request, action, description="", user=None):
-    """Enregistre une entrée dans le journal d'activité."""
+    """Enregistre une entrée dans le journal d'activité.
+
+    Si l'utilisateur agit via un compte LIÉ (bascule de compte), on ajoute la
+    trace de la personne d'origine — exigence de traçabilité.
+    """
+    sess = getattr(request, "session", None)
+    origin = sess.get("switch_origin_name") if sess is not None else None
+    if origin:
+        description = f"{description} [via {origin}]".strip()
     ActivityLog.objects.create(
         user=user or (request.user if getattr(request, "user", None) and request.user.is_authenticated else None),
         action=action,

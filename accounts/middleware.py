@@ -12,6 +12,7 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import render
+from django.urls import reverse
 
 
 class FriendlyErrorMiddleware:
@@ -80,4 +81,24 @@ class ActivityLogMiddleware:
                         run_daily_maintenance()
                     except Exception:
                         pass
-        return self.get_response(request)
+
+        response = self.get_response(request)
+
+        # Traçabilité : toute MODIFICATION (POST réussi) effectuée sous un compte
+        # basculé laisse une trace de la personne d'origine dans le journal.
+        try:
+            if (user is not None and user.is_authenticated
+                    and request.method == "POST"
+                    and request.session.get("switch_origin_id")
+                    and response.status_code in (200, 301, 302)
+                    and request.path != reverse("accounts:logout")):
+                from .models import ActivityLog
+                from .utils import get_client_ip
+                ActivityLog.objects.create(
+                    user=user, action=ActivityLog.Action.UPDATE,
+                    description=(f"Modification via compte lié — origine : "
+                                 f"{request.session.get('switch_origin_name', '')}")[:255],
+                    ip_address=get_client_ip(request), path=request.path[:255])
+        except Exception:
+            pass
+        return response

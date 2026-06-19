@@ -24,6 +24,7 @@ urlpatterns = [
     # Profil
     path("profil/", views.profile, name="profile"),
     path("changer-role/<str:role>/", views.switch_role, name="switch_role"),
+    path("changer-compte/<int:pk>/", views.switch_account, name="switch_account"),
 
     # Gestion des utilisateurs (Admin / RH)
     path("utilisateurs/", views.user_list, name="user_list"),

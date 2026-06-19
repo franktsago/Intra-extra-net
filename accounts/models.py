@@ -64,6 +64,12 @@ class User(AbstractUser):
         "self", null=True, blank=True, on_delete=models.SET_NULL,
         related_name="comptes_crees", verbose_name="Créé par",
     )
+    linked_accounts = models.ManyToManyField(
+        "self", blank=True, verbose_name="Comptes liés",
+        help_text="Autres comptes appartenant à la MÊME personne. Permet de "
+                  "basculer de l'un à l'autre sans se reconnecter (réservé au "
+                  "super administrateur). Chaque action reste tracée.",
+    )
 
     class Meta:
         verbose_name = "Utilisateur"
@@ -173,6 +179,30 @@ class User(AbstractUser):
         a = (self.first_name[:1] or self.username[:1]).upper()
         b = (self.last_name[:1]).upper()
         return (a + b) or "?"
+
+    # ----- Comptes liés (même personne) / bascule ----- #
+    def linked_group(self):
+        """Tous les comptes liés à celui-ci (fermeture transitive, hors soi-même).
+
+        Si A est lié à B et A à C, alors B « voit » aussi C : les trois comptes
+        forment un groupe et peuvent basculer entre eux.
+        """
+        seen = {self.pk}
+        frontier = [self]
+        while frontier:
+            nxt = []
+            for u in frontier:
+                for peer in u.linked_accounts.all():
+                    if peer.pk not in seen:
+                        seen.add(peer.pk)
+                        nxt.append(peer)
+            frontier = nxt
+        seen.discard(self.pk)
+        return User.objects.filter(pk__in=seen).order_by("last_name", "first_name")
+
+    @property
+    def has_linked_accounts(self) -> bool:
+        return self.linked_accounts.exists()
 
 
 class ActivityLog(models.Model):

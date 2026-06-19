@@ -100,6 +100,12 @@ class UserEditForm(StyledFormMixin, forms.ModelForm):
         widget=forms.CheckboxSelectMultiple,
         help_text="Permet à l'utilisateur de basculer entre plusieurs fonctions.",
     )
+    linked_accounts = forms.ModelMultipleChoiceField(
+        label="Comptes liés (même personne)", required=False,
+        queryset=User.objects.none(), widget=forms.SelectMultiple,
+        help_text="Autres comptes de la MÊME personne : elle pourra basculer de "
+                  "l'un à l'autre sans se reconnecter. Chaque action reste tracée.",
+    )
 
     class Meta:
         model = User
@@ -114,6 +120,13 @@ class UserEditForm(StyledFormMixin, forms.ModelForm):
         if self.instance and self.instance.pk and self.instance.secondary_roles:
             self.fields["extra_roles"].initial = [
                 r.strip() for r in self.instance.secondary_roles.split(",") if r.strip()]
+        # Le lien de comptes (accès sans mot de passe) est réservé au super admin.
+        if getattr(viewer, "is_admin_lpm", False) and self.instance and self.instance.pk:
+            self.fields["linked_accounts"].queryset = (
+                User.objects.exclude(pk=self.instance.pk).order_by("last_name", "first_name"))
+            self.fields["linked_accounts"].initial = self.instance.linked_accounts.all()
+        else:
+            self.fields.pop("linked_accounts")
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -121,6 +134,8 @@ class UserEditForm(StyledFormMixin, forms.ModelForm):
         user.secondary_roles = ",".join(extra)
         if commit:
             user.save()
+            if "linked_accounts" in self.fields:
+                user.linked_accounts.set(self.cleaned_data.get("linked_accounts", []))
             self._sync_employee_status(user)
         return user
 

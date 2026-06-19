@@ -9,9 +9,11 @@ class UserAdmin(DjUserAdmin):
     list_display = ("username", "get_full_name", "role", "email", "is_active", "is_external")
     list_filter = ("role", "is_active", "is_staff")
     search_fields = ("username", "first_name", "last_name", "email", "organization")
+    filter_horizontal = DjUserAdmin.filter_horizontal + ("linked_accounts",)
     fieldsets = DjUserAdmin.fieldsets + (
-        ("LPM — Rôle & profil", {"fields": ("role", "phone", "avatar", "organization",
-                                            "must_change_password", "created_by")}),
+        ("LPM — Rôle & profil", {"fields": ("role", "secondary_roles", "phone", "avatar",
+                                            "organization", "must_change_password", "created_by")}),
+        ("LPM — Comptes liés (même personne)", {"fields": ("linked_accounts",)}),
     )
 
     @admin.display(boolean=True, description="Externe")

@@ -395,3 +395,77 @@ class EmergencyContactTest(TestCase):
         })
         self.assertEqual(r.status_code, 302)
         self.assertTrue(User.objects.filter(username="ecclient").exists())
+
+
+class LinkedAccountSwitchTest(TestCase):
+    """Bascule entre comptes liés (même personne) + traçabilité de l'origine."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_user("adm_link", password="x", role=Role.ADMIN,
+                                              is_superuser=True)
+        # Deux comptes d'une même personne : un interne (employé) et un externe (consultant).
+        cls.a = User.objects.create_user("paul.interne", password="x", role=Role.EMPLOYE,
+                                         first_name="Paul", last_name="MBALLA")
+        cls.b = User.objects.create_user("paul.consult", password="x", role=Role.CONSULTANT,
+                                         first_name="Paul", last_name="MBALLA")
+        cls.stranger = User.objects.create_user("autre", password="x", role=Role.EMPLOYE)
+
+    def test_linked_group_is_symmetric(self):
+        self.a.linked_accounts.add(self.b)
+        self.assertIn(self.b, self.a.linked_group())
+        self.assertIn(self.a, self.b.linked_group())   # symétrie
+        self.assertTrue(self.a.has_linked_accounts)
+
+    def test_linked_group_transitive(self):
+        c = User.objects.create_user("paul.three", password="x", role=Role.EMPLOYE)
+        self.a.linked_accounts.add(self.b)
+        self.a.linked_accounts.add(c)
+        # Depuis B (lié à A, lui-même lié à C) on atteint aussi C.
+        ids = set(self.b.linked_group().values_list("pk", flat=True))
+        self.assertEqual(ids, {self.a.pk, c.pk})
+
+    def test_switch_to_linked_account_succeeds(self):
+        self.a.linked_accounts.add(self.b)
+        self.client.force_login(self.a)
+        self.client.get(reverse("accounts:switch_account", args=[self.b.pk]))
+        # La session agit désormais comme le compte B.
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.b.pk)
+        self.assertEqual(self.client.session["switch_origin_id"], self.a.pk)
+
+    def test_switch_to_unlinked_account_blocked(self):
+        self.client.force_login(self.a)
+        self.client.get(reverse("accounts:switch_account", args=[self.stranger.pk]))
+        # Reste connecté en tant que A (cible non liée).
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.a.pk)
+        self.assertNotIn("switch_origin_id", self.client.session)
+
+    def test_modification_while_switched_is_traced(self):
+        from accounts.models import ActivityLog
+        self.a.linked_accounts.add(self.b)
+        self.client.force_login(self.a)
+        self.client.get(reverse("accounts:switch_account", args=[self.b.pk]))
+        # Une modification (POST) sous le compte basculé laisse une trace de l'origine.
+        self.client.post(reverse("accounts:profile"), {
+            "first_name": "Paul", "last_name": "MBALLA", "email": "paul@x.cm", "phone": ""})
+        traced = ActivityLog.objects.filter(action=ActivityLog.Action.UPDATE,
+                                            description__icontains="Paul MBALLA")
+        self.assertTrue(traced.exists())
+
+    def test_return_to_origin_clears_switch(self):
+        self.a.linked_accounts.add(self.b)
+        self.client.force_login(self.a)
+        self.client.get(reverse("accounts:switch_account", args=[self.b.pk]))
+        # Revenir au compte d'origine met fin à la bascule.
+        self.client.get(reverse("accounts:switch_account", args=[self.a.pk]))
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.a.pk)
+        self.assertNotIn("switch_origin_id", self.client.session)
+
+    def test_admin_can_link_accounts_via_form(self):
+        self.client.force_login(self.admin)
+        r = self.client.post(reverse("accounts:user_edit", args=[self.a.pk]), {
+            "first_name": "Paul", "last_name": "MBALLA", "email": "paul@x.cm",
+            "role": Role.EMPLOYE, "phone": "", "organization": "", "is_active": "on",
+            "linked_accounts": [self.b.pk]})
+        self.assertEqual(r.status_code, 302)
+        self.assertIn(self.b, self.a.linked_accounts.all())

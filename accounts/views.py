@@ -92,6 +92,48 @@ def switch_role(request, role):
     return redirect("dashboard:home")
 
 
+def _home_for(user):
+    return "extranet:home" if user.is_external else "dashboard:home"
+
+
+@login_required
+def switch_account(request, pk):
+    """Bascule vers un compte LIÉ (même personne) sans saisir de mot de passe.
+
+    La cible doit appartenir au groupe de comptes liés de l'utilisateur courant.
+    On conserve l'identité de la personne d'origine en session pour que chaque
+    action effectuée ensuite reste tracée dans le journal d'activité.
+    """
+    from django.contrib.auth import login
+
+    me = request.user
+    target = get_object_or_404(User, pk=pk)
+    if target.pk == me.pk or not me.linked_group().filter(pk=target.pk).exists():
+        messages.error(request, "Ce compte n'est pas lié au vôtre.")
+        return redirect(_home_for(me))
+
+    # Origine = la toute première personne de la chaîne de bascule.
+    origin_id = request.session.get("switch_origin_id") or me.pk
+    origin_name = request.session.get("switch_origin_name") or (me.get_full_name() or me.username)
+
+    log_activity(request, ActivityLog.Action.LOGIN,
+                 f"Bascule de compte : {me.username} → {target.username}")
+    login(request, target)  # réinitialise la session (utilisateur différent)
+
+    if target.pk == origin_id:
+        # Retour au compte d'origine → fin de la bascule.
+        request.session.pop("switch_origin_id", None)
+        request.session.pop("switch_origin_name", None)
+        messages.success(request, "Vous êtes revenu à votre compte d'origine.")
+    else:
+        request.session["switch_origin_id"] = origin_id
+        request.session["switch_origin_name"] = origin_name
+        messages.success(request,
+                         f"Vous utilisez maintenant le compte : "
+                         f"{target.get_full_name() or target.username}.")
+    return redirect(_home_for(target))
+
+
 # --------------------------------------------------------------------------- #
 # Gestion des utilisateurs (Admin / RH)
 # --------------------------------------------------------------------------- #

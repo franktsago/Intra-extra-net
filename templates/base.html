@@ -298,6 +298,16 @@
               {% endfor %}
               <div class="border-t my-1"></div>
               {% endif %}
+              {% if user.has_linked_accounts %}
+              <div class="px-4 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Changer de compte</div>
+              {% for acc in user.linked_group %}
+              <a href="{% url 'accounts:switch_account' acc.pk %}" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                <i class="fa-solid fa-right-left fa-fw text-slate-300"></i>
+                <span class="truncate">{{ acc.get_full_name|default:acc.username }} <span class="text-xs text-slate-400">· {{ acc.get_role_display }}</span></span>
+              </a>
+              {% endfor %}
+              <div class="border-t my-1"></div>
+              {% endif %}
               <a href="{% url 'accounts:profile' %}" class="block px-4 py-2.5 text-sm hover:bg-slate-50"><i class="fa-solid fa-user fa-fw text-slate-400 mr-2"></i>Mon profil</a>
               <a href="{% url 'accounts:password_change' %}" class="block px-4 py-2.5 text-sm hover:bg-slate-50"><i class="fa-solid fa-key fa-fw text-slate-400 mr-2"></i>Mot de passe</a>
               <form method="post" action="{% url 'accounts:logout' %}" class="border-t">{% csrf_token %}
@@ -310,6 +320,13 @@
     </header>
 
     <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+      {% if request.session.switch_origin_name %}
+      <div class="mb-5 px-4 py-3 rounded-xl text-sm border bg-amber-50 border-amber-200 text-amber-800 flex flex-wrap items-center gap-2">
+        <i class="fa-solid fa-user-secret"></i>
+        <span>Vous utilisez le compte <strong>{{ user.get_full_name|default:user.username }}</strong> · les actions sont tracées au nom de <strong>{{ request.session.switch_origin_name }}</strong>.</span>
+        <a href="{% url 'accounts:switch_account' request.session.switch_origin_id %}" class="ml-auto font-semibold underline whitespace-nowrap"><i class="fa-solid fa-rotate-left mr-1"></i>Revenir à mon compte</a>
+      </div>
+      {% endif %}
       {% if messages %}
       <div class="space-y-2 mb-5">
         {% for m in messages %}

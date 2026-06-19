@@ -1,0 +1,30 @@
+<style>
+  details.cb-dd{position:relative}
+  details.cb-dd summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;
+    width:100%;border:1px solid #cbd5e1;border-radius:.5rem;padding:.625rem .75rem;color:#334155;background:#fff;font-size:.95rem}
+  details.cb-dd summary::-webkit-details-marker{display:none}
+  details.cb-dd[open] summary{border-color:#0073DE;box-shadow:0 0 0 2px rgba(1,150,242,.25)}
+  details.cb-dd .cb-dd-caret{transition:transform .15s;color:#94a3b8}
+  details.cb-dd[open] .cb-dd-caret{transform:rotate(180deg)}
+  .cb-dd-panel{position:absolute;z-index:30;left:0;right:0;margin-top:4px;background:#fff;border:1px solid #e2e8f0;
+    border-radius:.6rem;box-shadow:0 12px 28px rgba(0,0,0,.12);max-height:260px;overflow:auto;padding:4px}
+  .cb-dd-opt{display:flex;align-items:center;gap:.6rem;padding:.45rem .6rem;border-radius:.4rem;cursor:pointer}
+  .cb-dd-opt:hover{background:#f1f5f9}
+  .cb-dd-opt input{height:1rem;width:1rem;border-radius:.25rem;border:1px solid #cbd5e1;accent-color:#0073DE}
+</style>
+<details class="cb-dd"{% if widget.attrs.id %} id="{{ widget.attrs.id }}_dd"{% endif %}>
+  <summary>
+    <span data-cbdd-label>Sélectionner les membres…</span>
+    <span class="cb-dd-caret">▾</span>
+  </summary>
+  <div class="cb-dd-panel">
+    {% for group, options, index in widget.optgroups %}
+      {% for option in options %}
+      <label class="cb-dd-opt">
+        <input type="checkbox" name="{{ option.name }}" value="{{ option.value|stringformat:'s' }}"{% if option.selected %} checked{% endif %}{% if option.attrs.id %} id="{{ option.attrs.id }}"{% endif %}>
+        <span>{{ option.label }}</span>
+      </label>
+      {% endfor %}
+    {% endfor %}
+  </div>
+</details>

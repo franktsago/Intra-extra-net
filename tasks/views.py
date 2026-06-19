@@ -43,9 +43,11 @@ def _manager_user_of(user):
 
 def _task_in_user_departments(user, task):
     """La tâche relève-t-elle d'un département de l'utilisateur ? (via les personnes
-    concernées : assignée ou créatrice)."""
-    dept_users = department_colleagues_ids(user)
-    return task.assigned_to_id in dept_users or task.created_by_id in dept_users
+    concernées : assignée(s) ou créatrice)."""
+    dept_users = set(department_colleagues_ids(user))
+    if task.created_by_id in dept_users:
+        return True
+    return bool(task.assignee_ids & dept_users)
 
 
 def can_manage_task(user, task):
@@ -62,11 +64,12 @@ def can_change_status(user, task):
     # On ne peut faire évoluer le statut qu'une fois la tâche validée.
     if not task.is_approved:
         return False
-    return task.assigned_to_id == user.id or can_manage_task(user, task)
+    # Tout assigné (principal ou partagé) peut faire évoluer le statut commun.
+    return user.id in task.assignee_ids or can_manage_task(user, task)
 
 
 def can_view_task(user, task):
-    if user.is_rh or task.assigned_to_id == user.id or task.created_by_id == user.id:
+    if user.is_rh or user.id in task.assignee_ids or task.created_by_id == user.id:
         return True
     # Visible si la tâche relève d'un département de l'utilisateur (équipe comprise).
     return _task_in_user_departments(user, task)
@@ -80,13 +83,15 @@ def task_board(request):
         base = Task.objects.all()
     else:
         # Responsable comme équipe : tâches rattachées à leur(s) département(s),
-        # via la personne assignée ou créatrice.
+        # via la/les personne(s) assignée(s) ou créatrice.
         ids = department_colleagues_ids(user)
-        base = Task.objects.filter(Q(assigned_to_id__in=ids) | Q(created_by_id__in=ids))
+        base = Task.objects.filter(
+            Q(assigned_to_id__in=ids) | Q(created_by_id__in=ids) | Q(assignees__in=ids))
     base = base.select_related("assigned_to", "created_by").distinct()
 
     if scope == "mine":
-        tasks = base.filter(assigned_to=user)
+        # « Mes tâches » : assigné principal OU membre de l'équipe partagée.
+        tasks = base.filter(Q(assigned_to=user) | Q(assignees=user)).distinct()
     else:
         tasks = base
     columns = {
@@ -111,25 +116,25 @@ def task_create(request):
             base = form.save(commit=False)
             base.created_by = user
             if is_lead:
-                # Une tâche distincte par membre assigné (espace de chacun).
+                # UNE SEULE tâche partagée par plusieurs membres : le statut est
+                # commun (terminée pour l'un → terminée pour tous).
                 assignees = list(form.cleaned_data["assignees"])
                 def _name(u):
                     return u.get_full_name() or u.username
+                base.assigned_to = assignees[0]   # assigné principal (affichage)
+                base.is_approved = True
+                base.save()
+                base.assignees.set(assignees)
                 for member in assignees:
-                    task = Task(
-                        title=base.title, description=base.description, project=base.project,
-                        priority=base.priority, due_date=base.due_date, status=base.status,
-                        assigned_to=member, created_by=user, is_approved=True)
-                    task.save()
                     if member != user:
                         # La notification mentionne les collègues associés à la tâche.
                         others = [_name(a) for a in assignees if a.pk != member.pk]
-                        extra = f" Vous traiterez cette tâche avec {', '.join(others)}." if others else ""
-                        notify(member, "Nouvelle tâche assignée", f"{task.title}.{extra}",
-                               Notification.Level.INFO, reverse("tasks:detail", args=[task.pk]))
+                        extra = f" Tâche commune avec {', '.join(others)}." if others else ""
+                        notify(member, "Nouvelle tâche assignée", f"{base.title}.{extra}",
+                               Notification.Level.INFO, reverse("tasks:detail", args=[base.pk]))
                 if len(assignees) > 1:
                     messages.success(request,
-                                     f"Tâche créée et assignée à {len(assignees)} membres.")
+                                     f"Tâche créée et assignée à {len(assignees)} membres (tâche commune).")
                 else:
                     messages.success(request,
                                      f"Tâche créée et assignée à {_name(assignees[0])}.")
@@ -203,18 +208,28 @@ def task_detail(request, pk):
             if obj.status == Task.Status.DONE and not obj.completed_at:
                 obj.completed_at = timezone.now()
             obj.save()
-            # Tâche terminée → on prévient la personne qui l'a assignée.
-            if obj.status == Task.Status.DONE and not was_done and obj.created_by_id and obj.created_by_id != user.id:
-                notify(obj.created_by, "Tâche terminée ✅",
-                       f"{user.get_full_name() or user.username} a terminé la tâche « {obj.title} ».",
-                       Notification.Level.SUCCESS, reverse("tasks:detail", args=[obj.pk]))
+            # Tâche terminée → on prévient l'assignant ET les co-assignés (statut
+            # partagé : la tâche est désormais terminée pour toute l'équipe).
+            if obj.status == Task.Status.DONE and not was_done:
+                who = user.get_full_name() or user.username
+                url = reverse("tasks:detail", args=[obj.pk])
+                if obj.created_by_id and obj.created_by_id != user.id:
+                    notify(obj.created_by, "Tâche terminée ✅",
+                           f"{who} a terminé la tâche « {obj.title} ».",
+                           Notification.Level.SUCCESS, url)
+                co_ids = obj.assignee_ids - {user.id, obj.created_by_id}
+                from accounts.models import User as _User
+                for co in _User.objects.filter(pk__in=co_ids):
+                    notify(co, "Tâche terminée ✅",
+                           f"La tâche commune « {obj.title} » a été terminée par {who}.",
+                           Notification.Level.SUCCESS, url)
             messages.success(request, "Tâche mise à jour.")
             return redirect("tasks:detail", pk=pk)
     else:
         form = TaskForm(instance=task, viewer=user) if manage else (TaskStatusForm(instance=task) if status_only else None)
 
-    # Dépôt de rendu : l'assigné (ou un responsable) peut joindre des fichiers.
-    can_upload = manage or task.assigned_to_id == user.id
+    # Dépôt de rendu : tout assigné (ou un responsable) peut joindre des fichiers.
+    can_upload = manage or user.id in task.assignee_ids
     return render(request, "tasks/detail.html", {
         "task": task, "form": form, "can_manage": manage,
         "status_only": status_only, "read_only": form is None,

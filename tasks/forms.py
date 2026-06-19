@@ -6,13 +6,18 @@ from accounts.models import INTRANET_ROLES, User
 from .models import Task
 
 
+class CheckboxDropdown(forms.CheckboxSelectMultiple):
+    """Liste déroulante contenant des cases à cocher (multi-sélection compacte)."""
+    template_name = "tasks/checkbox_dropdown.html"
+
+
 class TaskForm(StyledFormMixin, forms.ModelForm):
-    # En création (multi=True), un responsable peut assigner à PLUSIEURS membres ;
-    # une tâche distincte est alors créée pour chacun (espace de chacun).
+    # En création (multi=True), un responsable assigne à PLUSIEURS membres : UNE
+    # SEULE tâche partagée est créée (statut commun à tous les assignés).
     assignees = forms.ModelMultipleChoiceField(
         label="Assigner à", queryset=User.objects.none(), required=False,
-        widget=forms.CheckboxSelectMultiple,
-        help_text="Cochez un ou plusieurs membres de votre équipe.",
+        widget=CheckboxDropdown,
+        help_text="Cochez un ou plusieurs membres. La tâche est commune : son statut est partagé.",
     )
 
     class Meta:

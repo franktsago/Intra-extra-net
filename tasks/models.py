@@ -24,6 +24,13 @@ class Task(models.Model):
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
         related_name="taches_assignees", verbose_name="Assignée à",
     )
+    # Tâche partagée : une même tâche peut être assignée à plusieurs membres. Le
+    # statut est COMMUN — si l'un la passe à « Terminée », elle l'est pour tous.
+    # `assigned_to` reste l'assigné principal (1er membre) pour l'affichage/compat.
+    assignees = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="taches_partagees",
+        verbose_name="Assignée à (équipe)",
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL,
         related_name="taches_creees", verbose_name="Créée par",
@@ -62,6 +69,14 @@ class Task(models.Model):
     @property
     def priority_color(self):
         return {"LOW": "slate", "NORMAL": "sky", "HIGH": "amber", "URGENT": "red"}[self.priority]
+
+    @property
+    def assignee_ids(self):
+        """Ids de tous les assignés (équipe partagée + assigné principal)."""
+        ids = set(self.assignees.values_list("id", flat=True))
+        if self.assigned_to_id:
+            ids.add(self.assigned_to_id)
+        return ids
 
 
 class TaskAttachment(models.Model):

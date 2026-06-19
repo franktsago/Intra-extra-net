@@ -8,3 +8,4 @@ class TaskAdmin(admin.ModelAdmin):
     list_display = ("title", "assigned_to", "status", "priority", "due_date")
     list_filter = ("status", "priority")
     search_fields = ("title", "description")
+    filter_horizontal = ("assignees",)

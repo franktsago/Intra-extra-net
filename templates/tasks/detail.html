@@ -10,7 +10,7 @@
         <h2 class="text-lg font-bold text-slate-800">{{ task.title }}</h2>
         <p class="text-sm text-slate-500 mt-1">
           {% if task.project %}<i class="fa-solid fa-diagram-project"></i> {{ task.project.name }} · {% endif %}
-          Assignée à <strong>{{ task.assigned_to.get_full_name|default:task.assigned_to.username|default:"—" }}</strong>
+          Assignée à <strong>{% for a in task.assignees.all %}{{ a.get_full_name|default:a.username }}{% if not forloop.last %}, {% endif %}{% empty %}{{ task.assigned_to.get_full_name|default:task.assigned_to.username|default:"—" }}{% endfor %}</strong>{% if task.assignees.count > 1 %} <span class="text-xs text-slate-400">(tâche commune · statut partagé)</span>{% endif %}
           · créée par {{ task.created_by.get_full_name|default:"—" }}</p>
       </div>
       <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-{{ task.priority_color }}-50 text-{{ task.priority_color }}-600">{{ task.get_priority_display }}</span>

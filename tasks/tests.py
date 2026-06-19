@@ -224,8 +224,8 @@ class TaskDepartmentScopeTest(TestCase):
 
 
 class MultiAssignTest(TestCase):
-    """Un responsable assigne une tâche à plusieurs membres : une tâche par membre,
-    et la notification mentionne les collègues associés (espace de chacun)."""
+    """Un responsable assigne une tâche à plusieurs membres : UNE SEULE tâche
+    partagée (statut commun), et la notification mentionne les collègues."""
 
     @classmethod
     def setUpTestData(cls):
@@ -240,15 +240,52 @@ class MultiAssignTest(TestCase):
         for u in (cls.mgr, cls.m1, cls.m2):
             Employee.objects.get(user=u).departments.add(cls.dep)
 
-    def test_creates_one_task_per_member(self):
+    def test_creates_single_shared_task(self):
         self.client.force_login(self.mgr)
         r = self.client.post(reverse("tasks:create"), {
             "title": "Tache groupe", "priority": "NORMAL", "status": "TODO",
             "assignees": [self.m1.pk, self.m2.pk]})
         self.assertEqual(r.status_code, 302)
-        self.assertEqual(Task.objects.filter(title="Tache groupe").count(), 2)
-        self.assertTrue(Task.objects.filter(title="Tache groupe", assigned_to=self.m1).exists())
-        self.assertTrue(Task.objects.filter(title="Tache groupe", assigned_to=self.m2).exists())
+        # Une SEULE tâche, partagée entre les 2 membres.
+        self.assertEqual(Task.objects.filter(title="Tache groupe").count(), 1)
+        task = Task.objects.get(title="Tache groupe")
+        self.assertEqual(set(task.assignees.values_list("pk", flat=True)), {self.m1.pk, self.m2.pk})
+
+    def test_status_is_shared_done_for_all(self):
+        self.client.force_login(self.mgr)
+        self.client.post(reverse("tasks:create"), {
+            "title": "Tache commune", "priority": "NORMAL", "status": "TODO",
+            "assignees": [self.m1.pk, self.m2.pk]})
+        task = Task.objects.get(title="Tache commune")
+        # m1 passe la tâche à « Terminée ».
+        self.client.force_login(self.m1)
+        self.client.post(reverse("tasks:detail", args=[task.pk]), {"status": "DONE"})
+        task.refresh_from_db()
+        self.assertEqual(task.status, "DONE")
+        # m2 voit la MÊME tâche déjà terminée (statut partagé).
+        self.client.force_login(self.m2)
+        board = self.client.get(reverse("tasks:board") + "?scope=mine")
+        self.assertContains(board, "Tache commune")
+        detail = self.client.get(reverse("tasks:detail", args=[task.pk]))
+        self.assertEqual(detail.status_code, 200)
+
+    def test_both_members_see_task_in_their_board(self):
+        self.client.force_login(self.mgr)
+        self.client.post(reverse("tasks:create"), {
+            "title": "Tache visible", "priority": "NORMAL", "status": "TODO",
+            "assignees": [self.m1.pk, self.m2.pk]})
+        for member in (self.m1, self.m2):
+            self.client.force_login(member)
+            r = self.client.get(reverse("tasks:board") + "?scope=mine")
+            self.assertContains(r, "Tache visible")
+
+    def test_create_page_renders_checkbox_dropdown(self):
+        self.client.force_login(self.mgr)
+        r = self.client.get(reverse("tasks:create"))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "cb-dd")                 # liste déroulante
+        self.assertContains(r, 'type="checkbox"')       # cases à cocher à l'intérieur
+        self.assertContains(r, "Ana UN")                # membres listés
 
     def test_notification_mentions_colleagues(self):
         from notifications.models import Notification
@@ -269,7 +306,7 @@ class MultiAssignTest(TestCase):
             "title": "Tache solo", "priority": "NORMAL", "status": "TODO",
             "assignees": [self.m1.pk]})
         n = Notification.objects.filter(recipient=self.m1, title__icontains="assign").first()
-        self.assertNotIn("Vous traiterez cette tâche avec", n.message)
+        self.assertNotIn("Tâche commune avec", n.message)
 
 
 class EmployeeCannotEditAssignedTaskTest(TestCase):

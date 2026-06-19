@@ -12,9 +12,9 @@
   .cb-dd-opt:hover{background:#f1f5f9}
   .cb-dd-opt input{height:1rem;width:1rem;border-radius:.25rem;border:1px solid #cbd5e1;accent-color:#0073DE}
 </style>
-<details class="cb-dd"{% if widget.attrs.id %} id="{{ widget.attrs.id }}_dd"{% endif %}>
+<details class="cb-dd" data-noun="{{ widget.noun|default:'élément' }}"{% if widget.attrs.id %} id="{{ widget.attrs.id }}_dd"{% endif %}>
   <summary>
-    <span data-cbdd-label>Sélectionner les membres…</span>
+    <span data-cbdd-label>{{ widget.placeholder|default:'Sélectionner…' }}</span>
     <span class="cb-dd-caret">▾</span>
   </summary>
   <div class="cb-dd-panel">

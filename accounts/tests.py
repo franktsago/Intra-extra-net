@@ -469,3 +469,17 @@ class LinkedAccountSwitchTest(TestCase):
             "linked_accounts": [self.b.pk]})
         self.assertEqual(r.status_code, 302)
         self.assertIn(self.b, self.a.linked_accounts.all())
+
+
+class RoleDropdownRenderTest(TestCase):
+    """Les rôles supplémentaires s'affichent en cases à cocher dans une liste déroulante."""
+
+    def test_extra_roles_rendered_as_checkbox_dropdown(self):
+        admin = User.objects.create_user("dd_adm", password="x", role=Role.ADMIN, is_superuser=True)
+        target = User.objects.create_user("dd_u", password="x", role=Role.EMPLOYE)
+        self.client.force_login(admin)
+        r = self.client.get(reverse("accounts:user_edit", args=[target.pk]))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "cb-dd")                       # liste déroulante
+        self.assertContains(r, "Sélectionner les rôles")      # intitulé du menu rôles
+        self.assertContains(r, 'name="extra_roles"')          # cases à cocher des rôles

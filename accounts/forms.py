@@ -7,6 +7,26 @@ from django.contrib.auth.forms import PasswordChangeForm as DjPasswordChangeForm
 from .models import Role, User
 
 
+class CheckboxDropdown(forms.CheckboxSelectMultiple):
+    """Liste déroulante contenant des cases à cocher (multi-sélection compacte).
+
+    Réutilisable partout : passer `placeholder` (texte au repos) et `noun`
+    (« membre », « rôle »…) pour le compteur de sélection.
+    """
+    template_name = "includes/checkbox_dropdown.html"
+
+    def __init__(self, *args, placeholder="Sélectionner…", noun="élément", **kwargs):
+        self.placeholder = placeholder
+        self.noun = noun
+        super().__init__(*args, **kwargs)
+
+    def get_context(self, name, value, attrs):
+        ctx = super().get_context(name, value, attrs)
+        ctx["widget"]["placeholder"] = self.placeholder
+        ctx["widget"]["noun"] = self.noun
+        return ctx
+
+
 def role_choices_for(viewer, instance=None, restrict_ceo=True):
     """Choix de rôles proposés selon le niveau du créateur.
 
@@ -101,7 +121,7 @@ class UserCreateForm(StyledFormMixin, UserCreationForm):
 class UserEditForm(StyledFormMixin, forms.ModelForm):
     extra_roles = forms.MultipleChoiceField(
         label="Rôles supplémentaires", required=False, choices=Role.choices,
-        widget=forms.CheckboxSelectMultiple,
+        widget=CheckboxDropdown(placeholder="Sélectionner les rôles…", noun="rôle"),
         help_text="Permet à l'utilisateur de basculer entre plusieurs fonctions.",
     )
     linked_accounts = forms.ModelMultipleChoiceField(

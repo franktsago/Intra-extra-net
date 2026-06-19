@@ -11,17 +11,4 @@
     </div>
   </form>
 </div>
-<script>
-  // Met à jour l'intitulé du menu déroulant avec le nombre de membres cochés.
-  document.querySelectorAll('details.cb-dd').forEach(function(dd){
-    var label = dd.querySelector('[data-cbdd-label]');
-    function refresh(){
-      var n = dd.querySelectorAll('input[type=checkbox]:checked').length;
-      label.textContent = n === 0 ? 'Sélectionner les membres…'
-        : (n === 1 ? '1 membre sélectionné' : n + ' membres sélectionnés');
-    }
-    dd.addEventListener('change', refresh);
-    refresh();
-  });
-</script>
 {% endblock %}

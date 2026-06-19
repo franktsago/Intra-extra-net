@@ -375,6 +375,20 @@
   if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(function(){}); }
 </script>
 {% block scripts %}{% endblock %}
+<script>
+  // Listes déroulantes à cases à cocher : met à jour l'intitulé avec le nombre coché.
+  document.querySelectorAll('details.cb-dd').forEach(function (dd) {
+    if (dd.dataset.bound) return; dd.dataset.bound = '1';
+    var label = dd.querySelector('[data-cbdd-label]');
+    if (!label) return;
+    var ph = label.textContent, noun = dd.getAttribute('data-noun') || 'élément';
+    function refresh() {
+      var n = dd.querySelectorAll('input[type=checkbox]:checked').length;
+      label.textContent = n === 0 ? ph : (n + ' ' + noun + (n > 1 ? 's' : '') + ' sélectionné' + (n > 1 ? 's' : ''));
+    }
+    dd.addEventListener('change', refresh); refresh();
+  });
+</script>
 <script src="{% static 'js/calls.js' %}?v=4"></script>
 </body>
 </html>

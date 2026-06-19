@@ -1,14 +1,9 @@
 from django import forms
 
-from accounts.forms import StyledFormMixin
+from accounts.forms import CheckboxDropdown, StyledFormMixin
 from accounts.models import INTRANET_ROLES, User
 
 from .models import Task
-
-
-class CheckboxDropdown(forms.CheckboxSelectMultiple):
-    """Liste déroulante contenant des cases à cocher (multi-sélection compacte)."""
-    template_name = "tasks/checkbox_dropdown.html"
 
 
 class TaskForm(StyledFormMixin, forms.ModelForm):
@@ -16,7 +11,7 @@ class TaskForm(StyledFormMixin, forms.ModelForm):
     # SEULE tâche partagée est créée (statut commun à tous les assignés).
     assignees = forms.ModelMultipleChoiceField(
         label="Assigner à", queryset=User.objects.none(), required=False,
-        widget=CheckboxDropdown,
+        widget=CheckboxDropdown(placeholder="Sélectionner les membres…", noun="membre"),
         help_text="Cochez un ou plusieurs membres. La tâche est commune : son statut est partagé.",
     )
 

@@ -54,7 +54,7 @@ class TaskValidationWorkflowTest(TestCase):
         self.client.force_login(self.mgr)
         r = self.client.post(reverse("tasks:create"), {
             "title": "Tache chef", "priority": "NORMAL", "status": "TODO",
-            "assigned_to": self.emp.pk,
+            "assignees": [self.emp.pk],
         })
         self.assertEqual(r.status_code, 302)
         task = Task.objects.get(title="Tache chef")
@@ -67,7 +67,7 @@ class TaskValidationWorkflowTest(TestCase):
         self.client.force_login(self.mgr)
         r = self.client.post(reverse("tasks:create"), {
             "title": "Tache equipe", "priority": "NORMAL", "status": "TODO",
-            "assigned_to": self.emp.pk,
+            "assignees": [self.emp.pk],
         })
         self.assertEqual(r.status_code, 302)
         self.assertIn("scope=all", r["Location"])
@@ -221,3 +221,78 @@ class TaskDepartmentScopeTest(TestCase):
         r = self.client.get(reverse("tasks:board") + "?scope=all")
         self.assertContains(r, "TacheMKT")
         self.assertContains(r, "TacheOPS")
+
+
+class MultiAssignTest(TestCase):
+    """Un responsable assigne une tâche à plusieurs membres : une tâche par membre,
+    et la notification mentionne les collègues associés (espace de chacun)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from employees.models import Department
+        cls.dep = Department.objects.create(name="Studio", code="STU")
+        cls.mgr = User.objects.create_user("ma_mgr", password="x", role=Role.MANAGER,
+                                            first_name="Max", last_name="MGR")
+        cls.m1 = User.objects.create_user("ma_m1", password="x", role=Role.EMPLOYE,
+                                           first_name="Ana", last_name="UN")
+        cls.m2 = User.objects.create_user("ma_m2", password="x", role=Role.EMPLOYE,
+                                           first_name="Bob", last_name="DEUX")
+        for u in (cls.mgr, cls.m1, cls.m2):
+            Employee.objects.get(user=u).departments.add(cls.dep)
+
+    def test_creates_one_task_per_member(self):
+        self.client.force_login(self.mgr)
+        r = self.client.post(reverse("tasks:create"), {
+            "title": "Tache groupe", "priority": "NORMAL", "status": "TODO",
+            "assignees": [self.m1.pk, self.m2.pk]})
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(Task.objects.filter(title="Tache groupe").count(), 2)
+        self.assertTrue(Task.objects.filter(title="Tache groupe", assigned_to=self.m1).exists())
+        self.assertTrue(Task.objects.filter(title="Tache groupe", assigned_to=self.m2).exists())
+
+    def test_notification_mentions_colleagues(self):
+        from notifications.models import Notification
+        self.client.force_login(self.mgr)
+        self.client.post(reverse("tasks:create"), {
+            "title": "Tache duo", "priority": "NORMAL", "status": "TODO",
+            "assignees": [self.m1.pk, self.m2.pk]})
+        n1 = Notification.objects.filter(recipient=self.m1, title__icontains="assign").first()
+        self.assertIsNotNone(n1)
+        self.assertIn("Bob DEUX", n1.message)        # Ana est informée qu'elle traite avec Bob
+        n2 = Notification.objects.filter(recipient=self.m2, title__icontains="assign").first()
+        self.assertIn("Ana UN", n2.message)          # …et réciproquement
+
+    def test_single_assign_has_no_colleague_mention(self):
+        from notifications.models import Notification
+        self.client.force_login(self.mgr)
+        self.client.post(reverse("tasks:create"), {
+            "title": "Tache solo", "priority": "NORMAL", "status": "TODO",
+            "assignees": [self.m1.pk]})
+        n = Notification.objects.filter(recipient=self.m1, title__icontains="assign").first()
+        self.assertNotIn("Vous traiterez cette tâche avec", n.message)
+
+
+class EmployeeCannotEditAssignedTaskTest(TestCase):
+    """Un employé ne peut PAS modifier la tâche que son responsable lui a assignée :
+    il ne peut que changer le statut (et ajouter son rendu)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.mgr = User.objects.create_user("ce_mgr", password="x", role=Role.MANAGER)
+        cls.emp = User.objects.create_user("ce_emp", password="x", role=Role.EMPLOYE)
+        cls.task = Task.objects.create(title="Original", description="desc",
+                                       assigned_to=cls.emp, created_by=cls.mgr, is_approved=True)
+
+    def test_employee_has_no_title_field(self):
+        self.client.force_login(self.emp)
+        r = self.client.get(reverse("tasks:detail", args=[self.task.pk]))
+        self.assertNotContains(r, 'name="title"')   # champ d'édition absent
+
+    def test_employee_post_cannot_change_title(self):
+        self.client.force_login(self.emp)
+        self.client.post(reverse("tasks:detail", args=[self.task.pk]),
+                         {"title": "Pirate", "description": "x", "status": "IN_PROGRESS"})
+        self.task.refresh_from_db()
+        self.assertEqual(self.task.title, "Original")       # titre/description inchangés
+        self.assertEqual(self.task.description, "desc")
+        self.assertEqual(self.task.status, "IN_PROGRESS")   # mais le statut change

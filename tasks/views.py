@@ -106,36 +106,49 @@ def task_create(request):
     user = request.user
     is_lead = user.is_manager  # responsable / RH / CEO / admin
     if request.method == "POST":
-        form = TaskForm(request.POST, viewer=user) if is_lead else EmployeeTaskForm(request.POST)
+        form = TaskForm(request.POST, viewer=user, multi=True) if is_lead else EmployeeTaskForm(request.POST)
         if form.is_valid():
-            task = form.save(commit=False)
-            task.created_by = user
+            base = form.save(commit=False)
+            base.created_by = user
             if is_lead:
-                task.is_approved = True
+                # Une tâche distincte par membre assigné (espace de chacun).
+                assignees = list(form.cleaned_data["assignees"])
+                def _name(u):
+                    return u.get_full_name() or u.username
+                for member in assignees:
+                    task = Task(
+                        title=base.title, description=base.description, project=base.project,
+                        priority=base.priority, due_date=base.due_date, status=base.status,
+                        assigned_to=member, created_by=user, is_approved=True)
+                    task.save()
+                    if member != user:
+                        # La notification mentionne les collègues associés à la tâche.
+                        others = [_name(a) for a in assignees if a.pk != member.pk]
+                        extra = f" Vous traiterez cette tâche avec {', '.join(others)}." if others else ""
+                        notify(member, "Nouvelle tâche assignée", f"{task.title}.{extra}",
+                               Notification.Level.INFO, reverse("tasks:detail", args=[task.pk]))
+                if len(assignees) > 1:
+                    messages.success(request,
+                                     f"Tâche créée et assignée à {len(assignees)} membres.")
+                else:
+                    messages.success(request,
+                                     f"Tâche créée et assignée à {_name(assignees[0])}.")
+                # Bascule sur la vue « équipe » sinon le responsable ne verrait pas
+                # les tâches assignées à d'autres (filtre « Mes tâches »).
+                return redirect(reverse("tasks:board") + "?scope=all")
             else:
                 # Employé : tâche pour lui-même, en attente de validation du responsable.
-                task.assigned_to = user
-                task.is_approved = False
-            task.save()
-            if is_lead:
-                if task.assigned_to and task.assigned_to != user:
-                    notify(task.assigned_to, "Nouvelle tâche assignée", task.title,
-                           Notification.Level.INFO, reverse("tasks:detail", args=[task.pk]))
-                    messages.success(request,
-                                     f"Tâche créée et assignée à {task.assigned_to.get_full_name() or task.assigned_to.username}.")
-                    # La tâche est assignée à un membre de l'équipe : on bascule sur la vue
-                    # « équipe » sinon le responsable ne la verrait pas (filtre « Mes tâches »).
-                    return redirect(reverse("tasks:board") + "?scope=all")
-                messages.success(request, "Tâche créée.")
-            else:
+                base.assigned_to = user
+                base.is_approved = False
+                base.save()
                 mgr = _manager_user_of(user)
                 notify(mgr, "Tâche à valider",
-                       f"{user.get_full_name() or user.username} propose la tâche « {task.title} ».",
-                       Notification.Level.INFO, reverse("tasks:detail", args=[task.pk]))
+                       f"{user.get_full_name() or user.username} propose la tâche « {base.title} ».",
+                       Notification.Level.INFO, reverse("tasks:detail", args=[base.pk]))
                 messages.success(request, "Tâche créée. Elle sera active après validation de votre responsable.")
             return redirect("tasks:board")
     else:
-        form = TaskForm(viewer=user) if is_lead else EmployeeTaskForm()
+        form = TaskForm(viewer=user, multi=True) if is_lead else EmployeeTaskForm()
     return render(request, "tasks/form.html", {"form": form, "is_lead": is_lead})
 
 

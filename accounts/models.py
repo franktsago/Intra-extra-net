@@ -180,6 +180,14 @@ class User(AbstractUser):
         b = (self.last_name[:1]).upper()
         return (a + b) or "?"
 
+    @property
+    def department_label(self) -> str:
+        """Département(s) de rattachement (via la fiche employé), pour affichage."""
+        emp = getattr(self, "employee", None)
+        if not emp:
+            return ""
+        return " / ".join(d.name for d in emp.departments.all())
+
     # ----- Comptes liés (même personne) / bascule ----- #
     def linked_group(self):
         """Tous les comptes liés à celui-ci (fermeture transitive, hors soi-même).

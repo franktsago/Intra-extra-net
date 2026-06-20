@@ -223,6 +223,18 @@ WEBRTC_STUN_URLS = [u.strip() for u in os.getenv(
 WEBRTC_TURN_URL = os.getenv("WEBRTC_TURN_URL", "")
 WEBRTC_TURN_USERNAME = os.getenv("WEBRTC_TURN_USERNAME", "")
 WEBRTC_TURN_CREDENTIAL = os.getenv("WEBRTC_TURN_CREDENTIAL", "")
+
+# Temps réel (messages, appels, notifications) via MQTT over WebSocket.
+# Les navigateurs se « réveillent » mutuellement par de petits pings (identifiants
+# uniquement, jamais de contenu) ; le contenu reste récupéré de Django (authentifié).
+# Broker public par défaut (aucun serveur à héberger) ; remplaçable par le tien.
+MQTT_WSS_URL = os.getenv("MQTT_WSS_URL", "wss://broker.emqx.io:8084/mqtt")
+# Préfixe de topic difficile à deviner, dérivé du SECRET_KEY (cloisonne l'instance).
+MQTT_TOPIC_PREFIX = os.getenv(
+    "MQTT_TOPIC_PREFIX",
+    "lpm/" + __import__("hashlib").sha1(SECRET_KEY.encode()).hexdigest()[:16],
+)
+MQTT_ENABLED = os.getenv("MQTT_ENABLED", "True").lower() in ("1", "true", "yes", "on")
 # Performance : on N'enregistre PAS la session à chaque requête. Le suivi
 # d'inactivité est géré par le middleware, qui ne modifie la session (donc ne
 # l'écrit) qu'au plus une fois par minute → bien moins d'écritures en base.

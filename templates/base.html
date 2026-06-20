@@ -274,10 +274,10 @@
         <div class="ml-auto flex items-center gap-1">
           <a href="{% url 'notifications:list' %}" class="relative p-2.5 rounded-xl hover:bg-slate-100 text-slate-500">
             <i class="fa-solid fa-bell"></i>
-            {% if unread_count %}<span class="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">{{ unread_count }}</span>{% endif %}
+            <span id="notif-badge" class="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center"{% if not unread_count %} style="display:none"{% endif %}>{{ unread_count }}</span>
           </a>
           <a href="{% url 'messaging:inbox' %}" class="relative p-2.5 rounded-xl hover:bg-slate-100 text-slate-500"><i class="fa-solid fa-comments"></i>
-            {% with total=unread_messages|add:unread_chat %}{% if total %}<span class="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-lpm text-white text-[10px] font-bold flex items-center justify-center">{{ total }}</span>{% endif %}{% endwith %}</a>
+            {% with total=unread_messages|add:unread_chat %}<span id="msg-badge" class="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-lpm text-white text-[10px] font-bold flex items-center justify-center"{% if not total %} style="display:none"{% endif %}>{{ total }}</span>{% endwith %}</a>
           <div class="w-px h-6 bg-slate-200 mx-1 hidden sm:block"></div>
           <div class="relative">
             <button onclick="document.getElementById('user-menu').classList.toggle('hidden')" class="flex items-center gap-2.5 p-1 pr-2 rounded-xl hover:bg-slate-100">
@@ -389,6 +389,17 @@
     dd.addEventListener('change', refresh); refresh();
   });
 </script>
-<script src="{% static 'js/calls.js' %}?v=4"></script>
+<script>
+  window.LPM_RT = {
+    uid: {{ rt_uid|default:"null" }},
+    name: "{{ rt_name|escapejs }}",
+    mqtt: "{{ rt_mqtt_url }}",
+    prefix: "{{ rt_mqtt_prefix }}",
+    lastNotifId: {{ rt_last_notif_id|default:0 }}
+  };
+</script>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script src="{% static 'js/calls.js' %}?v=5"></script>
+<script src="{% static 'js/realtime.js' %}?v=1"></script>
 </body>
 </html>

@@ -39,7 +39,7 @@
       <a href="{% url 'extranet:reports' %}" class="xnav {% if '/rapports' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-chart-line fa-fw text-white/50"></i> Rapports</a>
       <a href="{% url 'extranet:requests' %}" class="xnav {% if '/demandes' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-lightbulb fa-fw text-white/50"></i> Mes demandes</a>
       <a href="{% url 'extranet:tickets' %}" class="xnav {% if '/reclamations' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-headset fa-fw text-white/50"></i> Réclamations</a>
-      <a href="{% url 'messaging:inbox' %}" class="xnav {% if '/messagerie' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-comments fa-fw text-white/50"></i> Messagerie{% with total=unread_messages|add:unread_chat %}{% if total %}<span class="ml-auto bg-lpm text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{{ total }}</span>{% endif %}{% endwith %}</a>
+      <a href="{% url 'messaging:inbox' %}" class="xnav {% if '/messagerie' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-comments fa-fw text-white/50"></i> Messagerie{% with total=unread_messages|add:unread_chat %}<span id="msg-badge" class="ml-auto bg-lpm text-white text-[10px] font-bold rounded-full px-1.5 py-0.5"{% if not total %} style="display:none"{% endif %}>{{ total }}</span>{% endwith %}</a>
       <a href="{% url 'notifications:list' %}" class="xnav {% if '/notifications' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-bell fa-fw text-white/50"></i> Notifications{% if unread_count %}<span class="ml-auto bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{{ unread_count }}</span>{% endif %}</a>
       <a href="{% url 'accounts:profile' %}" class="xnav {% if '/profil' in request.path %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-xl transition"><i class="fa-solid fa-user fa-fw text-white/50"></i> Mon compte</a>
     </nav>
@@ -63,7 +63,7 @@
         <div class="ml-auto flex items-center gap-1">
           <a href="{% url 'notifications:list' %}" class="relative p-2.5 rounded-xl hover:bg-slate-100 text-slate-500">
             <i class="fa-solid fa-bell"></i>
-            {% if unread_count %}<span class="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">{{ unread_count }}</span>{% endif %}</a>
+            <span id="notif-badge" class="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center"{% if not unread_count %} style="display:none"{% endif %}>{{ unread_count }}</span></a>
           <div class="w-px h-6 bg-slate-200 mx-1"></div>
           <div class="flex items-center gap-2.5">
             {% if user.avatar %}
@@ -113,6 +113,17 @@
   }
   if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(function(){}); }
 </script>
-<script src="{% static 'js/calls.js' %}?v=3"></script>
+<script>
+  window.LPM_RT = {
+    uid: {{ rt_uid|default:"null" }},
+    name: "{{ rt_name|escapejs }}",
+    mqtt: "{{ rt_mqtt_url }}",
+    prefix: "{{ rt_mqtt_prefix }}",
+    lastNotifId: {{ rt_last_notif_id|default:0 }}
+  };
+</script>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script src="{% static 'js/calls.js' %}?v=5"></script>
+<script src="{% static 'js/realtime.js' %}?v=1"></script>
 </body>
 </html>

@@ -28,6 +28,33 @@ def notification_list(request):
 
 
 @login_required
+def feed(request):
+    """Flux JSON : notifications récentes du périmètre actif + compteur non-lus.
+
+    `?after=<id>` ne renvoie que les notifications plus récentes (pour signaler
+    en temps réel l'arrivée d'une nouvelle : son + toast côté client)."""
+    from django.http import JsonResponse
+    audience = _current_audience(request.user)
+    base = Notification.objects.filter(recipient=request.user, audience=audience)
+    try:
+        after = int(request.GET.get("after") or 0)
+    except (ValueError, TypeError):
+        after = 0
+    # Nouvelles notifications strictement plus récentes que `after` (le client
+    # initialise `after` au dernier id connu, donc aucune alerte au 1er chargement).
+    new_qs = base.filter(id__gt=after).order_by("-id")[:10]
+    new = [{
+        "id": n.id, "title": n.title, "message": n.message,
+        "level": n.level, "url": n.url,
+    } for n in new_qs]
+    return JsonResponse({
+        "unread": base.filter(is_read=False).count(),
+        "last_id": base.order_by("-id").values_list("id", flat=True).first() or 0,
+        "new": new,
+    })
+
+
+@login_required
 def open_notification(request, pk):
     notif = get_object_or_404(Notification, pk=pk, recipient=request.user)
     notif.is_read = True

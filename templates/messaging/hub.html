@@ -98,8 +98,8 @@
         </a>
         <div class="min-w-0 flex-1"><div class="font-semibold text-slate-800 truncate">{{ active.other.get_full_name|default:active.other.username }}</div>
         <div class="text-xs truncate" data-presence>{% if active.other.is_online %}<span class="text-emerald-500 font-medium">● en ligne</span>{% else %}<span class="text-slate-400">● hors ligne · {{ active.other.get_role_display }}</span>{% endif %}</div></div>
-        <a href="{% url 'messaging:call_start' 'd' active.other.pk 'audio' %}" class="p-2 rounded-lg hover:bg-slate-100 text-lpm" title="Appel audio"><i class="fa-solid fa-phone"></i></a>
-        <a href="{% url 'messaging:call_start' 'd' active.other.pk 'video' %}" class="p-2 rounded-lg hover:bg-slate-100 text-lpm" title="Appel vidéo"><i class="fa-solid fa-video"></i></a>
+        <a href="{% url 'messaging:call_start' 'd' active.other.pk 'audio' %}" data-call-to="{{ active.other.pk }}" class="p-2 rounded-lg hover:bg-slate-100 text-lpm" title="Appel audio"><i class="fa-solid fa-phone"></i></a>
+        <a href="{% url 'messaging:call_start' 'd' active.other.pk 'video' %}" data-call-to="{{ active.other.pk }}" class="p-2 rounded-lg hover:bg-slate-100 text-lpm" title="Appel vidéo"><i class="fa-solid fa-video"></i></a>
         <form method="post" action="{% url 'messaging:pin_conversation' active.key %}">{% csrf_token %}
           <button class="p-2 rounded-lg hover:bg-slate-100 {% if active.pinned %}text-lpm{% else %}text-slate-400{% endif %}" title="{% if active.pinned %}Désépingler{% else %}Épingler{% endif %} la conversation"><i class="fa-solid fa-thumbtack"></i></button>
         </form>
@@ -110,8 +110,8 @@
         <span class="h-10 w-10 rounded-full flex items-center justify-center {% if active.group.is_general %}lpm-gradient text-white{% else %}bg-slate-200 text-slate-600{% endif %}"><i class="fa-solid {% if active.group.is_general %}fa-bullhorn{% else %}fa-user-group{% endif %}"></i></span>
         <a href="{% if active.group.is_general %}#{% else %}{% url 'messaging:group_manage' active.group.pk %}{% endif %}" class="min-w-0 flex-1 block" title="Voir les participants"><div class="font-semibold text-slate-800 truncate">{{ active.group.name }}</div>
         <div class="text-xs text-slate-400 truncate">{% for mem in active.group.members.all|slice:":6" %}{{ mem.get_full_name|default:mem.username }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if active.group.members.count > 6 %}…{% endif %}</div></a>
-        <a href="{% url 'messaging:call_start' 'g' active.group.pk 'audio' %}" class="p-2 rounded-lg hover:bg-slate-100 text-lpm" title="Appel audio de groupe"><i class="fa-solid fa-phone"></i></a>
-        <a href="{% url 'messaging:call_start' 'g' active.group.pk 'video' %}" class="p-2 rounded-lg hover:bg-slate-100 text-lpm" title="Appel vidéo de groupe"><i class="fa-solid fa-video"></i></a>
+        <a href="{% url 'messaging:call_start' 'g' active.group.pk 'audio' %}" data-call-members="{% for mem in active.group.members.all %}{% if mem.pk != user.pk %}{{ mem.pk }}{% if not forloop.last %},{% endif %}{% endif %}{% endfor %}" class="p-2 rounded-lg hover:bg-slate-100 text-lpm" title="Appel audio de groupe"><i class="fa-solid fa-phone"></i></a>
+        <a href="{% url 'messaging:call_start' 'g' active.group.pk 'video' %}" data-call-members="{% for mem in active.group.members.all %}{% if mem.pk != user.pk %}{{ mem.pk }}{% if not forloop.last %},{% endif %}{% endif %}{% endfor %}" class="p-2 rounded-lg hover:bg-slate-100 text-lpm" title="Appel vidéo de groupe"><i class="fa-solid fa-video"></i></a>
         <form method="post" action="{% url 'messaging:pin_conversation' active.key %}">{% csrf_token %}
           <button class="p-2 rounded-lg hover:bg-slate-100 {% if active.pinned %}text-lpm{% else %}text-slate-400{% endif %}" title="{% if active.pinned %}Désépingler{% else %}Épingler{% endif %}"><i class="fa-solid fa-thumbtack"></i></button>
         </form>
@@ -269,7 +269,7 @@
           <textarea name="body" rows="1" data-input placeholder="Écrivez un message…" class="wa-input flex-1 bg-transparent text-sm focus:outline-none border-0 p-0"></textarea>
           <label class="pl-2 text-slate-400 hover:text-slate-600 cursor-pointer flex-shrink-0" title="Joindre">
             <i class="fa-solid fa-paperclip"></i>
-            <input type="file" name="attachment" class="hidden" onchange="if(this.files[0]){document.getElementById('fname').textContent='📎 '+this.files[0].name; this.form.submit();}">
+            <input type="file" name="attachment" class="hidden" onchange="if(this.files[0]){document.getElementById('fname').textContent='📎 '+this.files[0].name; if(window.__composerSend){window.__composerSend();}else{this.form.submit();}}">
           </label>
         </div>
         <button type="button" data-mic class="h-11 w-11 rounded-full bg-lpm hover:bg-lpm-dark text-white flex items-center justify-center flex-shrink-0" title="Message vocal"><i class="fa-solid fa-microphone"></i></button>
@@ -286,6 +286,18 @@
 <script>
 (function(){var t=document.getElementById('thread');if(t)t.scrollTop=t.scrollHeight;})();
 function filterConvs(q){q=(q||'').toLowerCase();document.querySelectorAll('#convList .convitem').forEach(function(el){el.style.display=el.getAttribute('data-name').indexOf(q)>-1?'':'none';});}
+// Avant d'ouvrir la salle d'appel, prévient le(s) destinataire(s) en temps réel (ping MQTT).
+document.addEventListener('click', function(ev){
+  var a = ev.target.closest('[data-call-to],[data-call-members]'); if(!a) return;
+  if(!window.lpmPublish || a.dataset.sent) return;   // laisse la navigation se faire normalement
+  var to = a.getAttribute('data-call-to');
+  var mem = a.getAttribute('data-call-members');
+  ev.preventDefault();
+  if(to){ window.lpmPublish(to, {k:'call'}); }
+  if(mem){ window.lpmPublishMany(mem.split(',').filter(Boolean), {k:'call'}); }
+  a.dataset.sent = '1';
+  setTimeout(function(){ window.location.href = a.href; }, 60);  // laisse le ping partir
+});
 </script>
-<script src="{% static 'js/chat.js' %}?v=13"></script>
+<script src="{% static 'js/chat.js' %}?v=14"></script>
 {% endblock %}

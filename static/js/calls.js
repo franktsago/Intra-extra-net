@@ -61,6 +61,8 @@
       .then(function (d) { if (d.call) { if (d.call.id !== current) show(d.call); } else hide(); })
       .catch(function () {});
   }
+  // Permet à realtime.js (ping MQTT) de déclencher la vérification immédiatement.
+  window.__incomingCallPoll = poll;
   // Sonde toutes les 5 s (un appel sonne ~45 s) : assez réactif pour ne pas rater
   // un appel entrant, tout en restant léger.
   setInterval(poll, 5000);

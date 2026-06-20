@@ -678,3 +678,34 @@ class CallSignalTest(TestCase):
         r = self.client.get(reverse("messaging:call", args=[call.pk]))
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, "RTCPeerConnection")   # page WebRTC native, pas Jitsi
+
+
+class RealtimeRecipientsTest(TestCase):
+    """L'envoi AJAX renvoie les destinataires à « pinguer » en temps réel (MQTT)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.a = User.objects.create_user("rtA", password="x", role=Role.EMPLOYE)
+        cls.b = User.objects.create_user("rtB", password="x", role=Role.EMPLOYE)
+
+    def test_direct_message_returns_recipient(self):
+        import json
+        self.client.force_login(self.a)
+        r = self.client.post(reverse("messaging:thread", args=[self.b.pk]),
+                             {"body": "Coucou"}, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        d = json.loads(r.content)
+        self.assertTrue(d["ok"])
+        self.assertEqual(d["recipients"], [self.b.pk])
+        self.assertEqual(d["conv"], "d%d" % self.a.pk)
+
+    def test_group_message_returns_members_except_sender(self):
+        import json
+        from messaging.models import ChatGroup
+        g = ChatGroup.objects.create(name="Equipe", created_by=self.a)
+        g.members.add(self.a, self.b)
+        self.client.force_login(self.a)
+        r = self.client.post(reverse("messaging:group", args=[g.pk]),
+                             {"body": "Salut l'équipe"}, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        d = json.loads(r.content)
+        self.assertEqual(d["recipients"], [self.b.pk])   # pas l'expéditeur
+        self.assertEqual(d["conv"], "g%d" % g.pk)

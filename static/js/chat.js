@@ -21,28 +21,38 @@
       mic.classList.toggle('hidden', has);
       mic.classList.toggle('flex', !has);
     }
-    // Envoi AJAX du texte (pas de rechargement → l'écran ne saute plus, le clavier
-    // reste ouvert). Repli sur l'envoi classique pour pièces jointes / vocaux / hors hub.
+    // Envoi AJAX (texte, pièce jointe, vocal) : pas de rechargement → l'écran ne
+    // saute plus, le clavier reste ouvert, et on « pousse » un ping MQTT au(x)
+    // destinataire(s) pour un affichage instantané chez eux.
     function ajaxSend() {
       var thread = document.getElementById('thread');
       if (!thread || !thread.dataset.pollKind) return false;   // pages autonomes → submit normal
-      if (fileInput && fileInput.files && fileInput.files.length) return false;  // pièce jointe
-      if (!input || !input.value.trim().length) return false;
-      var csrfEl = form.querySelector('[name=csrfmiddlewaretoken]');
+      var hasFile = fileInput && fileInput.files && fileInput.files.length;
+      if (!hasFile && (!input || !input.value.trim().length)) return false;  // rien à envoyer
       fetch(form.action, {
         method: 'POST', body: new FormData(form),
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
-      }).then(function (r) { return r.json(); }).then(function () {
-        input.value = ''; input.style.height = 'auto';
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        if (input) { input.value = ''; input.style.height = 'auto'; }
         var bar = form.querySelector('[data-reply-bar]');
         if (bar) { bar.classList.add('hidden'); bar.classList.remove('flex'); }
         var ri = form.querySelector('[data-reply-input]'); if (ri) ri.value = '';
+        if (fileInput) { try { fileInput.value = ''; } catch (e) {} }      // vide la pièce jointe
+        var fn = document.getElementById('fname'); if (fn) fn.textContent = '';
+        var vb = form.querySelector('[data-voice-bar]');                   // referme l'aperçu vocal
+        if (vb) { vb.classList.add('hidden'); vb.classList.remove('flex'); }
         refresh();
         if (window.__chatPoll) window.__chatPoll();   // affiche le message tout de suite
-        input.focus();
+        // Ping temps réel aux destinataires (identifiants seulement, aucun contenu
+        // ni nom ne transite par le broker public — récupérés depuis Django).
+        if (d && d.recipients && window.lpmPublishMany) {
+          window.lpmPublishMany(d.recipients, { k: 'msg', c: d.conv });
+        }
+        if (input) input.focus();
       }).catch(function () { form.submit(); });
       return true;
     }
+    window.__composerSend = ajaxSend;   // utilisé par l'envoi de pièce jointe (onchange)
     form.addEventListener('submit', function (e) {
       if (ajaxSend()) e.preventDefault();
     });

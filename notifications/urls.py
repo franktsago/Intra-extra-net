@@ -6,6 +6,7 @@ app_name = "notifications"
 
 urlpatterns = [
     path("", views.notification_list, name="list"),
+    path("flux/", views.feed, name="feed"),
     path("diffuser/", views.broadcast, name="broadcast"),
     path("tout-lire/", views.mark_all_read, name="mark_all_read"),
     path("tout-supprimer/", views.clear_notifications, name="clear"),

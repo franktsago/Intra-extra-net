@@ -48,3 +48,31 @@ class BroadcastTest(TestCase):
     def test_employee_cannot_broadcast(self):
         self.client.force_login(self.emp)
         self.assertEqual(self.client.get(reverse("notifications:broadcast")).status_code, 403)
+
+
+class NotificationFeedTest(TestCase):
+    """Flux JSON temps réel : nouvelles notifications après un id + compteur."""
+
+    def test_feed_returns_new_after_id(self):
+        import json
+        u = User.objects.create_user("feed_u", password="x", role=Role.EMPLOYE)
+        n1 = Notification.objects.create(recipient=u, title="Un",
+                                         audience=Notification.Audience.INTERNAL)
+        n2 = Notification.objects.create(recipient=u, title="Deux",
+                                         audience=Notification.Audience.INTERNAL)
+        self.client.force_login(u)
+        d = json.loads(self.client.get(reverse("notifications:feed") + "?after=%d" % n1.id).content)
+        self.assertEqual(d["unread"], 2)
+        self.assertEqual(d["last_id"], n2.id)
+        titles = [x["title"] for x in d["new"]]
+        self.assertIn("Deux", titles)
+        self.assertNotIn("Un", titles)   # déjà vue (≤ after)
+
+    def test_feed_audience_isolated(self):
+        import json
+        cli = User.objects.create_user("feed_cli", password="x", role=Role.CLIENT)
+        Notification.objects.create(recipient=cli, title="Interne par erreur",
+                                    audience=Notification.Audience.INTERNAL)
+        self.client.force_login(cli)
+        d = json.loads(self.client.get(reverse("notifications:feed")).content)
+        self.assertEqual(d["unread"], 0)   # un externe ne voit pas l'audience interne

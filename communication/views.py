@@ -16,8 +16,12 @@ manager_required = role_required(Role.ADMIN, Role.CEO, Role.RH, Role.MANAGER)
 
 
 def _can_moderate_news(user):
-    """RH, CEO et administrateur principal valident/refusent les actualités."""
-    return user.is_rh  # is_rh inclut CEO et admin
+    """RH, CEO et administrateur principal valident/refusent les actualités.
+
+    Vaut aussi si la fonction est portée par un rôle SECONDAIRE (multi-rôles)."""
+    if user.is_rh:  # is_rh inclut CEO et admin (rôle actif)
+        return True
+    return bool({Role.RH, Role.CEO, Role.ADMIN} & set(user.available_roles)) or user.is_admin_lpm
 
 
 @internal_required
@@ -102,11 +106,12 @@ def news_edit(request, pk=None):
 def _notify_moderators(article):
     """Prévient les valideurs (RH/CEO/admin) qu'une actualité attend validation."""
     from django.urls import reverse
-    from accounts.models import Role, User
+    from accounts.models import Role, users_with_role
     from notifications.models import notify
     author = article.author.get_full_name() if article.author else "Un responsable"
     url = reverse("communication:moderation")
-    for u in User.objects.filter(role__in=[Role.RH, Role.CEO, Role.ADMIN], is_active=True):
+    # Inclut les valideurs dont RH/CEO/admin est un rôle SECONDAIRE.
+    for u in users_with_role(Role.RH, Role.CEO, Role.ADMIN):
         notify(u, "Actualité à valider",
                f"{author} a soumis l'actualité « {article.title} ».", url=url)
 

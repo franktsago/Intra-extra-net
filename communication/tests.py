@@ -65,6 +65,20 @@ class NewsPermissionTest(TestCase):
         self.assertEqual(art.mod_status, News.ModStatus.PENDING)
         self.assertFalse(art.is_visible)
 
+    def test_secondary_role_validator_is_notified(self):
+        from notifications.models import Notification
+        from communication.views import _can_moderate_news
+        # Un responsable dont RH est un rôle SECONDAIRE doit être notifié et pouvoir valider.
+        sec_rh = User.objects.create_user("sec_rh", password="x", role=Role.MANAGER,
+                                          secondary_roles="RH")
+        self.client.force_login(self.mgr)
+        self.client.post(reverse("communication:create"), {
+            "title": "Annonce à valider", "category": News.Category.GENERAL,
+            "summary": "", "content": "Contenu", "is_pinned": False})
+        self.assertTrue(Notification.objects.filter(
+            recipient=sec_rh, title__icontains="valider").exists())
+        self.assertTrue(_can_moderate_news(sec_rh))
+
     def test_pending_news_hidden_from_feed(self):
         News.objects.create(title="En attente", slug="en-attente", content="x",
                             author=self.mgr, mod_status=News.ModStatus.PENDING)

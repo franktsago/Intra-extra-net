@@ -31,6 +31,7 @@ def _get_employee(user):
 
 def _validator_users(leave):
     """Utilisateurs à notifier / habilités pour le niveau courant."""
+    from accounts.models import users_with_role
     role = leave.current_role
     if role is None:
         return []
@@ -40,14 +41,15 @@ def _validator_users(leave):
             users = [mgr.user]
         else:
             # À défaut de responsable, le RH prend le relais.
-            users = list(User.objects.filter(role=Role.RH, is_active=True))
+            users = list(users_with_role(Role.RH))
     else:
-        users = list(User.objects.filter(role=role, is_active=True))
+        # Inclut les valideurs dont la fonction est un rôle SECONDAIRE (multi-rôles).
+        users = list(users_with_role(role))
     # Aux niveaux Direction/Administration (ex. congés de la RH, d'un responsable
     # ou du CEO), on informe aussi le CEO et l'administrateur principal, qui
     # peuvent toujours valider.
     if role in (Role.CEO, Role.ADMIN):
-        users += list(User.objects.filter(role=Role.CEO, is_active=True))
+        users += list(users_with_role(Role.CEO))
         users += list(User.objects.filter(role=Role.ADMIN))
         users += list(User.objects.filter(is_superuser=True))
     # Dédoublonnage en conservant l'ordre.
@@ -68,13 +70,16 @@ def _can_act(user, leave):
         return False
     if user.is_admin_lpm:  # l'admin principal peut débloquer n'importe quel niveau
         return True
+    # Rôles que l'utilisateur peut endosser (principal + secondaires), pour qu'un
+    # valideur multi-rôles puisse agir sans devoir d'abord basculer de rôle.
+    avail = set(user.available_roles)
     if role == Role.MANAGER:
         mgr = leave.employee.manager
-        return bool(mgr and mgr.user_id == user.id) or user.effective_role in {Role.RH, Role.CEO}
+        return bool(mgr and mgr.user_id == user.id) or bool({Role.RH, Role.CEO} & avail)
     if role == Role.RH:
-        return user.effective_role == Role.RH or user.is_ceo
+        return Role.RH in avail or user.is_ceo
     if role == Role.CEO:
-        return user.is_ceo
+        return Role.CEO in avail or user.is_admin_lpm
     if role == Role.ADMIN:
         return user.is_admin_lpm
     return False

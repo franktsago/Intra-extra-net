@@ -213,6 +213,23 @@ class User(AbstractUser):
         return self.linked_accounts.exists()
 
 
+def users_with_role(*roles, active_only=True):
+    """Utilisateurs ayant l'un des rôles donnés en rôle PRINCIPAL **ou** SECONDAIRE.
+
+    Indispensable pour notifier/identifier les valideurs même quand leur fonction
+    (RH, CEO, admin…) est portée par un rôle secondaire (multi-rôles). Sans cela,
+    un responsable qui est aussi RH en second rôle ne recevait aucune notification.
+    """
+    codes = [str(r) for r in roles]
+    q = models.Q(role__in=codes)
+    for c in codes:
+        q |= models.Q(secondary_roles__icontains=c)
+    qs = User.objects.filter(q)
+    if active_only:
+        qs = qs.filter(is_active=True)
+    return qs.distinct()
+
+
 class ActivityLog(models.Model):
     """Journal des actions et connexions (exigence de traçabilité du CDC)."""
 

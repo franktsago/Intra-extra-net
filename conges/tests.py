@@ -143,6 +143,24 @@ class LeaveRequestRolesTest(TestCase):
         self.assertTrue(Notification.objects.filter(
             recipient=admin, title__icontains="valider").exists())
 
+    def test_secondary_role_rh_is_notified_and_can_act(self):
+        from conges.views import _can_act
+        # Valideur dont RH est un rôle SECONDAIRE (multi-rôles).
+        sec_rh = User.objects.create_user("sec_rh_cg", password="x", role=Role.MANAGER,
+                                          secondary_roles="RH")
+        emp_u = User.objects.create_user("nomgr3", password="x", role=Role.EMPLOYE)
+        emp = Employee.objects.get(user=emp_u)
+        emp.manager = None
+        emp.save()
+        self._request_leave(emp_u)
+        lr = LeaveRequest.objects.get(employee=emp)
+        self.assertEqual(lr.chain, [Role.RH])
+        # Il est notifié…
+        self.assertTrue(Notification.objects.filter(
+            recipient=sec_rh, title__icontains="valider").exists())
+        # …et peut valider sans avoir à basculer de rôle.
+        self.assertTrue(_can_act(sec_rh, lr))
+
     def test_employee_leave_does_not_spam_admin(self):
         admin = User.objects.create_superuser("superadmin2", password="x", role=Role.ADMIN)
         emp_u = User.objects.create_user("simple", password="x", role=Role.EMPLOYE)
